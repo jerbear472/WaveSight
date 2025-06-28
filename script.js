@@ -132,10 +132,11 @@ function createChart(data, filteredTrends = 'all') {
 
   // Chart dimensions (use display size, not canvas size)
   const padding = 60;
+  const legendHeight = 30; // Space for top legend
   const displayWidth = containerWidth;
   const displayHeight = 300;
   const chartWidth = displayWidth - padding * 2;
-  const chartHeight = displayHeight - padding * 2;
+  const chartHeight = displayHeight - padding * 2 - legendHeight;
 
   // Get all trend names
   let allTrendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
@@ -161,7 +162,7 @@ function createChart(data, filteredTrends = 'all') {
   
   // Horizontal grid lines
   for (let i = 0; i <= 4; i++) {
-    const y = padding + (chartHeight * i) / 4;
+    const y = padding + legendHeight + (chartHeight * i) / 4;
     ctx.beginPath();
     ctx.moveTo(padding, y);
     ctx.lineTo(padding + chartWidth, y);
@@ -175,7 +176,7 @@ function createChart(data, filteredTrends = 'all') {
   
   for (let i = 0; i <= 4; i++) {
     const value = maxValue * (4 - i) / 4;
-    const y = padding + (chartHeight * i) / 4;
+    const y = padding + legendHeight + (chartHeight * i) / 4;
     ctx.fillText(formatNumber(value), padding - 10, y + 4);
   }
 
@@ -202,7 +203,7 @@ function createChart(data, filteredTrends = 'all') {
     data.forEach((item, index) => {
       if (item[trendName] !== undefined) {
         const x = padding + (chartWidth * index) / (data.length - 1);
-        const y = padding + chartHeight - ((item[trendName] / maxValue) * chartHeight);
+        const y = padding + legendHeight + chartHeight - ((item[trendName] / maxValue) * chartHeight);
         
         if (firstPoint) {
           ctx.moveTo(x, y);
@@ -214,16 +215,29 @@ function createChart(data, filteredTrends = 'all') {
     });
     
     ctx.stroke();
+  });
 
-    // Draw legend on the right side
-    const legendX = displayWidth - 150; // Position legend on right side
-    const legendY = 20 + (trendIndex * 18);
+  // Draw horizontal legend at the top
+  ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+  ctx.textAlign = 'left';
+  
+  let legendX = padding;
+  const legendY = 20;
+  
+  trendNames.forEach((trendName, trendIndex) => {
+    const color = colors[trendIndex % colors.length];
+    
+    // Draw legend box
     ctx.fillStyle = color;
     ctx.fillRect(legendX, legendY, 8, 8);
+    
+    // Draw legend text
     ctx.fillStyle = '#f1f1f1';
-    ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'left';
     ctx.fillText(trendName, legendX + 12, legendY + 7);
+    
+    // Calculate text width and move to next position
+    const textWidth = ctx.measureText(trendName).width;
+    legendX += textWidth + 25; // 12 for box + text + 25 for spacing
   });
 }
 
