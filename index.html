@@ -1,58 +1,60 @@
-// Add process polyfill for browser environment
-if (typeof process === 'undefined') {
-  window.process = {
-    env: {}
-  };
-}
 
-// Initialize Supabase client - using correct API key format
-const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5MDU5NDcsImV4cCI6MjA2NjQ4MTk0N30.YGOXgs0LtdCQYqpEWu0BECZFp9gRtk6nJPbOeDwN8kM';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend Tracker Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Load required libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header-bar">
+            <div class="logo-group">
+                <img src="logo.jpeg" alt="Logo" class="logo-icon">
+                <span class="logo-text">TrendScope</span>
+            </div>
+            <button class="menu-btn">☰</button>
+        </div>
 
-let supabase = null;
-let supabaseAvailable = false;
-let selectedCategory = 'all';
+        <div class="header">
+            <h1 style="color: #5ee3ff; font-size: 2rem; margin: 0;">Social Media Trend Analytics</h1>
+            <div class="submit-bar">
+                <input type="text" placeholder="Search trends..." id="searchInput">
+                <button class="submit-btn" onclick="searchTrends()">Search</button>
+            </div>
+        </div>
 
-// Initialize Supabase
-try {
-  if (typeof window.supabase !== 'undefined') {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    supabaseAvailable = true;
-    console.log('Supabase client initialized');
-  } else {
-    console.log('Supabase library not available, using fallback data');
-  }
-} catch (error) {
-  console.log('Failed to initialize Supabase, using fallback data:', error);
-}
+        <div class="chart-section">
+            <h2>Trend Reach Over Time</h2>
+            <div id="trendChart"></div>
+        </div>
 
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('DOM loaded, initializing components...');
+        <div class="chart-section">
+            <h2>Top Trending Keywords</h2>
+            <table class="trend-table" id="trendTable">
+                <thead>
+                    <tr>
+                        <th>Trend Name</th>
+                        <th>Platform</th>
+                        <th>Reach</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="trendTableBody">
+                    <!-- Table content will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-  const filterContainer = document.createElement('div');
-  filterContainer.style.marginBottom = '16px';
-  filterContainer.innerHTML = `
-    <label style="color:#f1f1f1;margin-right:8px;">Filter by trend:</label>
-    <select id="trendFilter" style="padding:6px 12px;border-radius:8px;background:#1a1a2e;color:#f1f1f1;border:1px solid #2e2e45;">
-      <option value="all">All</option>
-      <option value="aiTools">AI Tools</option>
-      <option value="chatgpt">ChatGPT</option>
-      <option value="ml">Machine Learning</option>
-      <option value="blockchain">Blockchain</option>
-      <option value="metaverse">Metaverse</option>
-      <option value="nft">NFT</option>
-      <option value="crypto">Crypto</option>
-    </select>
-  `;
-
-  const chartSection = document.querySelector('.chart-section');
-  if (chartSection) chartSection.insertBefore(filterContainer, chartSection.children[1]);
-
-  document.getElementById('trendFilter').addEventListener('change', e => {
-    selectedCategory = e.target.value;
-    createNativeChart();
-  });
-
-  await createNativeChart();
-  await createTrendTable();
-});
+    <script src="script.js"></script>
+</body>
+</html>
