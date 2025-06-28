@@ -30,8 +30,11 @@
                 <select id="trendFilter" onchange="filterChart()">
                     <option value="all">All Trends</option>
                 </select>
+                <input type="date" id="startDate" onchange="filterByDateRange()">
+                <input type="date" id="endDate" onchange="filterByDateRange()">
                 <input type="text" placeholder="Search trends..." id="searchInput">
                 <button class="submit-btn" onclick="searchTrends()">Search</button>
+                <button class="submit-btn" onclick="resetDateFilter()" style="background: #374151;">Reset</button>
             </div>
         </div>
 

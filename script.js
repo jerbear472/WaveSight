@@ -6,6 +6,9 @@ let supabase = null;
 let chartRoot = null;
 let currentData = null;
 let selectedTrends = 'all';
+let filteredData = null;
+let startDate = null;
+let endDate = null;
 
 // Initialize Supabase
 function initSupabase() {
@@ -587,7 +590,8 @@ function filterChart() {
   selectedTrends = filterSelect.value;
 
   if (currentData) {
-    createChart(currentData.chartData, selectedTrends);
+    const dataToUse = filteredData || currentData.chartData;
+    createChart(dataToUse, selectedTrends);
   }
 }
 
@@ -635,6 +639,70 @@ function searchTrends() {
   const filterSelect = document.getElementById('trendFilter');
   filterSelect.value = selectedTrends === 'all' ? 'all' : 'all';
 
+  if (currentData) {
+    const dataToUse = filteredData || currentData.chartData;
+    createChart(dataToUse, selectedTrends);
+  }
+}
+
+// Date range filter function
+function filterByDateRange() {
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  
+  startDate = startDateInput.value;
+  endDate = endDateInput.value;
+
+  if (!currentData) return;
+
+  if (!startDate && !endDate) {
+    filteredData = null;
+    createChart(currentData.chartData, selectedTrends);
+    return;
+  }
+
+  // Convert chart dates to comparable format
+  const filterData = currentData.chartData.filter(item => {
+    if (!item.date) return true;
+    
+    // Parse date format (assuming MM/DD or M/D format)
+    const dateParts = item.date.split('/');
+    if (dateParts.length !== 2) return true;
+    
+    const month = parseInt(dateParts[0]);
+    const day = parseInt(dateParts[1]);
+    
+    // Assume current year for comparison
+    const currentYear = new Date().getFullYear();
+    const itemDate = new Date(currentYear, month - 1, day);
+    
+    let isInRange = true;
+    
+    if (startDate) {
+      const start = new Date(startDate);
+      isInRange = isInRange && itemDate >= start;
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      isInRange = isInRange && itemDate <= end;
+    }
+    
+    return isInRange;
+  });
+
+  filteredData = filterData;
+  createChart(filteredData, selectedTrends);
+}
+
+// Reset date filter function
+function resetDateFilter() {
+  document.getElementById('startDate').value = '';
+  document.getElementById('endDate').value = '';
+  startDate = null;
+  endDate = null;
+  filteredData = null;
+  
   if (currentData) {
     createChart(currentData.chartData, selectedTrends);
   }
