@@ -254,12 +254,20 @@ function createChart(data, filteredTrends = 'all') {
       const endX = padding + (chartWidth * range.end) / (data.length - 1);
       const centerX = (startX + endX) / 2;
       
-      // No separator lines needed
+      // Draw month separator line
+      if (range.start > 0) {
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(startX, padding + legendHeight);
+        ctx.lineTo(startX, displayHeight - 30);
+        ctx.stroke();
+      }
       
-      // Draw month label closer to x-axis
+      // Draw month label
       const monthIndex = parseInt(range.month);
       const monthName = monthNames[monthIndex] || range.month;
-      ctx.fillText(monthName, centerX, displayHeight - 5);
+      ctx.fillText(monthName, centerX, displayHeight - 15);
     });
 
     // Draw horizontal legend at the top
