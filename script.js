@@ -215,14 +215,15 @@ function createChart(data, filteredTrends = 'all') {
     
     ctx.stroke();
 
-    // Draw legend
+    // Draw legend on the right side
+    const legendX = displayWidth - 150; // Position legend on right side
     const legendY = 20 + (trendIndex * 18);
     ctx.fillStyle = color;
-    ctx.fillRect(20, legendY, 8, 8);
+    ctx.fillRect(legendX, legendY, 8, 8);
     ctx.fillStyle = '#f1f1f1';
     ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(trendName, 32, legendY + 7);
+    ctx.fillText(trendName, legendX + 12, legendY + 7);
   });
 }
 
