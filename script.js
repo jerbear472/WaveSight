@@ -136,7 +136,7 @@ function createChart(data, filteredTrends = 'all') {
   // Chart dimensions (use display size, not canvas size)
   const padding = 60;
   const legendHeight = 30; // Space for top legend
-  const axisHeight = 60; // Space for dual axis labels
+  const axisHeight = 25; // Reduced space for month labels
   const displayWidth = containerWidth;
   const displayHeight = 330;
   const chartWidth = displayWidth - padding * 2;
@@ -211,18 +211,18 @@ function createChart(data, filteredTrends = 'all') {
     ctx.fillStyle = '#9ca3af';
     ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
-    
+
     // Track months for axis
     let currentMonth = '';
     let monthRanges = [];
     let monthStart = 0;
-    
+
     // Collect month data
     data.forEach((item, index) => {
       // Parse date to get month
       const dateParts = item.date.split('/');
       const month = dateParts[0];
-      
+
       // Track month changes
       if (currentMonth !== month) {
         if (currentMonth !== '') {
@@ -235,7 +235,7 @@ function createChart(data, filteredTrends = 'all') {
         currentMonth = month;
         monthStart = index;
       }
-      
+
       // Handle last month
       if (index === data.length - 1) {
         monthRanges.push({
@@ -245,15 +245,15 @@ function createChart(data, filteredTrends = 'all') {
         });
       }
     });
-    
+
     // Draw months
     const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+
     monthRanges.forEach(range => {
       const startX = padding + (chartWidth * range.start) / (data.length - 1);
       const endX = padding + (chartWidth * range.end) / (data.length - 1);
       const centerX = (startX + endX) / 2;
-      
+
       // Draw month separator line
       if (range.start > 0) {
         ctx.strokeStyle = '#374151';
@@ -263,7 +263,7 @@ function createChart(data, filteredTrends = 'all') {
         ctx.lineTo(startX, displayHeight - 30);
         ctx.stroke();
       }
-      
+
       // Draw month label much closer to x-axis
       const monthIndex = parseInt(range.month);
       const monthName = monthNames[monthIndex] || range.month;
@@ -704,7 +704,7 @@ function searchTrends() {
 function filterByDateRange() {
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
-  
+
   startDate = startDateInput.value;
   endDate = endDateInput.value;
 
@@ -719,30 +719,30 @@ function filterByDateRange() {
   // Convert chart dates to comparable format
   const filterData = currentData.chartData.filter(item => {
     if (!item.date) return true;
-    
+
     // Parse date format (assuming MM/DD or M/D format)
     const dateParts = item.date.split('/');
     if (dateParts.length !== 2) return true;
-    
+
     const month = parseInt(dateParts[0]);
     const day = parseInt(dateParts[1]);
-    
+
     // Assume current year for comparison
     const currentYear = new Date().getFullYear();
     const itemDate = new Date(currentYear, month - 1, day);
-    
+
     let isInRange = true;
-    
+
     if (startDate) {
       const start = new Date(startDate);
       isInRange = isInRange && itemDate >= start;
     }
-    
+
     if (endDate) {
       const end = new Date(endDate);
       isInRange = isInRange && itemDate <= end;
     }
-    
+
     return isInRange;
   });
 
@@ -757,7 +757,7 @@ function resetDateFilter() {
   startDate = null;
   endDate = null;
   filteredData = null;
-  
+
   if (currentData) {
     createChart(currentData.chartData, selectedTrends);
   }
