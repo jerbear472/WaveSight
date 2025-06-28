@@ -1,7 +1,7 @@
 
 // Initialize Supabase client
-const SUPABASE_URL = 'your-supabase-url';
-const SUPABASE_ANON_KEY = 'your-supabase-anon-key';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://your-project-ref.supabase.co';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your-actual-anon-key';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Function to fetch data from Supabase
