@@ -1,16 +1,70 @@
+<!-- index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WaveSight</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <header class="header-bar">
+        <div class="logo-group">
+          <img src="wave-logo.svg" alt="WaveSight logo" class="logo-icon" />
+          <span class="logo-text">WAVESIGHT</span>
+        </div>
+        <button class="menu-btn">
+          ☰
+        </button>
+      </header>
 
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>replit</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
-</head>
+      <section class="chart-section">
+        <h2>Keyword Virality Over Time</h2>
+        <canvas id="trendChart"></canvas>
+      </section>
 
-<body>
-  Hello world
-  <script src="script.js"></script>
-</body>
+      <section class="trend-cards">
+        <div class="card blue-glow">
+          <div class="card-title">AI-generated images</div>
+          <div class="card-mentions">23.4K Mentions</div>
+          <div class="card-footer">
+            <span class="platform">TikTok</span>
+            <span class="score">84</span>
+          </div>
+        </div>
 
+        <div class="card purple-glow">
+          <div class="card-title">ChatGPT</div>
+          <div class="card-mentions">18.7K Mentions</div>
+          <div class="card-footer">
+            <span class="platform">Reddit</span>
+            <span class="score">79</span>
+          </div>
+        </div>
+
+        <div class="card pink-glow">
+          <div class="card-title">Elden Ring</div>
+          <div class="card-mentions">15.2K Mentions</div>
+          <div class="card-footer">
+            <span class="platform">YouTube</span>
+            <span class="score">69</span>
+          </div>
+        </div>
+
+        <div class="card orange-glow">
+          <div class="card-title">Pineapple on pizza</div>
+          <div class="card-mentions">12.9K Mentions</div>
+          <div class="card-footer">
+            <span class="platform">TikTok</span>
+            <span class="score">53</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
 </html>
