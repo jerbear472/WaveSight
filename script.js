@@ -260,7 +260,7 @@ function createChart(data, filteredTrends = 'all') {
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(startX, padding + legendHeight);
-        ctx.lineTo(startX, displayHeight - 30);
+        ctx.lineTo(startX, padding + legendHeight + chartHeight);
         ctx.stroke();
       }
 
