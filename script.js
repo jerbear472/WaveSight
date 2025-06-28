@@ -1,9 +1,4 @@
 
-// Add process polyfill for browser environment
-if (typeof process === 'undefined') {
-  window.process = { env: {} };
-}
-
 // Supabase credentials
 const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5MDU5NDcsImV4cCI6MjA2NjQ4MTk0N30.YGOXgs0LtdCQYqpEWu0BECZFp9gRtk6nJPbOeDwN8kM';
@@ -11,28 +6,34 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let supabase = null;
 let data = [];
 let tableRows = '';
+let chartRoot = null;
 
 // Initialize Supabase
-try {
-  if (typeof window.supabase !== 'undefined') {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase client initialized');
-  } else {
-    console.log('Supabase library not loaded, using fallback data');
+function initSupabase() {
+  try {
+    if (typeof window.supabase !== 'undefined') {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('Supabase client initialized');
+      return true;
+    } else {
+      console.log('Supabase library not loaded');
+      return false;
+    }
+  } catch (error) {
+    console.log('Failed to initialize Supabase:', error);
+    return false;
   }
-} catch (error) {
-  console.log('Failed to initialize Supabase, using fallback data:', error);
 }
 
 // Fallback data
 const fallbackChartData = [
-  { date: 'Day 1', aiTools: 1200, chatgpt: 950, ml: 700, blockchain: 800, metaverse: 600, nft: 450, crypto: 1100 },
-  { date: 'Day 2', aiTools: 1350, chatgpt: 1100, ml: 850, blockchain: 920, metaverse: 750, nft: 520, crypto: 1250 },
-  { date: 'Day 3', aiTools: 1800, chatgpt: 1400, ml: 1200, blockchain: 1100, metaverse: 900, nft: 680, crypto: 1400 },
-  { date: 'Day 4', aiTools: 2100, chatgpt: 1650, ml: 1400, blockchain: 1300, metaverse: 1100, nft: 750, crypto: 1600 },
-  { date: 'Day 5', aiTools: 2500, chatgpt: 1900, ml: 1600, blockchain: 1500, metaverse: 1300, nft: 850, crypto: 1800 },
-  { date: 'Day 6', aiTools: 2800, chatgpt: 2200, ml: 1850, blockchain: 1700, metaverse: 1500, nft: 950, crypto: 2000 },
-  { date: 'Day 7', aiTools: 3200, chatgpt: 2500, ml: 2100, blockchain: 1900, metaverse: 1700, nft: 1100, crypto: 2200 }
+  { date: 'Day 1', 'AI Tools': 1200000, 'ChatGPT': 950000, 'Machine Learning': 700000, 'Blockchain': 800000, 'Metaverse': 600000, 'NFT': 450000, 'Crypto': 1100000 },
+  { date: 'Day 2', 'AI Tools': 1350000, 'ChatGPT': 1100000, 'Machine Learning': 850000, 'Blockchain': 920000, 'Metaverse': 750000, 'NFT': 520000, 'Crypto': 1250000 },
+  { date: 'Day 3', 'AI Tools': 1800000, 'ChatGPT': 1400000, 'Machine Learning': 1200000, 'Blockchain': 1100000, 'Metaverse': 900000, 'NFT': 680000, 'Crypto': 1400000 },
+  { date: 'Day 4', 'AI Tools': 2100000, 'ChatGPT': 1650000, 'Machine Learning': 1400000, 'Blockchain': 1300000, 'Metaverse': 1100000, 'NFT': 750000, 'Crypto': 1600000 },
+  { date: 'Day 5', 'AI Tools': 2500000, 'ChatGPT': 1900000, 'Machine Learning': 1600000, 'Blockchain': 1500000, 'Metaverse': 1300000, 'NFT': 850000, 'Crypto': 1800000 },
+  { date: 'Day 6', 'AI Tools': 2800000, 'ChatGPT': 2200000, 'Machine Learning': 1850000, 'Blockchain': 1700000, 'Metaverse': 1500000, 'NFT': 950000, 'Crypto': 2000000 },
+  { date: 'Day 7', 'AI Tools': 3200000, 'ChatGPT': 2500000, 'Machine Learning': 2100000, 'Blockchain': 1900000, 'Metaverse': 1700000, 'NFT': 1100000, 'Crypto': 2200000 }
 ];
 
 const fallbackTableData = [
@@ -56,9 +57,30 @@ function formatNumber(num) {
   }
 }
 
-// Create native chart using Recharts
-async function createNativeChart() {
+// Wait for libraries to be available
+function waitForLibraries() {
+  return new Promise((resolve) => {
+    const checkLibraries = () => {
+      if (typeof window.Recharts !== 'undefined' && 
+          typeof window.React !== 'undefined' && 
+          typeof window.ReactDOM !== 'undefined') {
+        console.log('All libraries loaded successfully');
+        resolve(true);
+      } else {
+        console.log('Waiting for libraries...');
+        setTimeout(checkLibraries, 500);
+      }
+    };
+    checkLibraries();
+  });
+}
+
+// Create chart using Recharts
+async function createChart() {
   console.log('Creating chart...');
+  
+  // Wait for libraries to be available
+  await waitForLibraries();
   
   // Try to fetch data from Supabase
   if (supabase) {
@@ -77,7 +99,6 @@ async function createNativeChart() {
         const groupedData = {};
         
         trendData.forEach((item) => {
-          // Use created_at timestamp or create a date key
           const timestamp = item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Unknown Date';
           const trendName = item.trend_name || 'Unknown';
           const reachCount = item.reach_count || 0;
@@ -88,42 +109,36 @@ async function createNativeChart() {
             };
           }
           
-          // Add each trend as a separate line in the chart
           groupedData[timestamp][trendName] = (groupedData[timestamp][trendName] || 0) + reachCount;
         });
         
         data = Object.values(groupedData);
         console.log('Transformed chart data:', data);
         
-        // Get all unique trend names for chart lines
-        const allTrendNames = [...new Set(trendData.map(item => item.trend_name))];
-        console.log('Unique trend names:', allTrendNames);
-        
-        // Store trend names for chart rendering
-        window.chartTrendNames = allTrendNames;
+        window.chartTrendNames = [...new Set(trendData.map(item => item.trend_name))];
       } else {
         console.log('No data returned from Supabase, using fallback data');
         data = fallbackChartData;
-        window.chartTrendNames = ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
+        window.chartTrendNames = ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
       }
     } catch (error) {
       console.log('Supabase query failed, using fallback data:', error);
       data = fallbackChartData;
-      window.chartTrendNames = ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
+      window.chartTrendNames = ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
     }
   } else {
     console.log('Using fallback chart data');
     data = fallbackChartData;
-    window.chartTrendNames = ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
+    window.chartTrendNames = ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
   }
 
   // Create React component for the chart
   const ChartComponent = () => {
-    const trendNames = window.chartTrendNames || ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
+    const trendNames = window.chartTrendNames || ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
     const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#22d3ee', '#a855f7', '#06b6d4'];
     
     const chartLines = trendNames.map((trendName, index) => {
-      return React.createElement(Recharts.Line, {
+      return React.createElement(window.Recharts.Line, {
         key: trendName,
         type: 'monotone',
         dataKey: trendName,
@@ -135,23 +150,23 @@ async function createNativeChart() {
     });
 
     return React.createElement(
-      Recharts.ResponsiveContainer,
+      window.Recharts.ResponsiveContainer,
       { width: '100%', height: 320 },
       React.createElement(
-        Recharts.LineChart,
+        window.Recharts.LineChart,
         { data: data, margin: { top: 20, right: 30, left: 20, bottom: 5 } },
-        React.createElement(Recharts.CartesianGrid, { strokeDasharray: '3 3', stroke: '#2e2e45' }),
-        React.createElement(Recharts.XAxis, { 
+        React.createElement(window.Recharts.CartesianGrid, { strokeDasharray: '3 3', stroke: '#2e2e45' }),
+        React.createElement(window.Recharts.XAxis, { 
           dataKey: 'date', 
           stroke: '#9ca3af',
           tick: { fill: '#9ca3af' }
         }),
-        React.createElement(Recharts.YAxis, { 
+        React.createElement(window.Recharts.YAxis, { 
           stroke: '#9ca3af',
           tick: { fill: '#9ca3af' },
           tickFormatter: formatNumber
         }),
-        React.createElement(Recharts.Tooltip, {
+        React.createElement(window.Recharts.Tooltip, {
           contentStyle: {
             backgroundColor: '#1a1a2e',
             border: '1px solid #2e2e45',
@@ -160,7 +175,7 @@ async function createNativeChart() {
           },
           formatter: (value) => [formatNumber(value), '']
         }),
-        React.createElement(Recharts.Legend, {
+        React.createElement(window.Recharts.Legend, {
           wrapperStyle: { color: '#f1f1f1' }
         }),
         ...chartLines
@@ -170,9 +185,14 @@ async function createNativeChart() {
 
   // Render the chart
   const chartContainer = document.getElementById('trendChart');
-  if (chartContainer && typeof ReactDOM !== 'undefined') {
-    const root = ReactDOM.createRoot(chartContainer);
-    root.render(React.createElement(ChartComponent));
+  if (chartContainer && typeof window.ReactDOM !== 'undefined') {
+    if (!chartRoot) {
+      chartRoot = window.ReactDOM.createRoot(chartContainer);
+    }
+    chartRoot.render(React.createElement(ChartComponent));
+    console.log('Chart rendered successfully');
+  } else {
+    console.log('Chart container or ReactDOM not available');
   }
 }
 
@@ -279,22 +299,32 @@ function searchTrends() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOM loaded, initializing components...');
   
-  // Wait for libraries to load
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  // Initialize Supabase
+  setTimeout(() => {
+    initSupabase();
+  }, 1000);
   
-  if (typeof Recharts !== 'undefined') {
-    console.log('Recharts loaded');
-    await createNativeChart();
-  } else {
-    console.log('Recharts not loaded, retrying...');
-    setTimeout(createNativeChart, 2000);
+  // Wait for libraries and create chart
+  try {
+    await createChart();
+  } catch (error) {
+    console.log('Error creating chart:', error);
   }
   
-  await createTrendTable();
+  // Create table
+  try {
+    await createTrendTable();
+  } catch (error) {
+    console.log('Error creating table:', error);
+  }
   
   // Set up auto-refresh
   setInterval(async () => {
-    await createNativeChart();
-    await createTrendTable();
+    try {
+      await createChart();
+      await createTrendTable();
+    } catch (error) {
+      console.log('Error during refresh:', error);
+    }
   }, 30000); // Refresh every 30 seconds
 });
