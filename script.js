@@ -2,129 +2,97 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, initializing components...');
 
-  // Wait for all scripts to load
-  setTimeout(() => {
-    try {
-      const chartContainer = document.getElementById('trendChart');
-      if (chartContainer && window.React && window.ReactDOM && window.Recharts) {
-        console.log('All libraries loaded, rendering chart...');
-
-        // Create the chart component using React.createElement
-        const TrendChart = () => {
-          const [data, setData] = React.useState([
-            { name: 'Jan 1', 'AI Tools': 1200, 'ChatGPT': 900, 'Machine Learning': 800 },
-            { name: 'Jan 2', 'AI Tools': 1500, 'ChatGPT': 1100, 'Machine Learning': 950 },
-            { name: 'Jan 3', 'AI Tools': 1800, 'ChatGPT': 1300, 'Machine Learning': 1100 },
-            { name: 'Jan 4', 'AI Tools': 2100, 'ChatGPT': 1600, 'Machine Learning': 1250 },
-            { name: 'Jan 5', 'AI Tools': 1900, 'ChatGPT': 1400, 'Machine Learning': 1150 }
-          ]);
-
-          const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981'];
-
-          return React.createElement(
-            'div',
-            { style: { width: '100%', height: '320px' } },
-            React.createElement(
-              Recharts.ResponsiveContainer,
-              { width: '100%', height: '100%' },
-              React.createElement(
-                Recharts.LineChart,
-                { 
-                  data: data, 
-                  margin: { top: 5, right: 30, left: 20, bottom: 5 } 
-                },
-                React.createElement(Recharts.CartesianGrid, { strokeDasharray: '3 3', stroke: '#2e2e45' }),
-                React.createElement(Recharts.XAxis, { dataKey: 'name', stroke: '#9ca3af' }),
-                React.createElement(Recharts.YAxis, { stroke: '#9ca3af' }),
-                React.createElement(Recharts.Tooltip, { 
-                  contentStyle: { 
-                    backgroundColor: '#1a1a2e', 
-                    border: '1px solid #2e2e45',
-                    borderRadius: '8px',
-                    color: '#f1f1f1'
-                  } 
-                }),
-                React.createElement(Recharts.Legend, {}),
-                React.createElement(Recharts.Line, {
-                  type: 'monotone',
-                  dataKey: 'AI Tools',
-                  stroke: colors[0],
-                  strokeWidth: 2,
-                  dot: { fill: colors[0] }
-                }),
-                React.createElement(Recharts.Line, {
-                  type: 'monotone',
-                  dataKey: 'ChatGPT',
-                  stroke: colors[1],
-                  strokeWidth: 2,
-                  dot: { fill: colors[1] }
-                }),
-                React.createElement(Recharts.Line, {
-                  type: 'monotone',
-                  dataKey: 'Machine Learning',
-                  stroke: colors[2],
-                  strokeWidth: 2,
-                  dot: { fill: colors[2] }
-                })
-              )
-            )
-          );
-        };
-
-        // Render the chart
-        const root = ReactDOM.createRoot(chartContainer);
-        root.render(React.createElement(TrendChart));
-
-      } else {
-        console.error('Missing dependencies:', {
-          chartContainer: !!chartContainer,
-          React: !!window.React,
-          ReactDOM: !!window.ReactDOM,
-          Recharts: !!window.Recharts
-        });
-        
-        // Fallback: Create a simple HTML chart if Recharts doesn't load
-        if (chartContainer) {
-          if (!window.Recharts) {
-            console.log('Creating fallback HTML chart...');
-            chartContainer.innerHTML = `
-              <div style="background: #13131f; padding: 20px; border-radius: 12px; color: #e5e7eb;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-                  <div style="text-align: center;">
-                    <div style="font-size: 0.8rem; color: #9ca3af;">AI Tools</div>
-                    <div style="font-size: 1.5rem; color: #5ee3ff; font-weight: bold;">2.1K</div>
-                  </div>
-                  <div style="text-align: center;">
-                    <div style="font-size: 0.8rem; color: #9ca3af;">ChatGPT</div>
-                    <div style="font-size: 1.5rem; color: #8b5cf6; font-weight: bold;">1.6K</div>
-                  </div>
-                  <div style="text-align: center;">
-                    <div style="font-size: 0.8rem; color: #9ca3af;">ML</div>
-                    <div style="font-size: 1.5rem; color: #ec4899; font-weight: bold;">1.2K</div>
-                  </div>
-                </div>
-                <div style="height: 200px; background: linear-gradient(45deg, #5ee3ff20, #8b5cf620, #ec489920); border-radius: 8px; display: flex; align-items: end; justify-content: center; color: #9ca3af; font-size: 0.9rem;">
-                  📈 Trend visualization (Recharts loading failed)
-                </div>
-              </div>
-            `;
-          } else {
-            chartContainer.innerHTML = '<p style="color: #e5e7eb;">Chart loading failed - missing dependencies</p>';
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error rendering chart:', error);
-      const chartContainer = document.getElementById('trendChart');
-      if (chartContainer) {
-        chartContainer.innerHTML = '<p style="color: #e5e7eb;">Chart initialization error: ' + error.message + '</p>';
-      }
-    }
-
-    // Initialize table
-    createTrendTable();
-  }, 1000);
+  // Initialize native chart
+  createNativeChart();
+  
+  // Initialize table
+  createTrendTable();
 });
+
+// Create native HTML/CSS chart
+function createNativeChart() {
+  const chartContainer = document.getElementById('trendChart');
+  if (!chartContainer) return;
+
+  const data = [
+    { date: 'Jan 1', aiTools: 1200, chatgpt: 900, ml: 800 },
+    { date: 'Jan 2', aiTools: 1500, chatgpt: 1100, ml: 950 },
+    { date: 'Jan 3', aiTools: 1800, chatgpt: 1300, ml: 1100 },
+    { date: 'Jan 4', aiTools: 2100, chatgpt: 1600, ml: 1250 },
+    { date: 'Jan 5', aiTools: 1900, chatgpt: 1400, ml: 1150 }
+  ];
+
+  const maxValue = Math.max(...data.map(d => Math.max(d.aiTools, d.chatgpt, d.ml)));
+  
+  chartContainer.innerHTML = `
+    <div class="native-chart">
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background: #5ee3ff;"></div>
+          <span>AI Tools</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #8b5cf6;"></div>
+          <span>ChatGPT</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ec4899;"></div>
+          <span>Machine Learning</span>
+        </div>
+      </div>
+      
+      <div class="chart-container">
+        <div class="y-axis">
+          <div class="y-label">${Math.round(maxValue)}K</div>
+          <div class="y-label">${Math.round(maxValue * 0.75)}K</div>
+          <div class="y-label">${Math.round(maxValue * 0.5)}K</div>
+          <div class="y-label">${Math.round(maxValue * 0.25)}K</div>
+          <div class="y-label">0</div>
+        </div>
+        
+        <div class="chart-area">
+          <svg class="chart-svg" viewBox="0 0 400 250">
+            <defs>
+              <linearGradient id="gridGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" style="stop-color:#2e2e45;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#2e2e45;stop-opacity:0.3" />
+              </linearGradient>
+            </defs>
+            
+            <!-- Grid lines -->
+            <line x1="0" y1="50" x2="400" y2="50" stroke="#2e2e45" stroke-width="1"/>
+            <line x1="0" y1="100" x2="400" y2="100" stroke="#2e2e45" stroke-width="1"/>
+            <line x1="0" y1="150" x2="400" y2="150" stroke="#2e2e45" stroke-width="1"/>
+            <line x1="0" y1="200" x2="400" y2="200" stroke="#2e2e45" stroke-width="1"/>
+            
+            <!-- AI Tools line -->
+            <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.aiTools / maxValue) * 200}`).join(' ')}" 
+                      fill="none" stroke="#5ee3ff" stroke-width="3"/>
+            
+            <!-- ChatGPT line -->
+            <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.chatgpt / maxValue) * 200}`).join(' ')}" 
+                      fill="none" stroke="#8b5cf6" stroke-width="3"/>
+            
+            <!-- ML line -->
+            <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.ml / maxValue) * 200}`).join(' ')}" 
+                      fill="none" stroke="#ec4899" stroke-width="3"/>
+            
+            <!-- Data points -->
+            ${data.map((d, i) => `
+              <circle cx="${i * 100 + 50}" cy="${250 - (d.aiTools / maxValue) * 200}" r="4" fill="#5ee3ff"/>
+              <circle cx="${i * 100 + 50}" cy="${250 - (d.chatgpt / maxValue) * 200}" r="4" fill="#8b5cf6"/>
+              <circle cx="${i * 100 + 50}" cy="${250 - (d.ml / maxValue) * 200}" r="4" fill="#ec4899"/>
+            `).join('')}
+          </svg>
+          
+          <div class="x-axis">
+            ${data.map(d => `<div class="x-label">${d.date}</div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 // Create trend table function
 function createTrendTable() {
