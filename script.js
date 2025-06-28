@@ -4,10 +4,40 @@ const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Function to test Supabase connection
+async function testSupabaseConnection() {
+  try {
+    console.log('Testing Supabase connection...');
+    const { data, error } = await supabase
+      .from('trend_reach')
+      .select('*')
+      .limit(1);
+    
+    if (error) {
+      console.error('Supabase connection error:', error);
+      return false;
+    }
+    
+    console.log('Supabase connection successful!', data);
+    return true;
+  } catch (err) {
+    console.error('Connection test failed:', err);
+    return false;
+  }
+}
+
 // Function to fetch data from Supabase
 async function fetchTrendData() {
   try {
     console.log('Fetching data from trend_reach table...');
+    
+    // First test the connection
+    const connectionOk = await testSupabaseConnection();
+    if (!connectionOk) {
+      console.log('Connection failed, using mock data');
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from('trend_reach')
       .select('*')
@@ -179,7 +209,28 @@ const TrendChart = () => {
 
 // Function to update cards with Supabase data - keeping static cards for now
 async function updateCards() {
-  console.log('Using static card data');
+  try {
+    // Test if we can connect to trend_reach table
+    const { data, error } = await supabase
+      .from('trend_reach')
+      .select('*')
+      .limit(4);
+    
+    if (error) {
+      console.log('Could not fetch card data from Supabase:', error.message);
+      console.log('Using static card data');
+      return;
+    }
+    
+    if (data && data.length > 0) {
+      console.log('Successfully connected to trend_reach table, found', data.length, 'records');
+    } else {
+      console.log('trend_reach table is empty, using static card data');
+    }
+  } catch (err) {
+    console.log('Error testing card data connection:', err);
+    console.log('Using static card data');
+  }
 }
 
 // Function to create and populate table with Supabase data
