@@ -228,6 +228,7 @@ h1, h2, h3, .logo, .header-title {
 }
 
 .logo-text {
+  font-family: 'Satoshi', sans-serif;
   font-size: 1.5rem;
   font-weight: 700;
   color: #f4f4f5;
