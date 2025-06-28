@@ -32,10 +32,6 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node youtubeToSupabase.js"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "static-web-server -w ./.config/static-web-server.toml"
 
 [[ports]]

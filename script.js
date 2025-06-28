@@ -32,31 +32,70 @@ function initSupabase() {
   }
 }
 
-// YouTube API functions - now using server-side endpoints
-async function fetchYouTubeData(query = 'trending', maxResults = 50) {
-  console.log(`🔍 Fetching YouTube data via server API for query: "${query}" (max ${maxResults} results)`);
-
+// YouTube API integration
+async function fetchYouTubeDataFromAPI() {
   try {
-    const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(query)}&maxResults=${maxResults}`);
-    
-    if (!response.ok) {
-      throw new Error(`Server API error: ${response.status}`);
+    console.log('🔍 Searching for trending videos...');
+    console.log('🔍 Fetching YouTube data for query: "trending tech AI blockchain crypto" (max 25 results)');
+    console.log('📡 Making direct YouTube API request...');
+
+    // Make direct YouTube API call
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=trending%20tech%20AI%20blockchain%20crypto&type=video&order=relevance&maxResults=25&key=${YOUTUBE_API_KEY}`;
+
+    const searchResponse = await fetch(searchUrl);
+
+    if (!searchResponse.ok) {
+      throw new Error(`YouTube API error: ${searchResponse.status}`);
     }
-    
-    const result = await response.json();
-    
-    if (!result.success) {
-      console.log('⚠️ Server returned no YouTube data:', result.message);
+
+    const searchData = await searchResponse.json();
+
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log('❌ No YouTube data retrieved');
       return null;
     }
 
-    console.log(`✅ Successfully fetched ${result.count} YouTube videos via server`);
-    console.log('📝 Sample video data:', result.data[0]);
-    
-    return result.data;
-    
+    console.log('✅ Successfully fetched YouTube data from API');
+
+    // Convert to expected format
+    const processedData = searchData.items.map((item, index) => ({
+      trend_name: item.snippet.title,
+      platform: 'YouTube',
+      reach_count: Math.floor(Math.random() * 2000000) + 500000, // Mock view count
+      score: Math.floor(Math.random() * 30) + 70,
+      published_at: item.snippet.publishedAt,
+      video_id: item.id.videoId,
+      channel_title: item.snippet.channelTitle
+    }));
+
+    // Try to save to Supabase if available
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('youtube_trends')
+          .upsert(processedData.map(item => ({
+            video_id: item.video_id,
+            title: item.trend_name,
+            channel_title: item.channel_title,
+            published_at: item.published_at,
+            view_count: item.reach_count,
+            trend_score: item.score,
+            trend_category: 'Technology'
+          })), { onConflict: 'video_id' });
+
+        if (!error) {
+          console.log('✅ Data saved to Supabase');
+        }
+      } catch (supabaseError) {
+        console.log('⚠️ Could not save to Supabase:', supabaseError.message);
+      }
+    }
+
+    return processedData;
+
   } catch (error) {
-    console.error('❌ Error fetching YouTube data via server:', error);
+    console.error('❌ Error fetching YouTube data:', error);
+    console.log('❌ No YouTube data retrieved');
     return null;
   }
 }
@@ -67,16 +106,16 @@ async function processYouTubeDataForSupabase(youtubeData) {
   return youtubeData.map(item => {
     const stats = item.statistics || {};
     const snippet = item.snippet;
-    
+
     // Calculate trend score based on engagement
     const viewCount = parseInt(stats.viewCount) || 0;
     const likeCount = parseInt(stats.likeCount) || 0;
     const commentCount = parseInt(stats.commentCount) || 0;
-    
+
     // Simple trend score calculation (0-100)
     const engagementRatio = viewCount > 0 ? (likeCount + commentCount) / viewCount * 1000 : 0;
     const trendScore = Math.min(100, Math.max(0, Math.floor(engagementRatio * 10) + 50));
-    
+
     // Categorize content
     const title = snippet.title.toLowerCase();
     let category = 'General';
@@ -110,15 +149,15 @@ async function processYouTubeDataForSupabase(youtubeData) {
 async function fetchYouTubeDataFromSupabase() {
   try {
     console.log('📥 Fetching YouTube data from Supabase via server API...');
-    
+
     const response = await fetch('/api/youtube-data');
-    
+
     if (!response.ok) {
       throw new Error(`Server API error: ${response.status}`);
     }
-    
+
     const result = await response.json();
-    
+
     if (!result.success) {
       console.log('⚠️ No data returned from server:', result.message);
       return null;
@@ -126,7 +165,7 @@ async function fetchYouTubeDataFromSupabase() {
 
     console.log(`✅ Retrieved ${result.count} records from Supabase via server`);
     return result.data;
-    
+
   } catch (error) {
     console.error('❌ Error fetching from Supabase via server:', error);
     return null;
@@ -514,42 +553,42 @@ function createChart(data, filteredTrends = 'all') {
 // Fetch data with YouTube integration
 async function fetchData() {
   console.log('🚀 Fetching data with YouTube integration...');
-  
+
   // Force initialize Supabase with current credentials
   const supabaseConnected = initSupabase();
-  
+
   if (supabaseConnected) {
     console.log('📊 Supabase connected, checking YouTube API...');
-    
+
     if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'YOUR_YOUTUBE_API_KEY') {
       console.log('🎥 YouTube API key found, fetching data...');
-      
+
       try {
         // Fetch fresh YouTube data
         console.log('🔍 Searching for trending videos...');
-        const youtubeData = await fetchYouTubeData('trending tech AI blockchain crypto', 25);
-        
+        const youtubeData = await fetchYouTubeDataFromAPI('trending tech AI blockchain crypto', 25);
+
         if (youtubeData && youtubeData.length > 0) {
           console.log(`📋 Got ${youtubeData.length} videos from YouTube`);
           console.log('🔄 Processing YouTube data for Supabase...');
           const processedData = await processYouTubeDataForSupabase(youtubeData);
-          
+
           console.log('💾 Saving to Supabase youtube_trends table...');
           const saveSuccess = await saveYouTubeDataToSupabase(processedData);
-          
+
           if (saveSuccess) {
             console.log('✅ Data saved successfully to Supabase!');
-            
+
             // Fetch the data we just saved
             console.log('📥 Fetching saved data from Supabase...');
             const supabaseData = await fetchYouTubeDataFromSupabase();
-            
+
             if (supabaseData && supabaseData.length > 0) {
               console.log(`✅ Retrieved ${supabaseData.length} records from Supabase`);
-              
+
               // Convert Supabase data to chart format
               const chartData = processSupabaseDataForChart(supabaseData);
-              
+
               return {
                 chartData: chartData,
                 tableData: supabaseData.slice(0, 10)
@@ -567,7 +606,7 @@ async function fetchData() {
     } else {
       console.log('❌ YouTube API key not configured');
     }
-    
+
     // Try to fetch existing data from Supabase
     console.log('📥 Checking for existing data in Supabase...');
     const existingData = await fetchYouTubeDataFromSupabase();
@@ -582,9 +621,9 @@ async function fetchData() {
   } else {
     console.log('❌ Supabase connection failed');
   }
-  
+
   console.log('⚠️ Falling back to mock data...');
-  
+
   // Enhanced fallback data with more realistic trends
   const enhancedFallbackData = {
     chartData: [
@@ -627,7 +666,7 @@ function processSupabaseDataForChart(supabaseData) {
   // Group data by date and aggregate reach by trend
   const dateMap = new Map();
   const dates = ['1/1', '1/15', '2/1', '2/15', '3/1', '3/15', '4/1', '4/15', '5/1', '5/15', '6/1', '6/15'];
-  
+
   // Initialize dates
   dates.forEach(date => {
     dateMap.set(date, {});
@@ -646,10 +685,10 @@ function processSupabaseDataForChart(supabaseData) {
   supabaseData.forEach((item, index) => {
     const dateIndex = index % dates.length;
     const date = dates[dateIndex];
-    
+
     const title = item.trend_name.toLowerCase();
     let category = 'Other';
-    
+
     // Find matching category
     for (const [groupName, keywords] of Object.entries(trendGroups)) {
       if (keywords.some(keyword => title.includes(keyword))) {
@@ -657,10 +696,9 @@ function processSupabaseDataForChart(supabaseData) {
         break;
       }
     }
-    
+
     // Add to date map
-    if (!dateMap.get(date)[category]) {
-      dateMap.get(date)[category] = 0;
+    if (!dateMap.get(date)[category] = 0;
     }
     dateMap.get(date)[category] += item.reach_count || 100000;
   });
@@ -670,11 +708,11 @@ function processSupabaseDataForChart(supabaseData) {
   dates.forEach(date => {
     const dataPoint = { date };
     const dayData = dateMap.get(date);
-    
+
     Object.keys(trendGroups).forEach(category => {
       dataPoint[category] = dayData[category] || 0;
     });
-    
+
     chartData.push(dataPoint);
   });
 
@@ -708,7 +746,7 @@ function processDataForChart(rawData) {
   const numericColumns = columns.filter(col => 
     typeof sample[col] === 'number' && col !== 'id'
   );
-  
+
   const reachColumn = numericColumns.find(col => {
     const lowerCol = col.toLowerCase();
     return lowerCol.includes('reach') || lowerCol.includes('count') || 
@@ -732,19 +770,19 @@ function processDataForChart(rawData) {
   // Process each record
   rawData.forEach((item, index) => {
     let trendName = item[trendNameColumn] || `Trend ${index + 1}`;
-    
+
     // Clean up trend name
     if (typeof trendName === 'string') {
       trendName = trendName.substring(0, 20); // Limit length
     }
-    
+
     // Get numeric value
     let reach = 0;
     if (reachColumn && item[reachColumn] !== null && item[reachColumn] !== undefined) {
       reach = typeof item[reachColumn] === 'number' ? item[reachColumn] : 
               parseInt(item[reachColumn]) || 0;
     }
-    
+
     // If reach is 0 or very small, generate a reasonable value
     if (reach < 1000) {
       reach = Math.floor(Math.random() * 2000000) + 500000;
@@ -766,7 +804,7 @@ function processDataForChart(rawData) {
         // Fall back to index-based dating
       }
     }
-    
+
     if (!timeKey) {
       // Distribute across time periods based on index
       const trendData = trendMap.get(trendName);
@@ -814,7 +852,7 @@ function processDataForChart(rawData) {
 
   console.log('Processed chart data:', chartData);
   console.log('Available trends:', topTrends.map(([name]) => name));
-  
+
   return chartData;
 }
 
@@ -977,12 +1015,12 @@ function resetDateFilter() {
 // Manual function to fetch and save YouTube data
 async function fetchYouTubeDataNow() {
   console.log('🚀 Manual YouTube data fetch initiated...');
-  
+
   if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
     console.error('❌ YouTube API key not configured');
     return false;
   }
-  
+
   if (!supabase) {
     console.log('🔧 Initializing Supabase...');
     if (!initSupabase()) {
@@ -990,36 +1028,36 @@ async function fetchYouTubeDataNow() {
       return false;
     }
   }
-  
+
   try {
     // Fetch YouTube data
-    const youtubeData = await fetchYouTubeData('trending tech AI blockchain crypto gaming', 30);
-    
+    const youtubeData = await fetchYouTubeDataFromAPI('trending tech AI blockchain crypto gaming', 30);
+
     if (!youtubeData || youtubeData.length === 0) {
       console.error('❌ No YouTube data received');
       return false;
     }
-    
+
     console.log(`📊 Retrieved ${youtubeData.length} videos from YouTube`);
-    
+
     // Process for Supabase
     const processedData = await processYouTubeDataForSupabase(youtubeData);
     console.log('🔄 Processed data for Supabase');
-    
+
     // Save to Supabase
     const saveSuccess = await saveYouTubeDataToSupabase(processedData);
-    
+
     if (saveSuccess) {
       console.log('✅ Successfully saved YouTube data to Supabase!');
       console.log('🔄 Refreshing dashboard...');
-      
+
       // Refresh the dashboard with new data
       const newData = await fetchData();
       currentData = newData;
       updateTrendFilter(newData.chartData);
       createChart(newData.chartData, selectedTrends);
       createTrendTable(newData.tableData);
-      
+
       return true;
     } else {
       console.error('❌ Failed to save data to Supabase');
@@ -1058,7 +1096,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     createTrendTable(data.tableData);
 
     console.log('Dashboard initialized successfully');
-    
+
     // Show instruction for manual fetch
     console.log('💡 To manually fetch YouTube data, run: fetchYouTubeDataNow()');
 
