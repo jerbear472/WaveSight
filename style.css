@@ -232,7 +232,13 @@ h1, h2, h3, .logo, .header-title {
   font-size: 1.5rem;
   font-weight: 700;
   color: #f4f4f5;
-  letter-spacing: 0.8px;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, #e5e7eb 0%, #f9fafb 25%, #d1d5db 50%, #f3f4f6 75%, #e5e7eb 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.1);
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
 }
 
 .menu-btn {
