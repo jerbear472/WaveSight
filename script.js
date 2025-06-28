@@ -1,14 +1,11 @@
-
 // Add process polyfill for browser environment
 if (typeof process === 'undefined') {
-  window.process = {
-    env: {}
-  };
+  window.process = { env: {} };
 }
 
-// Initialize Supabase client with error handling
+// Supabase credentials (store securely in production)
 const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo;
 
 let supabase = null;
 try {
@@ -16,143 +13,95 @@ try {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     console.log('Supabase client initialized successfully');
   } else {
-    console.log('Supabase library not loaded, using fallback data');
+    console.warn('Supabase library not loaded, using fallback data');
   }
 } catch (error) {
-  console.log('Error initializing Supabase client:', error);
-  console.log('Using fallback data');
+  console.error('Error initializing Supabase client:', error);
+  console.warn('Using fallback data');
 }
 
-// Function to fetch data from Supabase with fallback
+// Fetch trend data with error handling
 async function fetchTrendData() {
-  if (!supabase) {
-    console.log('Supabase not available, using fallback data');
-    return null;
-  }
-
+  if (!supabase) return null;
   try {
-    console.log('Fetching data from trend_reach table...');
     const { data, error } = await supabase
       .from('trend_reach')
       .select('*')
-      .order('id', { ascending: true });
-    
-    if (error) {
-      console.log('Supabase error, using fallback data:', error.message);
-      return null;
-    }
-    
-    console.log('Successfully fetched data:', data);
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
     return data;
   } catch (err) {
-    console.log('Connection error, using fallback data:', err.message);
+    console.error('Fetch error:', err);
     return null;
   }
 }
 
-// React Chart Component using Recharts
+// React chart component
 const TrendChart = () => {
   const [data, setData] = React.useState([]);
   const [keywords, setKeywords] = React.useState([]);
+  const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
 
-  const colors = [
-    '#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b',
-    '#ef4444', '#3b82f6', '#84cc16', '#f472b6', '#06b6d4', '#8b5a2b',
-    '#6366f1', '#d946ef', '#14b8a6', '#f97066', '#a855f7', '#22c55e',
-    '#fb923c', '#64748b'
-  ];
+  const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#84cc16', '#f472b6'];
 
   const fetchAndProcessData = async () => {
     const trendData = await fetchTrendData();
-    
-    if (trendData && trendData.length > 0) {
-      console.log('Processing trend data:', trendData);
-      
-      // If we have real data, try to use it, otherwise show mock chart data
-      const firstItem = trendData[0];
-      const hasKeywordColumn = 'keyword' in firstItem || 'trend' in firstItem || 'name' in firstItem;
-      const hasValueColumn = 'value' in firstItem || 'reach' in firstItem || 'score' in firstItem || 'mentions' in firstItem;
-      
-      if (hasKeywordColumn && hasValueColumn) {
-        // Process real data
-        const keywordGroups = {};
-        trendData.forEach(item => {
-          const keyword = item.keyword || item.trend || item.name || `Trend ${item.id}`;
-          if (!keywordGroups[keyword]) {
-            keywordGroups[keyword] = [];
-          }
-          keywordGroups[keyword].push(item);
-        });
-
-        const keywordAverages = Object.keys(keywordGroups).map(keyword => {
-          const values = keywordGroups[keyword].map(item => {
-            return item.value || item.reach || item.score || item.mentions || 0;
-          });
-          const average = values.reduce((sum, val) => sum + val, 0) / values.length;
-          return { keyword, average };
-        });
-
-        const top20Keywords = keywordAverages
-          .sort((a, b) => b.average - a.average)
-          .slice(0, 20)
-          .map(item => item.keyword);
-
-        setKeywords(top20Keywords);
-
-        // Create simple chart data with IDs as time points
-        const processedData = [...new Set(trendData.map(item => item.id))]
-          .sort((a, b) => a - b)
-          .map(id => {
-            const dataPoint = { name: `Point ${id}` };
-            
-            top20Keywords.forEach(keyword => {
-              const item = trendData.find(d => d.id === id && (d.keyword === keyword || d.trend === keyword || d.name === keyword));
-              dataPoint[keyword] = item ? (item.value || item.reach || item.score || item.mentions || 0) : 0;
-            });
-            
-            return dataPoint;
-          });
-        
-        setData(processedData);
-      } else {
-        // Use fallback data if structure doesn't match
-        console.log('Data structure not suitable for chart, using fallback');
-        setKeywords(['AI-generated images', 'ChatGPT', 'Elden Ring', 'Pineapple on pizza']);
-        setData([
-          { name: 'Mar 1', 'AI-generated images': 35, 'ChatGPT': 20, 'Elden Ring': 15, 'Pineapple on pizza': 10 },
-          { name: 'Mar 7', 'AI-generated images': 45, 'ChatGPT': 34, 'Elden Ring': 25, 'Pineapple on pizza': 18 },
-          { name: 'Mar 14', 'AI-generated images': 60, 'ChatGPT': 50, 'Elden Ring': 40, 'Pineapple on pizza': 30 },
-          { name: 'Mar 21', 'AI-generated images': 70, 'ChatGPT': 65, 'Elden Ring': 55, 'Pineapple on pizza': 40 },
-          { name: 'Mar 28', 'AI-generated images': 84, 'ChatGPT': 79, 'Elden Ring': 69, 'Pineapple on pizza': 53 }
-        ]);
-      }
-    } else {
-      // Fallback static data
-      setKeywords(['AI-generated images', 'ChatGPT', 'Elden Ring', 'Pineapple on pizza']);
-      setData([
-        { name: 'Mar 1', 'AI-generated images': 35, 'ChatGPT': 20, 'Elden Ring': 15, 'Pineapple on pizza': 10 },
-        { name: 'Mar 7', 'AI-generated images': 45, 'ChatGPT': 34, 'Elden Ring': 25, 'Pineapple on pizza': 18 },
-        { name: 'Mar 14', 'AI-generated images': 60, 'ChatGPT': 50, 'Elden Ring': 40, 'Pineapple on pizza': 30 },
-        { name: 'Mar 21', 'AI-generated images': 70, 'ChatGPT': 65, 'Elden Ring': 55, 'Pineapple on pizza': 40 },
-        { name: 'Mar 28', 'AI-generated images': 84, 'ChatGPT': 79, 'Elden Ring': 69, 'Pineapple on pizza': 53 }
-      ]);
+    if (!trendData || trendData.length === 0) {
+      setError('No data available');
+      setLoading(false);
+      return;
     }
+
+    const firstItem = trendData[0];
+    const hasKeyword = 'keyword' in firstItem || 'trend' in firstItem || 'name' in firstItem;
+    const hasValue = 'value' in firstItem || 'reach' in firstItem || 'score' in firstItem || 'mentions' in firstItem;
+    const hasTime = 'created_at' in firstItem;
+
+    if (!(hasKeyword && hasValue && hasTime)) {
+      setError('Data structure is incompatible');
+      setLoading(false);
+      return;
+    }
+
+    const keywordGroups = {};
+    trendData.forEach(item => {
+      const keyword = item.keyword || item.trend || item.name || `Trend ${item.id}`;
+      if (!keywordGroups[keyword]) keywordGroups[keyword] = [];
+      keywordGroups[keyword].push(item);
+    });
+
+    const keywordAverages = Object.entries(keywordGroups).map(([keyword, items]) => {
+      const avg = items.reduce((sum, item) => sum + (item.value || item.reach || item.score || item.mentions || 0), 0) / items.length;
+      return { keyword, average: avg };
+    });
+
+    const topKeywords = keywordAverages.sort((a, b) => b.average - a.average).slice(0, 5).map(k => k.keyword);
+    setKeywords(topKeywords);
+
+    const timePoints = [...new Set(trendData.map(item => item.created_at))].sort((a, b) => new Date(a) - new Date(b));
+    const processedData = timePoints.map(timestamp => {
+      const entry = { name: new Date(timestamp).toLocaleDateString() };
+      topKeywords.forEach(kw => {
+        const match = trendData.find(d => d.created_at === timestamp && (d.keyword === kw || d.trend === kw || d.name === kw));
+        entry[kw] = match ? (match.value || match.reach || match.score || match.mentions || 0) : 0;
+      });
+      return entry;
+    });
+
+    setData(processedData);
     setLoading(false);
   };
 
   React.useEffect(() => {
     fetchAndProcessData();
-    
-    // Set up real-time updates
-    const interval = setInterval(fetchAndProcessData, 30000); // Update every 30 seconds
-    
+    const interval = setInterval(fetchAndProcessData, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
-    return React.createElement('div', { style: { color: '#e5e7eb', padding: '20px' } }, 'Loading chart data...');
-  }
+  if (loading) return React.createElement('div', {}, 'Loading...');
+  if (error) return React.createElement('div', { style: { color: 'red' } }, error);
 
   return React.createElement(
     'div',
@@ -162,38 +111,19 @@ const TrendChart = () => {
       { width: '100%', height: '100%' },
       React.createElement(
         Recharts.LineChart,
-        { data: data, margin: { top: 5, right: 30, left: 20, bottom: 5 } },
-        React.createElement(Recharts.CartesianGrid, { strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.1)' }),
-        React.createElement(Recharts.XAxis, { 
-          dataKey: 'name', 
-          tick: { fill: '#a1a1aa', fontSize: 12 },
-          axisLine: { stroke: '#2e2e45' }
-        }),
-        React.createElement(Recharts.YAxis, { 
-          tick: { fill: '#a1a1aa', fontSize: 12 },
-          axisLine: { stroke: '#2e2e45' }
-        }),
-        React.createElement(Recharts.Tooltip, {
-          contentStyle: {
-            backgroundColor: '#1a1a2e',
-            border: '1px solid #2e2e45',
-            borderRadius: '8px',
-            color: '#e5e7eb'
-          }
-        }),
-        React.createElement(Recharts.Legend, {
-          wrapperStyle: { color: '#e5e7eb' }
-        }),
-        // Render lines for each keyword with different colors
-        keywords.map((keyword, index) => 
+        { data, margin: { top: 5, right: 30, left: 20, bottom: 5 } },
+        React.createElement(Recharts.CartesianGrid, { strokeDasharray: '3 3' }),
+        React.createElement(Recharts.XAxis, { dataKey: 'name' }),
+        React.createElement(Recharts.YAxis, {}),
+        React.createElement(Recharts.Tooltip, {}),
+        React.createElement(Recharts.Legend, {}),
+        keywords.map((kw, i) =>
           React.createElement(Recharts.Line, {
-            key: keyword,
+            key: kw,
             type: 'monotone',
-            dataKey: keyword,
-            stroke: colors[index % colors.length],
-            strokeWidth: 2,
-            dot: { fill: colors[index % colors.length], strokeWidth: 1, r: 3 },
-            activeDot: { r: 5, stroke: colors[index % colors.length], strokeWidth: 2 }
+            dataKey: kw,
+            stroke: colors[i % colors.length],
+            strokeWidth: 2
           })
         )
       )
@@ -201,157 +131,11 @@ const TrendChart = () => {
   );
 };
 
-// Function to update cards - using static data for now
-async function updateCards() {
-  console.log('Using static card data');
-}
-
-// Function to create and populate table with Supabase data
-async function createTrendTable() {
-  if (!supabase) {
-    console.log('Supabase not available, showing mock table');
-    showMockTable();
-    return;
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', () => {
+  const chartContainer = document.getElementById('trendChart');
+  if (chartContainer && window.React && window.ReactDOM) {
+    const root = ReactDOM.createRoot(chartContainer);
+    root.render(React.createElement(TrendChart));
   }
-
-  try {
-    console.log('Creating trend table...');
-    const { data, error } = await supabase
-      .from('trend_reach')
-      .select('*')
-      .limit(50);
-    
-    if (error || !data || data.length === 0) {
-      console.log('No data available, showing mock table');
-      showMockTable();
-      return;
-    }
-    
-    console.log('Table data:', data);
-    
-    // Get all column names from the first row
-    const columns = Object.keys(data[0]);
-    
-    let tableHTML = `
-      <table class="trend-table">
-        <thead>
-          <tr>
-    `;
-    
-    // Create headers for all columns
-    columns.forEach(col => {
-      const displayName = col.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-      tableHTML += `<th>${displayName}</th>`;
-    });
-    
-    tableHTML += `
-          </tr>
-        </thead>
-        <tbody>
-    `;
-    
-    // Create rows with all column data
-    data.forEach(item => {
-      tableHTML += '<tr>';
-      columns.forEach(col => {
-        let value = item[col];
-        // Format different types of values
-        if (value === null || value === undefined) {
-          value = 'N/A';
-        } else if (typeof value === 'number') {
-          value = value.toLocaleString();
-        } else if (typeof value === 'string' && value.length > 50) {
-          value = value.substring(0, 47) + '...';
-        }
-        tableHTML += `<td>${value}</td>`;
-      });
-      tableHTML += '</tr>';
-    });
-    
-    tableHTML += `
-        </tbody>
-      </table>
-    `;
-    
-    document.getElementById('trendTable').innerHTML = tableHTML;
-  } catch (err) {
-    console.log('Error creating table:', err);
-    showMockTable();
-  }
-}
-
-// Function to show mock data if Supabase data isn't available
-function showMockTable() {
-  const mockData = [
-    { id: 1, keyword: 'AI-generated images', reach: 23400, platform: 'TikTok', score: 84 },
-    { id: 2, keyword: 'ChatGPT', reach: 18700, platform: 'Reddit', score: 79 },
-    { id: 3, keyword: 'Elden Ring', reach: 15200, platform: 'YouTube', score: 69 },
-    { id: 4, keyword: 'Pineapple on pizza', reach: 12900, platform: 'TikTok', score: 53 },
-    { id: 5, keyword: 'Crypto trends', reach: 11500, platform: 'Twitter', score: 47 },
-    { id: 6, keyword: 'Gaming memes', reach: 9800, platform: 'Reddit', score: 42 }
-  ];
-  
-  let tableHTML = `
-    <table class="trend-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Keyword</th>
-          <th>Reach</th>
-          <th>Platform</th>
-          <th>Score</th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
-  
-  mockData.forEach(item => {
-    tableHTML += `
-      <tr>
-        <td>${item.id}</td>
-        <td>${item.keyword}</td>
-        <td>${item.reach.toLocaleString()}</td>
-        <td>${item.platform}</td>
-        <td>${item.score}</td>
-      </tr>
-    `;
-  });
-  
-  tableHTML += `
-      </tbody>
-    </table>
-    <p style="color: #9ca3af; font-size: 0.8rem; margin-top: 10px;">
-      * Showing sample data - connect to your Supabase table for real data
-    </p>
-  `;
-  
-  document.getElementById('trendTable').innerHTML = tableHTML;
-}
-
-// Initialize everything when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('DOM loaded, initializing components...');
-  
-  // Wait a bit for all scripts to load
-  setTimeout(() => {
-    try {
-      // Render the React chart component
-      const chartContainer = document.getElementById('trendChart');
-      if (chartContainer && typeof React !== 'undefined' && typeof ReactDOM !== 'undefined') {
-        console.log('Rendering chart component...');
-        const root = ReactDOM.createRoot(chartContainer);
-        root.render(React.createElement(TrendChart));
-      } else {
-        console.error('Chart container or React libraries not found');
-        document.getElementById('trendChart').innerHTML = '<p style="color: #e5e7eb;">Chart loading failed - missing dependencies</p>';
-      }
-    } catch (error) {
-      console.error('Error rendering chart:', error);
-      document.getElementById('trendChart').innerHTML = '<p style="color: #e5e7eb;">Chart initialization error</p>';
-    }
-    
-    // Initialize other components
-    updateCards();
-    createTrendTable();
-  }, 500);
 });
