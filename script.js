@@ -13,14 +13,14 @@ function initSupabase() {
   try {
     if (typeof window.supabase !== 'undefined') {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('Supabase client initialized');
+      console.log('Supabase client initialized successfully');
       return true;
     } else {
-      console.log('Supabase library not loaded');
+      console.error('Supabase library not loaded');
       return false;
     }
   } catch (error) {
-    console.log('Failed to initialize Supabase:', error);
+    console.error('Failed to initialize Supabase:', error);
     return false;
   }
 }
@@ -87,53 +87,67 @@ async function createChart() {
     try {
       console.log('Attempting to fetch data from trend_reach table...');
       
+      // First, let's check what columns exist in the table
       const { data: trendData, error } = await supabase
         .from('trend_reach')
-        .select('trend_name, reach_count, platform, created_at')
-        .order('created_at', { ascending: true });
+        .select('*')
+        .limit(50);
 
       if (!error && trendData && trendData.length > 0) {
         console.log('Successfully fetched data from Supabase:', trendData);
         
-        // Group data by timestamp/date and trend names
+        // Group data by a time period - let's use row index as time for now
         const groupedData = {};
         
-        trendData.forEach((item) => {
-          const timestamp = item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Unknown Date';
-          const trendName = item.trend_name || 'Unknown';
-          const reachCount = item.reach_count || 0;
+        trendData.forEach((item, index) => {
+          const timeKey = `Hour ${Math.floor(index / 5) + 1}`; // Group every 5 entries as one hour
+          const trendName = item.trend_name || item.keyword || 'Unknown';
+          const reachCount = item.reach_count || item.reach || item.value || 0;
           
-          if (!groupedData[timestamp]) {
-            groupedData[timestamp] = {
-              date: timestamp,
+          if (!groupedData[timeKey]) {
+            groupedData[timeKey] = {
+              date: timeKey,
             };
           }
           
-          groupedData[timestamp][trendName] = (groupedData[timestamp][trendName] || 0) + reachCount;
+          groupedData[timeKey][trendName] = (groupedData[timeKey][trendName] || 0) + reachCount;
         });
         
         data = Object.values(groupedData);
         console.log('Transformed chart data:', data);
         
-        window.chartTrendNames = [...new Set(trendData.map(item => item.trend_name))];
+        // Get unique trend names
+        window.chartTrendNames = [...new Set(trendData.map(item => item.trend_name || item.keyword || 'Unknown'))];
+        console.log('Chart trend names:', window.chartTrendNames);
       } else {
-        console.log('No data returned from Supabase, using fallback data');
+        console.error('No data returned from Supabase or error occurred:', error);
         data = fallbackChartData;
         window.chartTrendNames = ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
       }
     } catch (error) {
-      console.log('Supabase query failed, using fallback data:', error);
+      console.error('Supabase query failed:', error);
       data = fallbackChartData;
       window.chartTrendNames = ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
     }
   } else {
-    console.log('Using fallback chart data');
+    console.log('Supabase not initialized, using fallback chart data');
     data = fallbackChartData;
     window.chartTrendNames = ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
   }
 
   // Create React component for the chart
   const ChartComponent = () => {
+    // Check if Recharts is available
+    if (!window.Recharts) {
+      return React.createElement('div', { 
+        style: { 
+          color: '#f1f1f1', 
+          padding: '20px', 
+          textAlign: 'center' 
+        } 
+      }, 'Loading chart...');
+    }
+
     const trendNames = window.chartTrendNames || ['AI Tools', 'ChatGPT', 'Machine Learning', 'Blockchain', 'Metaverse', 'NFT', 'Crypto'];
     const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#22d3ee', '#a855f7', '#06b6d4'];
     
@@ -207,17 +221,17 @@ async function createTrendTable() {
       
       const { data: trendData, error } = await supabase
         .from('trend_reach')
-        .select('trend_name, reach_count, platform, created_at')
+        .select('*')
         .order('reach_count', { ascending: false })
-        .limit(10);
+        .limit(15);
 
       if (!error && trendData && trendData.length > 0) {
         console.log('Successfully fetched table data:', trendData);
         
         tableRows = trendData.map((item) => {
-          const trendName = item.trend_name || 'Unknown Trend';
-          const reachCount = item.reach_count || 0;
-          const platform = item.platform || 'Various';
+          const trendName = item.trend_name || item.keyword || 'Unknown Trend';
+          const reachCount = item.reach_count || item.reach || item.value || 0;
+          const platform = item.platform || item.source || 'Various';
           
           const formattedReach = formatNumber(reachCount);
           const score = Math.min(99, Math.floor(reachCount / 10000) + 50);
@@ -232,7 +246,7 @@ async function createTrendTable() {
           `;
         }).join('');
       } else {
-        console.log('No table data returned from Supabase, using fallback data');
+        console.error('No table data returned from Supabase:', error);
         tableRows = fallbackTableData.map((item) => {
           const formattedReach = formatNumber(item.reach_count);
           const score = Math.min(99, Math.floor(item.reach_count / 10000) + 50);
@@ -248,7 +262,7 @@ async function createTrendTable() {
         }).join('');
       }
     } catch (error) {
-      console.log('Table data fetch failed, using fallback data:', error);
+      console.error('Table data fetch failed:', error);
       tableRows = fallbackTableData.map((item) => {
         const formattedReach = formatNumber(item.reach_count);
         const score = Math.min(99, Math.floor(item.reach_count / 10000) + 50);
@@ -264,7 +278,7 @@ async function createTrendTable() {
       }).join('');
     }
   } else {
-    console.log('Using fallback table data');
+    console.log('Supabase not initialized, using fallback table data');
     tableRows = fallbackTableData.map((item) => {
       const formattedReach = formatNumber(item.reach_count);
       const score = Math.min(99, Math.floor(item.reach_count / 10000) + 50);
@@ -299,32 +313,34 @@ function searchTrends() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOM loaded, initializing components...');
   
-  // Initialize Supabase
-  setTimeout(() => {
-    initSupabase();
-  }, 1000);
+  // Initialize Supabase first
+  const supabaseReady = initSupabase();
+  console.log('Supabase initialization result:', supabaseReady);
   
   // Wait for libraries and create chart
   try {
     await createChart();
+    console.log('Chart creation completed');
   } catch (error) {
-    console.log('Error creating chart:', error);
+    console.error('Error creating chart:', error);
   }
   
   // Create table
   try {
     await createTrendTable();
+    console.log('Table creation completed');
   } catch (error) {
-    console.log('Error creating table:', error);
+    console.error('Error creating table:', error);
   }
   
   // Set up auto-refresh
   setInterval(async () => {
     try {
+      console.log('Refreshing data...');
       await createChart();
       await createTrendTable();
     } catch (error) {
-      console.log('Error during refresh:', error);
+      console.error('Error during refresh:', error);
     }
-  }, 30000); // Refresh every 30 seconds
+  }, 60000); // Refresh every 60 seconds
 });
