@@ -156,89 +156,136 @@ function createChart(data, filteredTrends = 'all') {
     trendNames.map(trend => d[trend] || 0).filter(v => typeof v === 'number')
   ));
 
-  // Draw grid lines
-  ctx.strokeStyle = '#2e2e45';
-  ctx.lineWidth = 1;
-  
-  // Horizontal grid lines
-  for (let i = 0; i <= 4; i++) {
-    const y = padding + legendHeight + (chartHeight * i) / 4;
-    ctx.beginPath();
-    ctx.moveTo(padding, y);
-    ctx.lineTo(padding + chartWidth, y);
-    ctx.stroke();
-  }
-
-  // Draw y-axis labels
-  ctx.fillStyle = '#9ca3af';
-  ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.textAlign = 'right';
-  
-  for (let i = 0; i <= 4; i++) {
-    const value = maxValue * (4 - i) / 4;
-    const y = padding + legendHeight + (chartHeight * i) / 4;
-    ctx.fillText(formatNumber(value), padding - 10, y + 4);
-  }
-
-  // Draw x-axis labels
-  ctx.fillStyle = '#9ca3af';
-  ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.textAlign = 'center';
-  data.forEach((item, index) => {
-    const x = padding + (chartWidth * index) / (data.length - 1);
-    ctx.fillText(item.date, x, displayHeight - 15);
-  });
-
-  // Draw trend lines
+  // Calculate final positions for all points
+  const finalPositions = [];
   trendNames.forEach((trendName, trendIndex) => {
-    const color = colors[trendIndex % colors.length];
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-
-    ctx.beginPath();
-    let firstPoint = true;
-    
+    const positions = [];
     data.forEach((item, index) => {
       if (item[trendName] !== undefined) {
         const x = padding + (chartWidth * index) / (data.length - 1);
         const y = padding + legendHeight + chartHeight - ((item[trendName] / maxValue) * chartHeight);
-        
-        if (firstPoint) {
-          ctx.moveTo(x, y);
-          firstPoint = false;
-        } else {
-          ctx.lineTo(x, y);
-        }
+        positions.push({ x, y, value: item[trendName] });
       }
     });
-    
-    ctx.stroke();
+    finalPositions.push(positions);
   });
 
-  // Draw horizontal legend at the top
-  ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
-  ctx.textAlign = 'left';
-  
-  let legendX = padding;
-  const legendY = 20;
-  
-  trendNames.forEach((trendName, trendIndex) => {
-    const color = colors[trendIndex % colors.length];
+  // Animation variables
+  let animationProgress = 0;
+  const animationDuration = 1500; // 1.5 seconds
+  const startTime = Date.now();
+
+  function drawStaticElements() {
+    // Clear canvas
+    ctx.clearRect(0, 0, displayWidth, displayHeight);
+
+    // Draw grid lines
+    ctx.strokeStyle = '#2e2e45';
+    ctx.lineWidth = 1;
     
-    // Draw legend box
-    ctx.fillStyle = color;
-    ctx.fillRect(legendX, legendY, 8, 8);
+    // Horizontal grid lines
+    for (let i = 0; i <= 4; i++) {
+      const y = padding + legendHeight + (chartHeight * i) / 4;
+      ctx.beginPath();
+      ctx.moveTo(padding, y);
+      ctx.lineTo(padding + chartWidth, y);
+      ctx.stroke();
+    }
+
+    // Draw y-axis labels
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'right';
     
-    // Draw legend text
-    ctx.fillStyle = '#f1f1f1';
-    ctx.fillText(trendName, legendX + 12, legendY + 7);
+    for (let i = 0; i <= 4; i++) {
+      const value = maxValue * (4 - i) / 4;
+      const y = padding + legendHeight + (chartHeight * i) / 4;
+      ctx.fillText(formatNumber(value), padding - 10, y + 4);
+    }
+
+    // Draw x-axis labels
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    data.forEach((item, index) => {
+      const x = padding + (chartWidth * index) / (data.length - 1);
+      ctx.fillText(item.date, x, displayHeight - 15);
+    });
+
+    // Draw horizontal legend at the top
+    ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'left';
     
-    // Calculate text width and move to next position
-    const textWidth = ctx.measureText(trendName).width;
-    legendX += textWidth + 25; // 12 for box + text + 25 for spacing
-  });
+    let legendX = padding;
+    const legendY = 20;
+    
+    trendNames.forEach((trendName, trendIndex) => {
+      const color = colors[trendIndex % colors.length];
+      
+      // Draw legend box
+      ctx.fillStyle = color;
+      ctx.fillRect(legendX, legendY, 8, 8);
+      
+      // Draw legend text
+      ctx.fillStyle = '#f1f1f1';
+      ctx.fillText(trendName, legendX + 12, legendY + 7);
+      
+      // Calculate text width and move to next position
+      const textWidth = ctx.measureText(trendName).width;
+      legendX += textWidth + 25; // 12 for box + text + 25 for spacing
+    });
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function drawAnimatedLines() {
+    // Draw trend lines with animation
+    finalPositions.forEach((positions, trendIndex) => {
+      if (positions.length === 0) return;
+      
+      const color = colors[trendIndex % colors.length];
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      ctx.beginPath();
+      let firstPoint = true;
+      
+      positions.forEach((finalPos, pointIndex) => {
+        // Calculate animated position
+        const baseY = padding + legendHeight + chartHeight; // Bottom of chart
+        const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
+        
+        if (firstPoint) {
+          ctx.moveTo(finalPos.x, animatedY);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(finalPos.x, animatedY);
+        }
+      });
+      
+      ctx.stroke();
+    });
+  }
+
+  function animate() {
+    const currentTime = Date.now();
+    const elapsed = currentTime - startTime;
+    animationProgress = Math.min(elapsed / animationDuration, 1);
+
+    drawStaticElements();
+    drawAnimatedLines();
+
+    if (animationProgress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+
+  // Start animation
+  animate();
 }
 
 // Fetch data from Supabase
