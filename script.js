@@ -86,30 +86,68 @@ async function createNativeChart() {
     try {
       console.log('Attempting to fetch data from Supabase...');
       
-      // Simple query to test connection
+      // Fetch all data from trend_reach table
       const { data: trendData, error } = await supabase
         .from('trend_reach')
         .select('*')
-        .limit(10);
+        .order('id', { ascending: true });
 
       if (!error && trendData && trendData.length > 0) {
         console.log('Successfully fetched data from Supabase:', trendData);
         
-        // Transform the data for the chart
-        data = trendData.map((item, index) => {
-          const baseValue = Math.floor(Math.random() * 2000) + 1000;
-          return {
-            date: `Day ${index + 1}`,
-            aiTools: baseValue + Math.floor(Math.random() * 1000),
-            chatgpt: baseValue * 0.8 + Math.floor(Math.random() * 800),
-            ml: baseValue * 0.6 + Math.floor(Math.random() * 600)
-          };
+        // Group data by timestamp and create chart data points
+        const groupedData = {};
+        
+        trendData.forEach(item => {
+          // Create a date key from the timestamp (assuming there's an id or timestamp field)
+          const dateKey = item.id || Object.keys(groupedData).length + 1;
+          
+          if (!groupedData[dateKey]) {
+            groupedData[dateKey] = {
+              date: `Day ${dateKey}`,
+              aiTools: 0,
+              chatgpt: 0,
+              ml: 0,
+              blockchain: 0,
+              metaverse: 0,
+              nft: 0,
+              crypto: 0
+            };
+          }
+          
+          // Map trend_name to chart categories and use reach_count
+          const trendName = (item.trend_name || '').toLowerCase();
+          const reachCount = item.reach_count || 0;
+          
+          if (trendName.includes('ai') || trendName.includes('artificial intelligence')) {
+            groupedData[dateKey].aiTools += reachCount;
+          } else if (trendName.includes('chatgpt') || trendName.includes('gpt')) {
+            groupedData[dateKey].chatgpt += reachCount;
+          } else if (trendName.includes('machine learning') || trendName.includes('ml')) {
+            groupedData[dateKey].ml += reachCount;
+          } else if (trendName.includes('blockchain')) {
+            groupedData[dateKey].blockchain += reachCount;
+          } else if (trendName.includes('metaverse')) {
+            groupedData[dateKey].metaverse += reachCount;
+          } else if (trendName.includes('nft')) {
+            groupedData[dateKey].nft += reachCount;
+          } else if (trendName.includes('crypto') || trendName.includes('bitcoin') || trendName.includes('ethereum')) {
+            groupedData[dateKey].crypto += reachCount;
+          } else {
+            // Default assignment for uncategorized trends
+            groupedData[dateKey].aiTools += reachCount;
+          }
         });
+        
+        // Convert grouped data to array
+        data = Object.values(groupedData);
+        
+        console.log('Transformed chart data:', data);
       } else {
-        console.log('No data returned from Supabase or connection failed');
+        console.log('No data returned from Supabase or connection failed:', error);
       }
     } catch (error) {
-      console.log('Supabase query failed, using fallback data');
+      console.log('Supabase query failed, using fallback data:', error);
     }
   }
 
@@ -240,24 +278,44 @@ async function createTrendTable() {
       const { data: trendData, error } = await supabase
         .from('trend_reach')
         .select('*')
+        .order('reach_count', { ascending: false })
         .limit(10);
 
       if (!error && trendData && trendData.length > 0) {
         console.log('Successfully fetched table data:', trendData);
         
-        tableRows = trendData.map((item, index) => `
-          <tr>
-            <td>Trend ${index + 1}</td>
-            <td>TikTok</td>
-            <td>${(Math.floor(Math.random() * 20) + 10)}.${Math.floor(Math.random() * 9)}K</td>
-            <td>${Math.floor(Math.random() * 30) + 70}</td>
-          </tr>
-        `).join('');
+        tableRows = trendData.map((item) => {
+          const trendName = item.trend_name || 'Unknown Trend';
+          const reachCount = item.reach_count || 0;
+          const platform = item.platform || 'Various';
+          
+          // Format reach count with K/M notation
+          let formattedReach;
+          if (reachCount >= 1000000) {
+            formattedReach = (reachCount / 1000000).toFixed(1) + 'M';
+          } else if (reachCount >= 1000) {
+            formattedReach = (reachCount / 1000).toFixed(1) + 'K';
+          } else {
+            formattedReach = reachCount.toString();
+          }
+          
+          // Calculate a score based on reach (simplified scoring)
+          const score = Math.min(99, Math.floor(reachCount / 10000) + 50);
+          
+          return `
+            <tr>
+              <td>${trendName}</td>
+              <td>${platform}</td>
+              <td>${formattedReach}</td>
+              <td>${score}</td>
+            </tr>
+          `;
+        }).join('');
       } else {
-        console.log('No table data returned from Supabase');
+        console.log('No table data returned from Supabase:', error);
       }
     } catch (error) {
-      console.log('Table data fetch failed, using fallback data');
+      console.log('Table data fetch failed, using fallback data:', error);
     }
   }
 
