@@ -1,7 +1,7 @@
-// Note: Supabase connection disabled due to invalid credentials
-// Using local fallback data instead
-const SUPABASE_URL = null;
-const SUPABASE_ANON_KEY = null;
+// Supabase and YouTube API configuration
+const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your actual Supabase URL
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your actual Supabase anon key
+const YOUTUBE_API_KEY = 'YOUR_YOUTUBE_API_KEY'; // Replace with your actual YouTube API key
 
 let supabase = null;
 let chartRoot = null;
@@ -11,11 +11,110 @@ let filteredData = null;
 let startDate = null;
 let endDate = null;
 
-// Initialize Supabase (disabled - using fallback data)
+// Initialize Supabase
 function initSupabase() {
-  console.log('Supabase disabled - using fallback data');
-  supabase = null;
-  return false;
+  if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('Supabase initialized successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to initialize Supabase:', error);
+      return false;
+    }
+  } else {
+    console.log('Supabase credentials not configured - using fallback data');
+    supabase = null;
+    return false;
+  }
+}
+
+// YouTube API functions
+async function fetchYouTubeData(query = 'trending', maxResults = 50) {
+  if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+    console.log('YouTube API key not configured');
+    return null;
+  }
+
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&order=relevance&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`YouTube API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.items;
+  } catch (error) {
+    console.error('Error fetching YouTube data:', error);
+    return null;
+  }
+}
+
+async function processYouTubeDataForSupabase(youtubeData) {
+  if (!youtubeData) return [];
+
+  return youtubeData.map(item => ({
+    trend_name: item.snippet.title.substring(0, 100), // Limit title length
+    platform: 'YouTube',
+    reach_count: Math.floor(Math.random() * 2000000) + 100000, // Simulated reach since API doesn't provide this
+    score: Math.floor(Math.random() * 50) + 50,
+    video_id: item.id.videoId,
+    channel_name: item.snippet.channelTitle,
+    published_at: item.snippet.publishedAt,
+    description: item.snippet.description?.substring(0, 500) || '',
+    thumbnail_url: item.snippet.thumbnails?.medium?.url || ''
+  }));
+}
+
+async function saveYouTubeDataToSupabase(processedData) {
+  if (!supabase || !processedData || processedData.length === 0) {
+    console.log('Cannot save to Supabase: no connection or data');
+    return false;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('youtube_trends')
+      .insert(processedData);
+
+    if (error) {
+      console.error('Error saving YouTube data to Supabase:', error);
+      return false;
+    }
+
+    console.log('YouTube data saved to Supabase successfully:', data);
+    return true;
+  } catch (error) {
+    console.error('Error in saveYouTubeDataToSupabase:', error);
+    return false;
+  }
+}
+
+async function fetchYouTubeDataFromSupabase() {
+  if (!supabase) {
+    console.log('Supabase not initialized');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('youtube_trends')
+      .select('*')
+      .order('published_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      console.error('Error fetching YouTube data from Supabase:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in fetchYouTubeDataFromSupabase:', error);
+    return null;
+  }
 }
 
 // Format numbers with K/M notation
@@ -396,8 +495,38 @@ function createChart(data, filteredTrends = 'all') {
   animate();
 }
 
-// Fetch data (using fallback data)
+// Fetch data with YouTube integration
 async function fetchData() {
+  console.log('Fetching data with YouTube integration...');
+  
+  // Try to fetch YouTube data and save to Supabase
+  if (supabase && YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'YOUR_YOUTUBE_API_KEY') {
+    try {
+      // Fetch fresh YouTube data
+      const youtubeData = await fetchYouTubeData('trending tech AI blockchain', 20);
+      if (youtubeData) {
+        const processedData = await processYouTubeDataForSupabase(youtubeData);
+        await saveYouTubeDataToSupabase(processedData);
+      }
+
+      // Fetch data from Supabase
+      const supabaseData = await fetchYouTubeDataFromSupabase();
+      if (supabaseData && supabaseData.length > 0) {
+        console.log('Using YouTube data from Supabase:', supabaseData.length, 'items');
+        
+        // Convert Supabase data to chart format
+        const chartData = processSupabaseDataForChart(supabaseData);
+        
+        return {
+          chartData: chartData,
+          tableData: supabaseData.slice(0, 10) // Show top 10 in table
+        };
+      }
+    } catch (error) {
+      console.error('Error with YouTube/Supabase integration:', error);
+    }
+  }
+  
   console.log('Using enhanced fallback data...');
   
   // Enhanced fallback data with more realistic trends
@@ -431,6 +560,69 @@ async function fetchData() {
   };
 
   return enhancedFallbackData;
+}
+
+// Convert Supabase YouTube data to chart format
+function processSupabaseDataForChart(supabaseData) {
+  if (!supabaseData || supabaseData.length === 0) {
+    return fallbackData.chartData;
+  }
+
+  // Group data by date and aggregate reach by trend
+  const dateMap = new Map();
+  const dates = ['1/1', '1/15', '2/1', '2/15', '3/1', '3/15', '4/1', '4/15', '5/1', '5/15', '6/1', '6/15'];
+  
+  // Initialize dates
+  dates.forEach(date => {
+    dateMap.set(date, {});
+  });
+
+  // Group trends by keywords
+  const trendGroups = {
+    'AI Tools': ['AI', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai'],
+    'Tech Trends': ['technology', 'tech', 'innovation', 'startup'],
+    'Blockchain': ['blockchain', 'crypto', 'bitcoin', 'ethereum', 'web3'],
+    'Programming': ['coding', 'programming', 'developer', 'software'],
+    'Gaming': ['gaming', 'game', 'esports', 'streamer']
+  };
+
+  // Categorize and aggregate data
+  supabaseData.forEach((item, index) => {
+    const dateIndex = index % dates.length;
+    const date = dates[dateIndex];
+    
+    const title = item.trend_name.toLowerCase();
+    let category = 'Other';
+    
+    // Find matching category
+    for (const [groupName, keywords] of Object.entries(trendGroups)) {
+      if (keywords.some(keyword => title.includes(keyword))) {
+        category = groupName;
+        break;
+      }
+    }
+    
+    // Add to date map
+    if (!dateMap.get(date)[category]) {
+      dateMap.get(date)[category] = 0;
+    }
+    dateMap.get(date)[category] += item.reach_count || 100000;
+  });
+
+  // Convert to chart format
+  const chartData = [];
+  dates.forEach(date => {
+    const dataPoint = { date };
+    const dayData = dateMap.get(date);
+    
+    Object.keys(trendGroups).forEach(category => {
+      dataPoint[category] = dayData[category] || 0;
+    });
+    
+    chartData.push(dataPoint);
+  });
+
+  return chartData;
 }
 
 // Process data for chart display
