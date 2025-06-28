@@ -106,11 +106,11 @@ function createChart(data, filteredTrends = 'all') {
 
   // Set actual canvas size (accounting for device pixel ratio)
   canvas.width = containerWidth * dpr;
-  canvas.height = 300 * dpr;
+  canvas.height = 330 * dpr;
 
   // Set display size (CSS pixels)
   canvas.style.width = '100%';
-  canvas.style.height = '300px';
+  canvas.style.height = '330px';
   canvas.style.background = '#13131f';
   canvas.style.borderRadius = '12px';
 
@@ -136,10 +136,11 @@ function createChart(data, filteredTrends = 'all') {
   // Chart dimensions (use display size, not canvas size)
   const padding = 60;
   const legendHeight = 30; // Space for top legend
+  const axisHeight = 60; // Space for dual axis labels
   const displayWidth = containerWidth;
-  const displayHeight = 300;
+  const displayHeight = 330;
   const chartWidth = displayWidth - padding * 2;
-  const chartHeight = displayHeight - padding * 2 - legendHeight;
+  const chartHeight = displayHeight - padding * 2 - legendHeight - axisHeight;
 
   // Get all trend names
   let allTrendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
@@ -206,13 +207,77 @@ function createChart(data, filteredTrends = 'all') {
       ctx.fillText(formatNumber(value), padding - 10, y + 4);
     }
 
-    // Draw x-axis labels
+    // Draw dual x-axis labels (days and months)
     ctx.fillStyle = '#9ca3af';
-    ctx.font = 'bold 11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.font = 'bold 10px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
+    
+    // Track months for major axis
+    let currentMonth = '';
+    let monthRanges = [];
+    let monthStart = 0;
+    
+    // Draw minor axis (days) and collect month data
     data.forEach((item, index) => {
       const x = padding + (chartWidth * index) / (data.length - 1);
-      ctx.fillText(item.date, x, displayHeight - 15);
+      
+      // Parse date to get month
+      const dateParts = item.date.split('/');
+      const month = dateParts[0];
+      const day = dateParts[1];
+      
+      // Draw day labels (minor axis)
+      ctx.fillStyle = '#6b7280';
+      ctx.fillText(day, x, displayHeight - 15);
+      
+      // Track month changes for major axis
+      if (currentMonth !== month) {
+        if (currentMonth !== '') {
+          monthRanges.push({
+            month: currentMonth,
+            start: monthStart,
+            end: index - 1
+          });
+        }
+        currentMonth = month;
+        monthStart = index;
+      }
+      
+      // Handle last month
+      if (index === data.length - 1) {
+        monthRanges.push({
+          month: currentMonth,
+          start: monthStart,
+          end: index
+        });
+      }
+    });
+    
+    // Draw major axis (months)
+    ctx.fillStyle = '#e5e7eb';
+    ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+    
+    const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    monthRanges.forEach(range => {
+      const startX = padding + (chartWidth * range.start) / (data.length - 1);
+      const endX = padding + (chartWidth * range.end) / (data.length - 1);
+      const centerX = (startX + endX) / 2;
+      
+      // Draw month separator line
+      if (range.start > 0) {
+        ctx.strokeStyle = '#374151';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(startX, padding + legendHeight);
+        ctx.lineTo(startX, displayHeight - 40);
+        ctx.stroke();
+      }
+      
+      // Draw month label
+      const monthIndex = parseInt(range.month);
+      const monthName = monthNames[monthIndex] || range.month;
+      ctx.fillText(monthName, centerX, displayHeight - 35);
     });
 
     // Draw horizontal legend at the top

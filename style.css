@@ -270,7 +270,7 @@ h1, h2, h3, .logo, .header-title {
 
 #trendChart {
   width: 100%;
-  height: 320px;
+  height: 350px;
 }
 
 #trendChart .recharts-wrapper {
