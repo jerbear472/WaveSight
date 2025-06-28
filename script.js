@@ -592,26 +592,19 @@ function filterChart() {
 }
 
 // Update trend filter dropdown
-function updateTrendFilter(data) {
+function updateTrendFilter(chartData) {
   const filterSelect = document.getElementById('trendFilter');
-  if (!filterSelect || !data) return;
+  if (!filterSelect || !chartData || chartData.length === 0) return;
 
-  // Get all unique trend names from chart data
+  // Extract trend names from chart data (all keys except 'date')
   let allTrends = [];
-  if (Array.isArray(data)) {
-    // If data is the raw table data, extract trend names
-    const sample = data[0];
-    if (sample) {
-      const columns = Object.keys(sample);
-      const trendNameColumn = columns.find(col => 
-        col.includes('trend') || col.includes('name') || col.includes('title')
-      ) || columns[0];
-      allTrends = [...new Set(data.map(item => item[trendNameColumn]).filter(Boolean))];
-    }
-  } else {
-    // If data is chart data format, extract from object keys
-    allTrends = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
-  }
+  chartData.forEach(dataPoint => {
+    Object.keys(dataPoint).forEach(key => {
+      if (key !== 'date' && !allTrends.includes(key)) {
+        allTrends.push(key);
+      }
+    });
+  });
   
   console.log('Available trends for filter:', allTrends);
   
@@ -662,8 +655,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     console.log('Loaded data:', data);
 
-    // Update filter dropdown with raw data to get all trend names
-    updateTrendFilter(data.tableData);
+    // Update filter dropdown with chart data to get trend names
+    updateTrendFilter(data.chartData);
 
     // Create chart
     createChart(data.chartData, selectedTrends);
