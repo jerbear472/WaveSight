@@ -1,6 +1,5 @@
 
 // Initialize Supabase client
-// Replace these with your actual Supabase credentials
 const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -11,7 +10,7 @@ async function fetchTrendData() {
     const { data, error } = await supabase
       .from('trends')
       .select('*')
-      .order('date', { ascending: true });
+      .order('id', { ascending: true });
     
     if (error) {
       console.error('Error fetching data:', error);
@@ -25,149 +24,132 @@ async function fetchTrendData() {
   }
 }
 
-// Function to update cards with Supabase data - keeping static cards for now
-async function updateCards() {
-  // Keep existing static cards since trend_cards table doesn't exist
-  console.log('Using static card data');
-}
+// React Chart Component using Recharts
+const TrendChart = () => {
+  const [data, setData] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
 
-// Initialize chart with Supabase data
-async function initChart() {
-  const ctx = document.getElementById('trendChart').getContext('2d');
-  
-  const gradient1 = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient1.addColorStop(0, 'rgba(94, 227, 255, 0.8)');
-  gradient1.addColorStop(1, 'rgba(94, 227, 255, 0.05)');
-
-  const gradient2 = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient2.addColorStop(0, 'rgba(139, 92, 246, 0.8)');
-  gradient2.addColorStop(1, 'rgba(139, 92, 246, 0.05)');
-
-  const gradient3 = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient3.addColorStop(0, 'rgba(236, 72, 153, 0.8)');
-  gradient3.addColorStop(1, 'rgba(236, 72, 153, 0.05)');
-
-  const gradient4 = ctx.createLinearGradient(0, 0, 0, 300);
-  gradient4.addColorStop(0, 'rgba(249, 115, 22, 0.8)');
-  gradient4.addColorStop(1, 'rgba(249, 115, 22, 0.05)');
-
-  // Fetch data from Supabase
-  const trendData = await fetchTrendData();
-  
-  let chartData;
-  if (trendData && trendData.length > 0) {
-    // Process Supabase data
-    const labels = [...new Set(trendData.map(item => item.date))].sort();
-    const datasets = {};
+  const fetchAndProcessData = async () => {
+    const trendData = await fetchTrendData();
     
-    trendData.forEach(item => {
-      if (!datasets[item.keyword]) {
-        datasets[item.keyword] = {
-          label: item.keyword,
-          data: [],
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-        };
-      }
-    });
-    
-    // Assign colors and gradients
-    const gradients = [gradient1, gradient2, gradient3, gradient4];
-    const borderColors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316'];
-    
-    Object.keys(datasets).forEach((keyword, index) => {
-      datasets[keyword].backgroundColor = gradients[index % gradients.length];
-      datasets[keyword].borderColor = borderColors[index % borderColors.length];
+    if (trendData && trendData.length > 0) {
+      // Process the data for Recharts
+      const processedData = trendData.map((item, index) => ({
+        name: `Point ${index + 1}`,
+        id: item.id,
+        keyword: item.keyword || 'Unknown',
+        value: item.value || 0,
+        originalData: item
+      }));
       
-      // Fill data array with values for each date
-      datasets[keyword].data = labels.map(date => {
-        const item = trendData.find(d => d.keyword === keyword && d.date === date);
-        return item ? item.value : 0;
-      });
-    });
+      setData(processedData);
+    } else {
+      // Fallback static data
+      setData([
+        { name: 'Mar 1', 'AI-generated images': 35, 'ChatGPT': 20, 'Elden Ring': 15, 'Pineapple on pizza': 10 },
+        { name: 'Mar 7', 'AI-generated images': 45, 'ChatGPT': 34, 'Elden Ring': 25, 'Pineapple on pizza': 18 },
+        { name: 'Mar 14', 'AI-generated images': 60, 'ChatGPT': 50, 'Elden Ring': 40, 'Pineapple on pizza': 30 },
+        { name: 'Mar 21', 'AI-generated images': 70, 'ChatGPT': 65, 'Elden Ring': 55, 'Pineapple on pizza': 40 },
+        { name: 'Mar 28', 'AI-generated images': 84, 'ChatGPT': 79, 'Elden Ring': 69, 'Pineapple on pizza': 53 }
+      ]);
+    }
+    setLoading(false);
+  };
+
+  React.useEffect(() => {
+    fetchAndProcessData();
     
-    chartData = {
-      labels: labels,
-      datasets: Object.values(datasets)
-    };
-  } else {
-    // Fallback to static data if Supabase fails
-    chartData = {
-      labels: ['Mar 1', 'Mar 7', 'Mar 14', 'Mar 21', 'Mar 28'],
-      datasets: [
-        {
-          label: 'AI-generated images',
-          data: [35, 45, 60, 70, 84],
-          fill: true,
-          backgroundColor: gradient1,
-          borderColor: '#5ee3ff',
-          tension: 0.4,
-          pointRadius: 0,
-        },
-        {
-          label: 'ChatGPT',
-          data: [20, 34, 50, 65, 79],
-          fill: true,
-          backgroundColor: gradient2,
-          borderColor: '#8b5cf6',
-          tension: 0.4,
-          pointRadius: 0,
-        },
-        {
-          label: 'Elden Ring',
-          data: [15, 25, 40, 55, 69],
-          fill: true,
-          backgroundColor: gradient3,
-          borderColor: '#ec4899',
-          tension: 0.4,
-          pointRadius: 0,
-        },
-        {
-          label: 'Pineapple on pizza',
-          data: [10, 18, 30, 40, 53],
-          fill: true,
-          backgroundColor: gradient4,
-          borderColor: '#f97316',
-          tension: 0.4,
-          pointRadius: 0,
-        },
-      ],
-    };
+    // Set up real-time updates
+    const interval = setInterval(fetchAndProcessData, 30000); // Update every 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  if (loading) {
+    return React.createElement('div', { style: { color: '#e5e7eb', padding: '20px' } }, 'Loading chart data...');
   }
 
-  const chart = new Chart(ctx, {
-    type: 'line',
-    data: chartData,
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          labels: {
-            color: '#e5e7eb',
-          },
-        },
-      },
-      scales: {
-        x: {
-          ticks: {
-            color: '#a1a1aa',
-          },
-          grid: {
-            color: 'rgba(255,255,255,0.05)',
-          },
-        },
-        y: {
-          ticks: {
-            color: '#a1a1aa',
-          },
-          grid: {
-            color: 'rgba(255,255,255,0.05)',
-          },
-        },
-      },
-    },
-  });
+  return React.createElement(
+    'div',
+    { style: { width: '100%', height: '320px' } },
+    React.createElement(
+      Recharts.ResponsiveContainer,
+      { width: '100%', height: '100%' },
+      React.createElement(
+        Recharts.LineChart,
+        { data: data, margin: { top: 5, right: 30, left: 20, bottom: 5 } },
+        React.createElement(Recharts.CartesianGrid, { strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.1)' }),
+        React.createElement(Recharts.XAxis, { 
+          dataKey: 'name', 
+          tick: { fill: '#a1a1aa', fontSize: 12 },
+          axisLine: { stroke: '#2e2e45' }
+        }),
+        React.createElement(Recharts.YAxis, { 
+          tick: { fill: '#a1a1aa', fontSize: 12 },
+          axisLine: { stroke: '#2e2e45' }
+        }),
+        React.createElement(Recharts.Tooltip, {
+          contentStyle: {
+            backgroundColor: '#1a1a2e',
+            border: '1px solid #2e2e45',
+            borderRadius: '8px',
+            color: '#e5e7eb'
+          }
+        }),
+        React.createElement(Recharts.Legend, {
+          wrapperStyle: { color: '#e5e7eb' }
+        }),
+        data.length > 0 && data[0].keyword ? 
+          React.createElement(Recharts.Line, {
+            type: 'monotone',
+            dataKey: 'value',
+            stroke: '#5ee3ff',
+            strokeWidth: 2,
+            dot: { fill: '#5ee3ff', strokeWidth: 2, r: 4 },
+            activeDot: { r: 6, stroke: '#5ee3ff', strokeWidth: 2 }
+          }) :
+          [
+            React.createElement(Recharts.Line, {
+              key: 'ai',
+              type: 'monotone',
+              dataKey: 'AI-generated images',
+              stroke: '#5ee3ff',
+              strokeWidth: 2,
+              dot: { fill: '#5ee3ff' }
+            }),
+            React.createElement(Recharts.Line, {
+              key: 'chatgpt',
+              type: 'monotone',
+              dataKey: 'ChatGPT',
+              stroke: '#8b5cf6',
+              strokeWidth: 2,
+              dot: { fill: '#8b5cf6' }
+            }),
+            React.createElement(Recharts.Line, {
+              key: 'elden',
+              type: 'monotone',
+              dataKey: 'Elden Ring',
+              stroke: '#ec4899',
+              strokeWidth: 2,
+              dot: { fill: '#ec4899' }
+            }),
+            React.createElement(Recharts.Line, {
+              key: 'pizza',
+              type: 'monotone',
+              dataKey: 'Pineapple on pizza',
+              stroke: '#f97316',
+              strokeWidth: 2,
+              dot: { fill: '#f97316' }
+            })
+          ]
+      )
+    )
+  );
+};
+
+// Function to update cards with Supabase data - keeping static cards for now
+async function updateCards() {
+  console.log('Using static card data');
 }
 
 // Function to create and populate table with Supabase data
@@ -176,7 +158,7 @@ async function createTrendTable() {
     const { data, error } = await supabase
       .from('trends')
       .select('*')
-      .order('date', { ascending: false });
+      .order('id', { ascending: false });
     
     if (error) {
       console.error('Error fetching table data:', error);
@@ -227,7 +209,11 @@ async function createTrendTable() {
 
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', async () => {
-  await initChart();
+  // Render the React chart component
+  const chartContainer = document.getElementById('trendChart');
+  const root = ReactDOM.createRoot(chartContainer);
+  root.render(React.createElement(TrendChart));
+  
   await updateCards();
   await createTrendTable();
 });

@@ -7,7 +7,10 @@
     <title>WaveSight</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
@@ -24,7 +27,7 @@
 
       <section class="chart-section">
         <h2>Keyword Virality Over Time</h2>
-        <canvas id="trendChart"></canvas>
+        <div id="trendChart"></div>
       </section>
 
       <section class="chart-section">
@@ -73,6 +76,6 @@
       </section>
     </div>
 
-    <script src="script.js"></script>
+    <script type="text/babel" src="script.js"></script>
   </body>
 </html>
