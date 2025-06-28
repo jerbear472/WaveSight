@@ -59,6 +59,42 @@ h1, h2, h3, .logo, .header-title {
   gap: 24px;
 }
 
+.hero-text {
+  flex: 1;
+  max-width: 600px;
+}
+
+.hero-title {
+  color: #5ee3ff;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  background: linear-gradient(135deg, #5ee3ff 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.hero-subtitle {
+  color: #f4f4f5;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+  opacity: 0.95;
+}
+
+.hero-description {
+  color: #9ca3af;
+  font-size: 0.95rem;
+  font-weight: 400;
+  margin: 0 0 32px 0;
+  line-height: 1.6;
+  opacity: 0.8;
+}
+
 .logo {
   font-size: 1.5rem;
   font-weight: 700;
