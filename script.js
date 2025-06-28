@@ -330,11 +330,28 @@ function showMockTable() {
 
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', async () => {
-  // Render the React chart component
-  const chartContainer = document.getElementById('trendChart');
-  const root = ReactDOM.createRoot(chartContainer);
-  root.render(React.createElement(TrendChart));
+  console.log('DOM loaded, initializing components...');
   
-  await updateCards();
-  await createTrendTable();
+  // Wait a bit for all scripts to load
+  setTimeout(() => {
+    try {
+      // Render the React chart component
+      const chartContainer = document.getElementById('trendChart');
+      if (chartContainer && typeof React !== 'undefined' && typeof ReactDOM !== 'undefined') {
+        console.log('Rendering chart component...');
+        const root = ReactDOM.createRoot(chartContainer);
+        root.render(React.createElement(TrendChart));
+      } else {
+        console.error('Chart container or React libraries not found');
+        document.getElementById('trendChart').innerHTML = '<p style="color: #e5e7eb;">Chart loading failed - missing dependencies</p>';
+      }
+    } catch (error) {
+      console.error('Error rendering chart:', error);
+      document.getElementById('trendChart').innerHTML = '<p style="color: #e5e7eb;">Chart initialization error</p>';
+    }
+    
+    // Initialize other components
+    updateCards();
+    createTrendTable();
+  }, 500);
 });
