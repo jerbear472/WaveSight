@@ -246,6 +246,37 @@ function createChart(data, filteredTrends = 'all') {
       if (positions.length === 0) return;
       
       const color = colors[trendIndex % colors.length];
+      const baseY = padding + legendHeight + chartHeight; // Bottom of chart
+      
+      // Create gradient for the fill
+      const gradient = ctx.createLinearGradient(0, padding + legendHeight, 0, baseY);
+      gradient.addColorStop(0, color + '40'); // 25% opacity at top
+      gradient.addColorStop(1, color + '08'); // 3% opacity at bottom
+      
+      // Draw filled area first
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      
+      // Start from bottom left
+      if (positions.length > 0) {
+        const firstAnimatedY = baseY + (positions[0].y - baseY) * easeOutCubic(animationProgress);
+        ctx.moveTo(positions[0].x, baseY);
+        ctx.lineTo(positions[0].x, firstAnimatedY);
+        
+        // Draw the line path
+        positions.forEach((finalPos, pointIndex) => {
+          const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
+          ctx.lineTo(finalPos.x, animatedY);
+        });
+        
+        // Close the path back to bottom
+        const lastPos = positions[positions.length - 1];
+        ctx.lineTo(lastPos.x, baseY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      
+      // Draw the line on top
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
@@ -256,7 +287,6 @@ function createChart(data, filteredTrends = 'all') {
       
       positions.forEach((finalPos, pointIndex) => {
         // Calculate animated position
-        const baseY = padding + legendHeight + chartHeight; // Bottom of chart
         const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
         
         if (firstPoint) {
