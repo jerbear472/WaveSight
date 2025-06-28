@@ -207,6 +207,15 @@ app.get('/api/youtube-data', async (req, res) => {
   }
 });
 
+// Config endpoint for frontend
+app.get('/api/config', (req, res) => {
+  res.json({
+    SUPABASE_URL: SUPABASE_URL,
+    SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
+    YOUTUBE_API_KEY: YOUTUBE_API_KEY
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
