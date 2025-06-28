@@ -68,17 +68,17 @@ async function testSupabaseConnection() {
 const fallbackData = {
   chartData: [
     { date: '1/1', 'AI Tools': 1200000, 'ChatGPT': 950000, 'Blockchain': 800000 },
-    { date: '1/15', 'AI Tools': 1350000, 'ChatGPT': 1100000, 'Blockchain': 920000 },
-    { date: '2/1', 'AI Tools': 1800000, 'ChatGPT': 1400000, 'Blockchain': 1100000 },
-    { date: '2/15', 'AI Tools': 2100000, 'ChatGPT': 1650000, 'Blockchain': 1300000 },
-    { date: '3/1', 'AI Tools': 2500000, 'ChatGPT': 1900000, 'Blockchain': 1500000 },
-    { date: '3/15', 'AI Tools': 2800000, 'ChatGPT': 2200000, 'Blockchain': 1700000 },
-    { date: '4/1', 'AI Tools': 3200000, 'ChatGPT': 2500000, 'Blockchain': 1900000 },
-    { date: '4/15', 'AI Tools': 3600000, 'ChatGPT': 2800000, 'Blockchain': 2100000 },
-    { date: '5/1', 'AI Tools': 4000000, 'ChatGPT': 3100000, 'Blockchain': 2300000 },
-    { date: '5/15', 'AI Tools': 4400000, 'ChatGPT': 3400000, 'Blockchain': 2500000 },
-    { date: '6/1', 'AI Tools': 4800000, 'ChatGPT': 3700000, 'Blockchain': 2700000 },
-    { date: '6/15', 'AI Tools': 5200000, 'ChatGPT': 4000000, 'Blockchain': 2900000 }
+    { date: '1/15', 'AI Tools': 890000, 'ChatGPT': 1100000, 'Blockchain': 650000 },
+    { date: '2/1', 'AI Tools': 1800000, 'ChatGPT': 750000, 'Blockchain': 1100000 },
+    { date: '2/15', 'AI Tools': 1200000, 'ChatGPT': 1650000, 'Blockchain': 580000 },
+    { date: '3/1', 'AI Tools': 2200000, 'ChatGPT': 890000, 'Blockchain': 1500000 },
+    { date: '3/15', 'AI Tools': 950000, 'ChatGPT': 2200000, 'Blockchain': 720000 },
+    { date: '4/1', 'AI Tools': 1800000, 'ChatGPT': 1100000, 'Blockchain': 1900000 },
+    { date: '4/15', 'AI Tools': 1400000, 'ChatGPT': 2800000, 'Blockchain': 650000 },
+    { date: '5/1', 'AI Tools': 2100000, 'ChatGPT': 950000, 'Blockchain': 2300000 },
+    { date: '5/15', 'AI Tools': 1600000, 'ChatGPT': 3400000, 'Blockchain': 780000 },
+    { date: '6/1', 'AI Tools': 2400000, 'ChatGPT': 1200000, 'Blockchain': 2700000 },
+    { date: '6/15', 'AI Tools': 1800000, 'ChatGPT': 4000000, 'Blockchain': 920000 }
   ],
   tableData: [
     { trend_name: 'AI Art Generation', platform: 'TikTok', reach_count: 2500000 },
@@ -438,36 +438,73 @@ function processDataForChart(rawData) {
 
   console.log(`Using columns - Trend: ${trendNameColumn}, Reach: ${reachColumn}, Date: ${dateColumn}`);
 
-  // Group data by time periods
-  const timeGroups = {};
+  // Create individual data points for each trend and date combination
+  const trendMap = new Map();
   const dates = ['1/1', '1/15', '2/1', '2/15', '3/1', '3/15', '4/1', '4/15', '5/1', '5/15', '6/1', '6/15'];
-
+  
+  // Group raw data by trend name to track individual trends over time
   rawData.forEach((item, index) => {
-    // Create time grouping
-    let timeKey;
-    if (dateColumn && item[dateColumn]) {
-      // Use actual date if available
-      const date = new Date(item[dateColumn]);
-      timeKey = `${date.getMonth() + 1}/${date.getDate()}`;
-    } else {
-      // Use index-based dating
-      timeKey = dates[index % dates.length] || `${Math.floor(index / 3) + 1}/1`;
-    }
-
     const trendName = item[trendNameColumn] || `Trend ${index + 1}`;
     const reach = typeof item[reachColumn] === 'number' ? item[reachColumn] : 
                   parseInt(item[reachColumn]) || Math.floor(Math.random() * 1000000) + 500000;
-
-    if (!timeGroups[timeKey]) {
-      timeGroups[timeKey] = { date: timeKey };
+    
+    if (!trendMap.has(trendName)) {
+      trendMap.set(trendName, []);
     }
-
-    timeGroups[timeKey][trendName] = reach;
+    
+    // Assign a date for this data point
+    let timeKey;
+    if (dateColumn && item[dateColumn]) {
+      const date = new Date(item[dateColumn]);
+      timeKey = `${date.getMonth() + 1}/${date.getDate()}`;
+    } else {
+      // Distribute items across dates based on their index
+      const trendData = trendMap.get(trendName);
+      timeKey = dates[trendData.length % dates.length] || dates[0];
+    }
+    
+    trendMap.get(trendName).push({
+      date: timeKey,
+      reach: reach
+    });
   });
 
-  const result = Object.values(timeGroups).slice(0, 12);
-  console.log('Processed chart data:', result);
-  return result;
+  // Convert to chart format - each date gets its own data point with actual values
+  const chartData = [];
+  const usedDates = new Set();
+  
+  // Collect all dates that have data
+  trendMap.forEach((dataPoints) => {
+    dataPoints.forEach(point => usedDates.add(point.date));
+  });
+  
+  // Sort dates chronologically
+  const sortedDates = Array.from(usedDates).sort((a, b) => {
+    const [aMonth, aDay] = a.split('/').map(Number);
+    const [bMonth, bDay] = b.split('/').map(Number);
+    return (aMonth * 100 + aDay) - (bMonth * 100 + bDay);
+  });
+  
+  // Create chart data structure
+  sortedDates.slice(0, 12).forEach(date => {
+    const dataPoint = { date };
+    
+    trendMap.forEach((dataPoints, trendName) => {
+      // Find the actual reach for this trend on this specific date
+      const pointForDate = dataPoints.find(point => point.date === date);
+      if (pointForDate) {
+        dataPoint[trendName] = pointForDate.reach;
+      } else {
+        // If no data for this date, use 0 or interpolated value
+        dataPoint[trendName] = 0;
+      }
+    });
+    
+    chartData.push(dataPoint);
+  });
+
+  console.log('Processed chart data (non-cumulative):', chartData);
+  return chartData;
 }
 
 // Create trend table
