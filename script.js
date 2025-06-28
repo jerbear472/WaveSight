@@ -117,17 +117,17 @@ async function createNativeChart() {
   if (data.length === 0) {
     console.log('Using fallback chart data');
     data = [
-      { date: 'Jan 1', aiTools: 800, chatgpt: 600, ml: 400 },
-      { date: 'Jan 2', aiTools: 1200, chatgpt: 900, ml: 700 },
-      { date: 'Jan 3', aiTools: 1800, chatgpt: 1400, ml: 1200 },
-      { date: 'Jan 4', aiTools: 2400, chatgpt: 2000, ml: 1800 },
-      { date: 'Jan 5', aiTools: 2800, chatgpt: 2300, ml: 2100 },
-      { date: 'Jan 6', aiTools: 3200, chatgpt: 2700, ml: 2400 },
-      { date: 'Jan 7', aiTools: 3600, chatgpt: 3100, ml: 2800 }
+      { date: 'Jan 1', aiTools: 800, chatgpt: 600, ml: 400, blockchain: 350, metaverse: 300, nft: 250, crypto: 320 },
+      { date: 'Jan 2', aiTools: 1200, chatgpt: 900, ml: 700, blockchain: 500, metaverse: 450, nft: 380, crypto: 480 },
+      { date: 'Jan 3', aiTools: 1800, chatgpt: 1400, ml: 1200, blockchain: 800, metaverse: 750, nft: 600, crypto: 720 },
+      { date: 'Jan 4', aiTools: 2400, chatgpt: 2000, ml: 1800, blockchain: 1200, metaverse: 1100, nft: 900, crypto: 1050 },
+      { date: 'Jan 5', aiTools: 2800, chatgpt: 2300, ml: 2100, blockchain: 1500, metaverse: 1400, nft: 1200, crypto: 1350 },
+      { date: 'Jan 6', aiTools: 3200, chatgpt: 2700, ml: 2400, blockchain: 1800, metaverse: 1700, nft: 1500, crypto: 1650 },
+      { date: 'Jan 7', aiTools: 3600, chatgpt: 3100, ml: 2800, blockchain: 2200, metaverse: 2000, nft: 1800, crypto: 1950 }
     ];
   }
 
-  const maxValue = Math.max(...data.map(d => Math.max(d.aiTools, d.chatgpt, d.ml)));
+  const maxValue = Math.max(...data.map(d => Math.max(d.aiTools, d.chatgpt, d.ml, d.blockchain, d.metaverse, d.nft, d.crypto)));
   
   chartContainer.innerHTML = `
     <div class="native-chart">
@@ -143,6 +143,22 @@ async function createNativeChart() {
         <div class="legend-item">
           <div class="legend-color" style="background: #ec4899;"></div>
           <span>Machine Learning</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #f97316;"></div>
+          <span>Blockchain</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #10b981;"></div>
+          <span>Metaverse</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #3b82f6;"></div>
+          <span>NFT</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #eab308;"></div>
+          <span>Crypto</span>
         </div>
       </div>
       
@@ -181,6 +197,22 @@ async function createNativeChart() {
             <!-- ML line -->
             <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.ml / maxValue) * 210 })))}" 
                   fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <!-- Blockchain line -->
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.blockchain / maxValue) * 210 })))}" 
+                  fill="none" stroke="#f97316" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <!-- Metaverse line -->
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.metaverse / maxValue) * 210 })))}" 
+                  fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <!-- NFT line -->
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.nft / maxValue) * 210 })))}" 
+                  fill="none" stroke="#3b82f6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            
+            <!-- Crypto line -->
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.crypto / maxValue) * 210 })))}" 
+                  fill="none" stroke="#eab308" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             
           </svg>
@@ -252,13 +284,25 @@ async function createTrendTable() {
         <td>82</td>
       </tr>
       <tr>
-        <td>Deep Learning</td>
+        <td>Blockchain</td>
         <td>Twitter</td>
+        <td>14.3K</td>
+        <td>78</td>
+      </tr>
+      <tr>
+        <td>Metaverse</td>
+        <td>Instagram</td>
         <td>12.9K</td>
         <td>76</td>
       </tr>
       <tr>
-        <td>Neural Networks</td>
+        <td>NFT</td>
+        <td>Discord</td>
+        <td>11.8K</td>
+        <td>73</td>
+      </tr>
+      <tr>
+        <td>Crypto</td>
         <td>LinkedIn</td>
         <td>10.3K</td>
         <td>71</td>
