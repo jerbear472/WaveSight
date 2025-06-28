@@ -82,8 +82,35 @@ document.addEventListener('DOMContentLoaded', () => {
           ReactDOM: !!window.ReactDOM,
           Recharts: !!window.Recharts
         });
+        
+        // Fallback: Create a simple HTML chart if Recharts doesn't load
         if (chartContainer) {
-          chartContainer.innerHTML = '<p style="color: #e5e7eb;">Chart loading failed - missing dependencies</p>';
+          if (!window.Recharts) {
+            console.log('Creating fallback HTML chart...');
+            chartContainer.innerHTML = `
+              <div style="background: #13131f; padding: 20px; border-radius: 12px; color: #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                  <div style="text-align: center;">
+                    <div style="font-size: 0.8rem; color: #9ca3af;">AI Tools</div>
+                    <div style="font-size: 1.5rem; color: #5ee3ff; font-weight: bold;">2.1K</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="font-size: 0.8rem; color: #9ca3af;">ChatGPT</div>
+                    <div style="font-size: 1.5rem; color: #8b5cf6; font-weight: bold;">1.6K</div>
+                  </div>
+                  <div style="text-align: center;">
+                    <div style="font-size: 0.8rem; color: #9ca3af;">ML</div>
+                    <div style="font-size: 1.5rem; color: #ec4899; font-weight: bold;">1.2K</div>
+                  </div>
+                </div>
+                <div style="height: 200px; background: linear-gradient(45deg, #5ee3ff20, #8b5cf620, #ec489920); border-radius: 8px; display: flex; align-items: end; justify-content: center; color: #9ca3af; font-size: 0.9rem;">
+                  📈 Trend visualization (Recharts loading failed)
+                </div>
+              </div>
+            `;
+          } else {
+            chartContainer.innerHTML = '<p style="color: #e5e7eb;">Chart loading failed - missing dependencies</p>';
+          }
         }
       }
     } catch (error) {
