@@ -9,6 +9,32 @@ document.addEventListener('DOMContentLoaded', () => {
   createTrendTable();
 });
 
+// Create smooth curved path from points
+function createSmoothPath(points) {
+  if (points.length < 2) return '';
+  
+  let path = `M ${points[0].x} ${points[0].y}`;
+  
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const current = points[i];
+    
+    // Calculate control points for smooth curves
+    const tension = 0.3;
+    const dx = current.x - prev.x;
+    const dy = current.y - prev.y;
+    
+    const cp1x = prev.x + dx * tension;
+    const cp1y = prev.y + dy * tension;
+    const cp2x = current.x - dx * tension;
+    const cp2y = current.y - dy * tension;
+    
+    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${current.x} ${current.y}`;
+  }
+  
+  return path;
+}
+
 // Create native HTML/CSS chart
 function createNativeChart() {
   const chartContainer = document.getElementById('trendChart');
@@ -66,16 +92,16 @@ function createNativeChart() {
             <line x1="0" y1="200" x2="400" y2="200" stroke="#2e2e45" stroke-width="1"/>
             
             <!-- AI Tools line -->
-            <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.aiTools / maxValue) * 200}`).join(' ')}" 
-                      fill="none" stroke="#5ee3ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: i * 100 + 50, y: 250 - (d.aiTools / maxValue) * 200 })))}" 
+                  fill="none" stroke="#5ee3ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- ChatGPT line -->
-            <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.chatgpt / maxValue) * 200}`).join(' ')}" 
-                      fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: i * 100 + 50, y: 250 - (d.chatgpt / maxValue) * 200 })))}" 
+                  fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- ML line -->
-            <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.ml / maxValue) * 200}`).join(' ')}" 
-                      fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: i * 100 + 50, y: 250 - (d.ml / maxValue) * 200 })))}" 
+                  fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- Data points -->
             ${data.map((d, i) => `
