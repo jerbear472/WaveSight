@@ -1,7 +1,7 @@
 // Supabase and YouTube API configuration
 const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
-const YOUTUBE_API_KEY = 'AIzaSyArP42EedqSSuYhKBA5fsPQPSdGyWxFtc4';
+const YOUTUBE_API_KEY = ';
 
 let supabase = null;
 let chartRoot = null;
