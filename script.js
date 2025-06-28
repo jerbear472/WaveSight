@@ -37,15 +37,42 @@ async function fetchYouTubeData(query = 'trending', maxResults = 50) {
   }
 
   try {
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&order=relevance&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
+    // First, get search results
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&order=relevance&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
     
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`YouTube API error: ${response.status}`);
+    const searchResponse = await fetch(searchUrl);
+    if (!searchResponse.ok) {
+      throw new Error(`YouTube Search API error: ${searchResponse.status}`);
     }
     
-    const data = await response.json();
-    return data.items;
+    const searchData = await searchResponse.json();
+    
+    if (!searchData.items || searchData.items.length === 0) {
+      console.log('No YouTube videos found');
+      return null;
+    }
+
+    // Get video IDs for detailed stats
+    const videoIds = searchData.items.map(item => item.id.videoId).join(',');
+    
+    // Fetch detailed video statistics
+    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
+    
+    const statsResponse = await fetch(statsUrl);
+    const statsData = statsResponse.ok ? await statsResponse.json() : { items: [] };
+    
+    // Merge search data with statistics
+    const enrichedData = searchData.items.map(item => {
+      const stats = statsData.items?.find(stat => stat.id === item.id.videoId);
+      return {
+        ...item,
+        statistics: stats?.statistics || {}
+      };
+    });
+    
+    console.log(`Fetched ${enrichedData.length} YouTube videos with stats`);
+    return enrichedData;
+    
   } catch (error) {
     console.error('Error fetching YouTube data:', error);
     return null;
@@ -55,17 +82,44 @@ async function fetchYouTubeData(query = 'trending', maxResults = 50) {
 async function processYouTubeDataForSupabase(youtubeData) {
   if (!youtubeData) return [];
 
-  return youtubeData.map(item => ({
-    trend_name: item.snippet.title.substring(0, 100), // Limit title length
-    platform: 'YouTube',
-    reach_count: Math.floor(Math.random() * 2000000) + 100000, // Simulated reach since API doesn't provide this
-    score: Math.floor(Math.random() * 50) + 50,
-    video_id: item.id.videoId,
-    channel_name: item.snippet.channelTitle,
-    published_at: item.snippet.publishedAt,
-    description: item.snippet.description?.substring(0, 500) || '',
-    thumbnail_url: item.snippet.thumbnails?.medium?.url || ''
-  }));
+  return youtubeData.map(item => {
+    const stats = item.statistics || {};
+    const snippet = item.snippet;
+    
+    // Calculate trend score based on engagement
+    const viewCount = parseInt(stats.viewCount) || 0;
+    const likeCount = parseInt(stats.likeCount) || 0;
+    const commentCount = parseInt(stats.commentCount) || 0;
+    
+    // Simple trend score calculation (0-100)
+    const engagementRatio = viewCount > 0 ? (likeCount + commentCount) / viewCount * 1000 : 0;
+    const trendScore = Math.min(100, Math.max(0, Math.floor(engagementRatio * 10) + 50));
+    
+    // Categorize content
+    const title = snippet.title.toLowerCase();
+    let category = 'General';
+    if (title.includes('ai') || title.includes('artificial intelligence')) category = 'AI';
+    else if (title.includes('crypto') || title.includes('blockchain')) category = 'Crypto';
+    else if (title.includes('tech') || title.includes('technology')) category = 'Technology';
+    else if (title.includes('gaming') || title.includes('game')) category = 'Gaming';
+
+    return {
+      video_id: item.id.videoId,
+      title: snippet.title,
+      description: snippet.description?.substring(0, 1000) || '',
+      published_at: snippet.publishedAt,
+      channel_id: snippet.channelId,
+      channel_title: snippet.channelTitle,
+      thumbnail_default: snippet.thumbnails?.default?.url || '',
+      thumbnail_medium: snippet.thumbnails?.medium?.url || '',
+      thumbnail_high: snippet.thumbnails?.high?.url || '',
+      view_count: viewCount,
+      like_count: likeCount,
+      comment_count: commentCount,
+      trend_category: category,
+      trend_score: trendScore
+    };
+  });
 }
 
 async function saveYouTubeDataToSupabase(processedData) {
@@ -774,14 +828,15 @@ function createTrendTable(data) {
 
   // Create table rows from data
   const tableHTML = data.slice(0, 10).map((item, index) => {
-    const trendName = item.trend_name || `Trend ${index + 1}`;
-    const platform = item.platform || 'Various';
-    const reach = item.reach_count || Math.floor(Math.random() * 2000000) + 500000;
-    const score = item.score || Math.min(99, Math.max(50, Math.floor(reach / 15000) + 45));
+    // Handle both YouTube API data and fallback data
+    const trendName = item.title || item.trend_name || `Trend ${index + 1}`;
+    const platform = item.channel_title || item.platform || 'YouTube';
+    const reach = item.view_count || item.reach_count || Math.floor(Math.random() * 2000000) + 500000;
+    const score = item.trend_score || item.score || Math.min(99, Math.max(50, Math.floor(reach / 15000) + 45));
 
     return `
       <tr>
-        <td>${trendName}</td>
+        <td>${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</td>
         <td>${platform}</td>
         <td>${formatNumber(reach)}</td>
         <td>${score}</td>
