@@ -67,21 +67,18 @@ async function testSupabaseConnection() {
 // Fallback data for when Supabase fails
 const fallbackData = {
   chartData: [
-    { date: 'Jan 1', 'AI Tools': 1200000, 'ChatGPT': 950000, 'Blockchain': 800000 },
-    { date: 'Jan 3', 'AI Tools': 1350000, 'ChatGPT': 1100000, 'Blockchain': 920000 },
-    { date: 'Jan 5', 'AI Tools': 1800000, 'ChatGPT': 1400000, 'Blockchain': 1100000 },
-    { date: 'Jan 7', 'AI Tools': 2100000, 'ChatGPT': 1650000, 'Blockchain': 1300000 },
-    { date: 'Jan 9', 'AI Tools': 2500000, 'ChatGPT': 1900000, 'Blockchain': 1500000 },
-    { date: 'Jan 11', 'AI Tools': 2800000, 'ChatGPT': 2200000, 'Blockchain': 1700000 },
-    { date: 'Jan 13', 'AI Tools': 3200000, 'ChatGPT': 2500000, 'Blockchain': 1900000 },
-    { date: 'Jan 15', 'AI Tools': 3600000, 'ChatGPT': 2800000, 'Blockchain': 2100000 },
-    { date: 'Jan 17', 'AI Tools': 4000000, 'ChatGPT': 3100000, 'Blockchain': 2300000 },
-    { date: 'Jan 19', 'AI Tools': 4400000, 'ChatGPT': 3400000, 'Blockchain': 2500000 },
-    { date: 'Jan 21', 'AI Tools': 4800000, 'ChatGPT': 3700000, 'Blockchain': 2700000 },
-    { date: 'Jan 23', 'AI Tools': 5200000, 'ChatGPT': 4000000, 'Blockchain': 2900000 },
-    { date: 'Jan 25', 'AI Tools': 5600000, 'ChatGPT': 4300000, 'Blockchain': 3100000 },
-    { date: 'Jan 27', 'AI Tools': 6000000, 'ChatGPT': 4600000, 'Blockchain': 3300000 },
-    { date: 'Jan 29', 'AI Tools': 6400000, 'ChatGPT': 4900000, 'Blockchain': 3500000 }
+    { date: '1/1', 'AI Tools': 1200000, 'ChatGPT': 950000, 'Blockchain': 800000 },
+    { date: '1/15', 'AI Tools': 1350000, 'ChatGPT': 1100000, 'Blockchain': 920000 },
+    { date: '2/1', 'AI Tools': 1800000, 'ChatGPT': 1400000, 'Blockchain': 1100000 },
+    { date: '2/15', 'AI Tools': 2100000, 'ChatGPT': 1650000, 'Blockchain': 1300000 },
+    { date: '3/1', 'AI Tools': 2500000, 'ChatGPT': 1900000, 'Blockchain': 1500000 },
+    { date: '3/15', 'AI Tools': 2800000, 'ChatGPT': 2200000, 'Blockchain': 1700000 },
+    { date: '4/1', 'AI Tools': 3200000, 'ChatGPT': 2500000, 'Blockchain': 1900000 },
+    { date: '4/15', 'AI Tools': 3600000, 'ChatGPT': 2800000, 'Blockchain': 2100000 },
+    { date: '5/1', 'AI Tools': 4000000, 'ChatGPT': 3100000, 'Blockchain': 2300000 },
+    { date: '5/15', 'AI Tools': 4400000, 'ChatGPT': 3400000, 'Blockchain': 2500000 },
+    { date: '6/1', 'AI Tools': 4800000, 'ChatGPT': 3700000, 'Blockchain': 2700000 },
+    { date: '6/15', 'AI Tools': 5200000, 'ChatGPT': 4000000, 'Blockchain': 2900000 }
   ],
   tableData: [
     { trend_name: 'AI Art Generation', platform: 'TikTok', reach_count: 2500000 },
@@ -101,7 +98,8 @@ function createChart(data, filteredTrends = 'all') {
 
   // Create canvas element
   const canvas = document.createElement('canvas');
-  canvas.width = 800;
+  const containerWidth = chartContainer.clientWidth || 800;
+  canvas.width = containerWidth;
   canvas.height = 300;
   canvas.style.width = '100%';
   canvas.style.height = '300px';
@@ -158,7 +156,7 @@ function createChart(data, filteredTrends = 'all') {
 
   // Draw y-axis labels
   ctx.fillStyle = '#9ca3af';
-  ctx.font = '12px Inter';
+  ctx.font = '11px Inter';
   ctx.textAlign = 'right';
   
   for (let i = 0; i <= 4; i++) {
@@ -168,10 +166,12 @@ function createChart(data, filteredTrends = 'all') {
   }
 
   // Draw x-axis labels
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '10px Inter';
   ctx.textAlign = 'center';
   data.forEach((item, index) => {
     const x = padding + (chartWidth * index) / (data.length - 1);
-    ctx.fillText(item.date, x, canvas.height - 20);
+    ctx.fillText(item.date, x, canvas.height - 15);
   });
 
   // Draw trend lines
@@ -202,13 +202,13 @@ function createChart(data, filteredTrends = 'all') {
     ctx.stroke();
 
     // Draw legend
-    const legendY = 20 + (trendIndex * 20);
+    const legendY = 20 + (trendIndex * 18);
     ctx.fillStyle = color;
-    ctx.fillRect(20, legendY, 10, 10);
+    ctx.fillRect(20, legendY, 8, 8);
     ctx.fillStyle = '#f1f1f1';
-    ctx.font = '12px Inter';
+    ctx.font = '11px Inter';
     ctx.textAlign = 'left';
-    ctx.fillText(trendName, 35, legendY + 8);
+    ctx.fillText(trendName, 32, legendY + 7);
   });
 }
 
