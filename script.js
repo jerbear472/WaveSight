@@ -25,6 +25,8 @@ function initSupabase() {
     }
   } else {
     console.log('❌ Supabase credentials not configured - using fallback data');
+    console.log('📋 Current SUPABASE_URL:', SUPABASE_URL ? 'Set' : 'Not set');
+    console.log('📋 Current SUPABASE_ANON_KEY:', SUPABASE_ANON_KEY ? 'Set' : 'Not set');
     supabase = null;
     return false;
   }
@@ -570,54 +572,75 @@ function createChart(data, filteredTrends = 'all') {
 async function fetchData() {
   console.log('🚀 Fetching data with YouTube integration...');
   
-  // Try to fetch YouTube data and save to Supabase
-  if (supabase && YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'YOUR_YOUTUBE_API_KEY') {
-    console.log('📊 Both Supabase and YouTube API are configured, proceeding...');
+  // Force initialize Supabase with current credentials
+  const supabaseConnected = initSupabase();
+  
+  if (supabaseConnected) {
+    console.log('📊 Supabase connected, checking YouTube API...');
     
-    try {
-      // Fetch fresh YouTube data
-      console.log('🎥 Fetching fresh YouTube trending data...');
-      const youtubeData = await fetchYouTubeData('trending tech AI blockchain', 20);
+    if (YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'YOUR_YOUTUBE_API_KEY') {
+      console.log('🎥 YouTube API key found, fetching data...');
       
-      if (youtubeData) {
-        console.log('🔄 Processing YouTube data for Supabase...');
-        const processedData = await processYouTubeDataForSupabase(youtubeData);
-        const saveSuccess = await saveYouTubeDataToSupabase(processedData);
+      try {
+        // Fetch fresh YouTube data
+        console.log('🔍 Searching for trending videos...');
+        const youtubeData = await fetchYouTubeData('trending tech AI blockchain crypto', 25);
         
-        if (saveSuccess) {
-          console.log('💾 Data saved successfully to Supabase!');
+        if (youtubeData && youtubeData.length > 0) {
+          console.log(`📋 Got ${youtubeData.length} videos from YouTube`);
+          console.log('🔄 Processing YouTube data for Supabase...');
+          const processedData = await processYouTubeDataForSupabase(youtubeData);
+          
+          console.log('💾 Saving to Supabase youtube_trends table...');
+          const saveSuccess = await saveYouTubeDataToSupabase(processedData);
+          
+          if (saveSuccess) {
+            console.log('✅ Data saved successfully to Supabase!');
+            
+            // Fetch the data we just saved
+            console.log('📥 Fetching saved data from Supabase...');
+            const supabaseData = await fetchYouTubeDataFromSupabase();
+            
+            if (supabaseData && supabaseData.length > 0) {
+              console.log(`✅ Retrieved ${supabaseData.length} records from Supabase`);
+              
+              // Convert Supabase data to chart format
+              const chartData = processSupabaseDataForChart(supabaseData);
+              
+              return {
+                chartData: chartData,
+                tableData: supabaseData.slice(0, 10)
+              };
+            }
+          } else {
+            console.log('❌ Failed to save data to Supabase');
+          }
+        } else {
+          console.log('❌ No YouTube data retrieved');
         }
+      } catch (error) {
+        console.error('❌ Error fetching YouTube data:', error);
       }
-
-      // Fetch data from Supabase
-      console.log('📥 Fetching data from Supabase youtube_trends table...');
-      const supabaseData = await fetchYouTubeDataFromSupabase();
-      
-      if (supabaseData && supabaseData.length > 0) {
-        console.log(`✅ Using ${supabaseData.length} YouTube records from Supabase`);
-        console.log('📝 Sample record:', supabaseData[0]);
-        
-        // Convert Supabase data to chart format
-        const chartData = processSupabaseDataForChart(supabaseData);
-        
-        return {
-          chartData: chartData,
-          tableData: supabaseData.slice(0, 10) // Show top 10 in table
-        };
-      } else {
-        console.log('⚠️ No data found in Supabase youtube_trends table');
-      }
-    } catch (error) {
-      console.error('❌ Error with YouTube/Supabase integration:', error);
+    } else {
+      console.log('❌ YouTube API key not configured');
+    }
+    
+    // Try to fetch existing data from Supabase
+    console.log('📥 Checking for existing data in Supabase...');
+    const existingData = await fetchYouTubeDataFromSupabase();
+    if (existingData && existingData.length > 0) {
+      console.log(`✅ Found ${existingData.length} existing records in Supabase`);
+      const chartData = processSupabaseDataForChart(existingData);
+      return {
+        chartData: chartData,
+        tableData: existingData.slice(0, 10)
+      };
     }
   } else {
-    console.log('⚠️ Missing configuration:', {
-      supabase: !!supabase,
-      youtubeKey: !!(YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'YOUR_YOUTUBE_API_KEY')
-    });
+    console.log('❌ Supabase connection failed');
   }
   
-  console.log('Using enhanced fallback data...');
+  console.log('⚠️ Falling back to mock data...');
   
   // Enhanced fallback data with more realistic trends
   const enhancedFallbackData = {
@@ -1008,11 +1031,71 @@ function resetDateFilter() {
   }
 }
 
+// Manual function to fetch and save YouTube data
+async function fetchYouTubeDataNow() {
+  console.log('🚀 Manual YouTube data fetch initiated...');
+  
+  if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+    console.error('❌ YouTube API key not configured');
+    return false;
+  }
+  
+  if (!supabase) {
+    console.log('🔧 Initializing Supabase...');
+    if (!initSupabase()) {
+      console.error('❌ Failed to initialize Supabase');
+      return false;
+    }
+  }
+  
+  try {
+    // Fetch YouTube data
+    const youtubeData = await fetchYouTubeData('trending tech AI blockchain crypto gaming', 30);
+    
+    if (!youtubeData || youtubeData.length === 0) {
+      console.error('❌ No YouTube data received');
+      return false;
+    }
+    
+    console.log(`📊 Retrieved ${youtubeData.length} videos from YouTube`);
+    
+    // Process for Supabase
+    const processedData = await processYouTubeDataForSupabase(youtubeData);
+    console.log('🔄 Processed data for Supabase');
+    
+    // Save to Supabase
+    const saveSuccess = await saveYouTubeDataToSupabase(processedData);
+    
+    if (saveSuccess) {
+      console.log('✅ Successfully saved YouTube data to Supabase!');
+      console.log('🔄 Refreshing dashboard...');
+      
+      // Refresh the dashboard with new data
+      const newData = await fetchData();
+      currentData = newData;
+      updateTrendFilter(newData.chartData);
+      createChart(newData.chartData, selectedTrends);
+      createTrendTable(newData.tableData);
+      
+      return true;
+    } else {
+      console.error('❌ Failed to save data to Supabase');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error in manual fetch:', error);
+    return false;
+  }
+}
+
+// Make the function globally available
+window.fetchYouTubeDataNow = fetchYouTubeDataNow;
+
 // Main initialization
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Initializing WAVESIGHT dashboard...');
 
-  // Initialize (Supabase disabled)
+  // Initialize Supabase
   initSupabase();
 
   // Fetch and display data
@@ -1031,13 +1114,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Create table
     createTrendTable(data.tableData);
 
-    console.log('Dashboard initialized successfully with enhanced fallback data');
+    console.log('Dashboard initialized successfully');
+    
+    // Show instruction for manual fetch
+    console.log('💡 To manually fetch YouTube data, run: fetchYouTubeDataNow()');
 
   } catch (error) {
     console.error('Error initializing dashboard:', error);
   }
 
-  // Set up refresh interval (using static data, but keeping for future database integration)
+  // Set up refresh interval
   setInterval(async () => {
     try {
       console.log('Refreshing data...');
@@ -1049,5 +1135,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     } catch (error) {
       console.error('Error during refresh:', error);
     }
-  }, 30000); // Refresh every 30 seconds
+  }, 60000); // Refresh every 60 seconds
 });
