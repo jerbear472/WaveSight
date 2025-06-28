@@ -1,7 +1,7 @@
 // Supabase and YouTube API configuration
 const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your actual Supabase URL
 const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your actual Supabase anon key
-const YOUTUBE_API_KEY = 'YOUR_YOUTUBE_API_KEY'; // Replace with your actual YouTube API key
+const YOUTUBE_API_KEY = 'AIzaSyArP42EedqSSuYhKBA5fsPQPSdGyWxFtc4';
 
 let supabase = null;
 let chartRoot = null;
