@@ -1,80 +1,58 @@
-<!-- index.html -->
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WaveSight</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css" />
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/recharts@2.8.0/umd/Recharts.js" onload="console.log('Recharts loaded')" onerror="console.log('Recharts failed to load')"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onload="console.log('Supabase loaded')" onerror="console.log('Supabase CDN failed, will use fallback data')"></script>
-  </head>
-  <body>
-    <div class="container">
-      <header class="header-bar">
-        <div class="logo-group">
-          <img src="logo.jpeg" alt="WaveSight logo" class="logo-icon" />
-          <span class="logo-text">WAVESIGHT</span>
-        </div>
-        <button class="menu-btn">
-          ☰
-        </button>
-      </header>
+// Add process polyfill for browser environment
+if (typeof process === 'undefined') {
+  window.process = {
+    env: {}
+  };
+}
 
-      <section class="chart-section">
-        <h2>Keyword Virality Over Time</h2>
-        <div id="trendChart"></div>
-      </section>
+// Initialize Supabase client - using correct API key format
+const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5MDU5NDcsImV4cCI6MjA2NjQ4MTk0N30.YGOXgs0LtdCQYqpEWu0BECZFp9gRtk6nJPbOeDwN8kM';
 
-      <section class="chart-section">
-        <h2>Trend Data Table</h2>
-        <div id="trendTable">
-          <p>Loading data...</p>
-        </div>
-      </section>
+let supabase = null;
+let supabaseAvailable = false;
+let selectedCategory = 'all';
 
-      <section class="trend-cards">
-        <div class="card blue-glow">
-          <div class="card-title">AI-generated images</div>
-          <div class="card-mentions">23.4K Mentions</div>
-          <div class="card-footer">
-            <span class="platform">TikTok</span>
-            <span class="score">84</span>
-          </div>
-        </div>
+// Initialize Supabase
+try {
+  if (typeof window.supabase !== 'undefined') {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    supabaseAvailable = true;
+    console.log('Supabase client initialized');
+  } else {
+    console.log('Supabase library not available, using fallback data');
+  }
+} catch (error) {
+  console.log('Failed to initialize Supabase, using fallback data:', error);
+}
 
-        <div class="card purple-glow">
-          <div class="card-title">ChatGPT</div>
-          <div class="card-mentions">18.7K Mentions</div>
-          <div class="card-footer">
-            <span class="platform">Reddit</span>
-            <span class="score">79</span>
-          </div>
-        </div>
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('DOM loaded, initializing components...');
 
-        <div class="card pink-glow">
-          <div class="card-title">Elden Ring</div>
-          <div class="card-mentions">15.2K Mentions</div>
-          <div class="card-footer">
-            <span class="platform">YouTube</span>
-            <span class="score">69</span>
-          </div>
-        </div>
+  const filterContainer = document.createElement('div');
+  filterContainer.style.marginBottom = '16px';
+  filterContainer.innerHTML = `
+    <label style="color:#f1f1f1;margin-right:8px;">Filter by trend:</label>
+    <select id="trendFilter" style="padding:6px 12px;border-radius:8px;background:#1a1a2e;color:#f1f1f1;border:1px solid #2e2e45;">
+      <option value="all">All</option>
+      <option value="aiTools">AI Tools</option>
+      <option value="chatgpt">ChatGPT</option>
+      <option value="ml">Machine Learning</option>
+      <option value="blockchain">Blockchain</option>
+      <option value="metaverse">Metaverse</option>
+      <option value="nft">NFT</option>
+      <option value="crypto">Crypto</option>
+    </select>
+  `;
 
-        <div class="card orange-glow">
-          <div class="card-title">Pineapple on pizza</div>
-          <div class="card-mentions">12.9K Mentions</div>
-          <div class="card-footer">
-            <span class="platform">TikTok</span>
-            <span class="score">53</span>
-          </div>
-        </div>
-      </section>
-    </div>
+  const chartSection = document.querySelector('.chart-section');
+  if (chartSection) chartSection.insertBefore(filterContainer, chartSection.children[1]);
 
-    <script src="script.js"></script>
-  </body>
-</html>
+  document.getElementById('trendFilter').addEventListener('change', e => {
+    selectedCategory = e.target.value;
+    createNativeChart();
+  });
+
+  await createNativeChart();
+  await createTrendTable();
+});
