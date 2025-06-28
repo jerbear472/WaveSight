@@ -32,11 +32,11 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install"
+args = "echo \"Starting WAVESIGHT Dashboard...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node youtubeToSupabase.js"
+args = "static-web-server -w ./.config/static-web-server.toml"
 
 [[ports]]
 localPort = 80
