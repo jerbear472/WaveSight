@@ -8,7 +8,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 async function fetchTrendData() {
   try {
     const { data, error } = await supabase
-      .from('trends')
+      .from('trend_reach')
       .select('*')
       .order('id', { ascending: true });
     
