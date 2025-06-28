@@ -698,6 +698,7 @@ function processSupabaseDataForChart(supabaseData) {
     }
 
     // Add to date map
+    if (!// Add to date map
     if (!dateMap.get(date)[category]) {
       dateMap.get(date)[category] = 0;
     }
