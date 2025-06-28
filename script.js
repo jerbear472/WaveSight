@@ -32,63 +32,31 @@ function initSupabase() {
   }
 }
 
-// YouTube API functions
+// YouTube API functions - now using server-side endpoints
 async function fetchYouTubeData(query = 'trending', maxResults = 50) {
-  if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-    console.log('❌ YouTube API key not configured');
-    return null;
-  }
-
-  console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
+  console.log(`🔍 Fetching YouTube data via server API for query: "${query}" (max ${maxResults} results)`);
 
   try {
-    // First, get search results
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&order=relevance&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
+    const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(query)}&maxResults=${maxResults}`);
     
-    console.log('📡 Making YouTube Search API request...');
-    const searchResponse = await fetch(searchUrl);
-    if (!searchResponse.ok) {
-      throw new Error(`YouTube Search API error: ${searchResponse.status}`);
+    if (!response.ok) {
+      throw new Error(`Server API error: ${response.status}`);
     }
     
-    const searchData = await searchResponse.json();
+    const result = await response.json();
     
-    if (!searchData.items || searchData.items.length === 0) {
-      console.log('⚠️ No YouTube videos found for query');
+    if (!result.success) {
+      console.log('⚠️ Server returned no YouTube data:', result.message);
       return null;
     }
 
-    console.log(`📋 Found ${searchData.items.length} videos, fetching detailed statistics...`);
-
-    // Get video IDs for detailed stats
-    const videoIds = searchData.items.map(item => item.id.videoId).join(',');
+    console.log(`✅ Successfully fetched ${result.count} YouTube videos via server`);
+    console.log('📝 Sample video data:', result.data[0]);
     
-    // Fetch detailed video statistics
-    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-    
-    const statsResponse = await fetch(statsUrl);
-    const statsData = statsResponse.ok ? await statsResponse.json() : { items: [] };
-    
-    // Merge search data with statistics
-    const enrichedData = searchData.items.map(item => {
-      const stats = statsData.items?.find(stat => stat.id === item.id.videoId);
-      return {
-        ...item,
-        statistics: stats?.statistics || {}
-      };
-    });
-    
-    console.log(`✅ Successfully fetched ${enrichedData.length} YouTube videos with statistics`);
-    console.log('📝 Sample video data:', {
-      title: enrichedData[0]?.snippet?.title,
-      channel: enrichedData[0]?.snippet?.channelTitle,
-      views: enrichedData[0]?.statistics?.viewCount
-    });
-    
-    return enrichedData;
+    return result.data;
     
   } catch (error) {
-    console.error('❌ Error fetching YouTube data:', error);
+    console.error('❌ Error fetching YouTube data via server:', error);
     return null;
   }
 }
@@ -136,56 +104,31 @@ async function processYouTubeDataForSupabase(youtubeData) {
   });
 }
 
-async function saveYouTubeDataToSupabase(processedData) {
-  if (!supabase || !processedData || processedData.length === 0) {
-    console.log('❌ Cannot save to Supabase: no connection or data');
-    return false;
-  }
-
-  console.log(`🔄 Attempting to save ${processedData.length} YouTube videos to Supabase...`);
-  
-  try {
-    const { data, error } = await supabase
-      .from('youtube_trends')
-      .insert(processedData);
-
-    if (error) {
-      console.error('❌ Error saving YouTube data to Supabase:', error);
-      console.log('📝 Sample data being inserted:', processedData[0]);
-      return false;
-    }
-
-    console.log('✅ YouTube data saved to Supabase successfully!');
-    console.log(`📊 Saved ${processedData.length} videos to youtube_trends table`);
-    console.log('📝 Sample saved data:', processedData[0]);
-    return true;
-  } catch (error) {
-    console.error('❌ Error in saveYouTubeDataToSupabase:', error);
-    return false;
-  }
-}
+// Note: Data saving is now handled by the server-side API
+// The fetchYouTubeData function automatically saves to Supabase
 
 async function fetchYouTubeDataFromSupabase() {
-  if (!supabase) {
-    console.log('Supabase not initialized');
-    return null;
-  }
-
   try {
-    const { data, error } = await supabase
-      .from('youtube_trends')
-      .select('*')
-      .order('published_at', { ascending: false })
-      .limit(50);
-
-    if (error) {
-      console.error('Error fetching YouTube data from Supabase:', error);
+    console.log('📥 Fetching YouTube data from Supabase via server API...');
+    
+    const response = await fetch('/api/youtube-data');
+    
+    if (!response.ok) {
+      throw new Error(`Server API error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      console.log('⚠️ No data returned from server:', result.message);
       return null;
     }
 
-    return data;
+    console.log(`✅ Retrieved ${result.count} records from Supabase via server`);
+    return result.data;
+    
   } catch (error) {
-    console.error('Error in fetchYouTubeDataFromSupabase:', error);
+    console.error('❌ Error fetching from Supabase via server:', error);
     return null;
   }
 }
