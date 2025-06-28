@@ -1,57 +1,44 @@
 
-// Initialize Supabase client
+// Initialize Supabase client with error handling
 const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Function to test Supabase connection
-async function testSupabaseConnection() {
-  try {
-    console.log('Testing Supabase connection...');
-    const { data, error } = await supabase
-      .from('trend_reach')
-      .select('*')
-      .limit(1);
-    
-    if (error) {
-      console.error('Supabase connection error:', error);
-      return false;
-    }
-    
-    console.log('Supabase connection successful!', data);
-    return true;
-  } catch (err) {
-    console.error('Connection test failed:', err);
-    return false;
+let supabase = null;
+try {
+  if (window.supabase && window.supabase.createClient) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('Supabase client initialized successfully');
+  } else {
+    console.log('Supabase library not loaded, using fallback data');
   }
+} catch (error) {
+  console.log('Error initializing Supabase client:', error);
+  console.log('Using fallback data');
 }
 
-// Function to fetch data from Supabase
+// Function to fetch data from Supabase with fallback
 async function fetchTrendData() {
+  if (!supabase) {
+    console.log('Supabase not available, using fallback data');
+    return null;
+  }
+
   try {
     console.log('Fetching data from trend_reach table...');
-    
-    // First test the connection
-    const connectionOk = await testSupabaseConnection();
-    if (!connectionOk) {
-      console.log('Connection failed, using mock data');
-      return null;
-    }
-    
     const { data, error } = await supabase
       .from('trend_reach')
       .select('*')
       .order('id', { ascending: true });
     
     if (error) {
-      console.error('Error fetching data:', error);
+      console.log('Supabase error, using fallback data:', error.message);
       return null;
     }
     
-    console.log('Fetched data:', data);
+    console.log('Successfully fetched data:', data);
     return data;
   } catch (err) {
-    console.error('Error:', err);
+    console.log('Connection error, using fallback data:', err.message);
     return null;
   }
 }
@@ -207,50 +194,28 @@ const TrendChart = () => {
   );
 };
 
-// Function to update cards with Supabase data - keeping static cards for now
+// Function to update cards - using static data for now
 async function updateCards() {
-  try {
-    // Test if we can connect to trend_reach table
-    const { data, error } = await supabase
-      .from('trend_reach')
-      .select('*')
-      .limit(4);
-    
-    if (error) {
-      console.log('Could not fetch card data from Supabase:', error.message);
-      console.log('Using static card data');
-      return;
-    }
-    
-    if (data && data.length > 0) {
-      console.log('Successfully connected to trend_reach table, found', data.length, 'records');
-    } else {
-      console.log('trend_reach table is empty, using static card data');
-    }
-  } catch (err) {
-    console.log('Error testing card data connection:', err);
-    console.log('Using static card data');
-  }
+  console.log('Using static card data');
 }
 
 // Function to create and populate table with Supabase data
 async function createTrendTable() {
+  if (!supabase) {
+    console.log('Supabase not available, showing mock table');
+    showMockTable();
+    return;
+  }
+
   try {
     console.log('Creating trend table...');
     const { data, error } = await supabase
       .from('trend_reach')
       .select('*')
-      .limit(50); // Limit to 50 rows to avoid overwhelming the display
+      .limit(50);
     
-    if (error) {
-      console.error('Error fetching table data:', error);
-      // Show mock data if there's an error
-      showMockTable();
-      return;
-    }
-    
-    if (!data || data.length === 0) {
-      console.log('No data in trend_reach table, showing mock data');
+    if (error || !data || data.length === 0) {
+      console.log('No data available, showing mock table');
       showMockTable();
       return;
     }
@@ -303,7 +268,7 @@ async function createTrendTable() {
     
     document.getElementById('trendTable').innerHTML = tableHTML;
   } catch (err) {
-    console.error('Error creating table:', err);
+    console.log('Error creating table:', err);
     showMockTable();
   }
 }
