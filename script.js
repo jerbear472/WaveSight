@@ -66,10 +66,20 @@ async function testSupabaseConnection() {
 const fallbackData = {
   chartData: [
     { date: 'Jan 1', 'AI Tools': 1200000, 'ChatGPT': 950000, 'Blockchain': 800000 },
-    { date: 'Jan 2', 'AI Tools': 1350000, 'ChatGPT': 1100000, 'Blockchain': 920000 },
-    { date: 'Jan 3', 'AI Tools': 1800000, 'ChatGPT': 1400000, 'Blockchain': 1100000 },
-    { date: 'Jan 4', 'AI Tools': 2100000, 'ChatGPT': 1650000, 'Blockchain': 1300000 },
-    { date: 'Jan 5', 'AI Tools': 2500000, 'ChatGPT': 1900000, 'Blockchain': 1500000 }
+    { date: 'Jan 3', 'AI Tools': 1350000, 'ChatGPT': 1100000, 'Blockchain': 920000 },
+    { date: 'Jan 5', 'AI Tools': 1800000, 'ChatGPT': 1400000, 'Blockchain': 1100000 },
+    { date: 'Jan 7', 'AI Tools': 2100000, 'ChatGPT': 1650000, 'Blockchain': 1300000 },
+    { date: 'Jan 9', 'AI Tools': 2500000, 'ChatGPT': 1900000, 'Blockchain': 1500000 },
+    { date: 'Jan 11', 'AI Tools': 2800000, 'ChatGPT': 2200000, 'Blockchain': 1700000 },
+    { date: 'Jan 13', 'AI Tools': 3200000, 'ChatGPT': 2500000, 'Blockchain': 1900000 },
+    { date: 'Jan 15', 'AI Tools': 3600000, 'ChatGPT': 2800000, 'Blockchain': 2100000 },
+    { date: 'Jan 17', 'AI Tools': 4000000, 'ChatGPT': 3100000, 'Blockchain': 2300000 },
+    { date: 'Jan 19', 'AI Tools': 4400000, 'ChatGPT': 3400000, 'Blockchain': 2500000 },
+    { date: 'Jan 21', 'AI Tools': 4800000, 'ChatGPT': 3700000, 'Blockchain': 2700000 },
+    { date: 'Jan 23', 'AI Tools': 5200000, 'ChatGPT': 4000000, 'Blockchain': 2900000 },
+    { date: 'Jan 25', 'AI Tools': 5600000, 'ChatGPT': 4300000, 'Blockchain': 3100000 },
+    { date: 'Jan 27', 'AI Tools': 6000000, 'ChatGPT': 4600000, 'Blockchain': 3300000 },
+    { date: 'Jan 29', 'AI Tools': 6400000, 'ChatGPT': 4900000, 'Blockchain': 3500000 }
   ],
   tableData: [
     { trend_name: 'AI Art Generation', platform: 'TikTok', reach_count: 2500000 },
@@ -283,7 +293,7 @@ function processDataForChart(rawData) {
     timeGroups[timeKey][trendName] = reach;
   });
 
-  return Object.values(timeGroups).slice(0, 7); // Limit to 7 time points
+  return Object.values(timeGroups).slice(0, 15); // Show up to 15 time points for larger range
 }
 
 // Create trend table
