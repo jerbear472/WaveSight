@@ -63,75 +63,77 @@ async function createNativeChart() {
   // Try to fetch data from Supabase
   if (supabase) {
     try {
-      console.log('Attempting to fetch data from Supabase...');
+      console.log('Attempting to fetch data from trend_reach table...');
       
       const { data: trendData, error } = await supabase
         .from('trend_reach')
-        .select('*')
-        .order('id', { ascending: true });
+        .select('trend_name, reach_count, platform, created_at')
+        .order('created_at', { ascending: true });
 
       if (!error && trendData && trendData.length > 0) {
         console.log('Successfully fetched data from Supabase:', trendData);
         
-        // Group data by day and create chart data points
+        // Group data by timestamp/date and trend names
         const groupedData = {};
         
-        trendData.forEach((item, index) => {
-          const dayKey = Math.floor(index / 7) + 1; // Group by weeks as days
+        trendData.forEach((item) => {
+          // Use created_at timestamp or create a date key
+          const timestamp = item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Unknown Date';
+          const trendName = item.trend_name || 'Unknown';
+          const reachCount = item.reach_count || 0;
           
-          if (!groupedData[dayKey]) {
-            groupedData[dayKey] = {
-              date: `Day ${dayKey}`,
-              aiTools: 0,
-              chatgpt: 0,
-              ml: 0,
-              blockchain: 0,
-              metaverse: 0,
-              nft: 0,
-              crypto: 0
+          if (!groupedData[timestamp]) {
+            groupedData[timestamp] = {
+              date: timestamp,
             };
           }
           
-          // Map trend_name to chart categories
-          const trendName = (item.trend_name || '').toLowerCase();
-          const reachCount = item.reach_count || Math.floor(Math.random() * 1000) + 500;
-          
-          if (trendName.includes('ai') || trendName.includes('artificial intelligence')) {
-            groupedData[dayKey].aiTools += reachCount;
-          } else if (trendName.includes('chatgpt') || trendName.includes('gpt')) {
-            groupedData[dayKey].chatgpt += reachCount;
-          } else if (trendName.includes('machine learning') || trendName.includes('ml')) {
-            groupedData[dayKey].ml += reachCount;
-          } else if (trendName.includes('blockchain')) {
-            groupedData[dayKey].blockchain += reachCount;
-          } else if (trendName.includes('metaverse')) {
-            groupedData[dayKey].metaverse += reachCount;
-          } else if (trendName.includes('nft')) {
-            groupedData[dayKey].nft += reachCount;
-          } else if (trendName.includes('crypto') || trendName.includes('bitcoin') || trendName.includes('ethereum')) {
-            groupedData[dayKey].crypto += reachCount;
-          } else {
-            groupedData[dayKey].aiTools += reachCount;
-          }
+          // Add each trend as a separate line in the chart
+          groupedData[timestamp][trendName] = (groupedData[timestamp][trendName] || 0) + reachCount;
         });
         
         data = Object.values(groupedData);
         console.log('Transformed chart data:', data);
+        
+        // Get all unique trend names for chart lines
+        const allTrendNames = [...new Set(trendData.map(item => item.trend_name))];
+        console.log('Unique trend names:', allTrendNames);
+        
+        // Store trend names for chart rendering
+        window.chartTrendNames = allTrendNames;
       } else {
         console.log('No data returned from Supabase, using fallback data');
         data = fallbackChartData;
+        window.chartTrendNames = ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
       }
     } catch (error) {
       console.log('Supabase query failed, using fallback data:', error);
       data = fallbackChartData;
+      window.chartTrendNames = ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
     }
   } else {
     console.log('Using fallback chart data');
     data = fallbackChartData;
+    window.chartTrendNames = ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
   }
 
   // Create React component for the chart
   const ChartComponent = () => {
+    const trendNames = window.chartTrendNames || ['aiTools', 'chatgpt', 'ml', 'blockchain', 'metaverse', 'nft', 'crypto'];
+    const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#22d3ee', '#a855f7', '#06b6d4'];
+    
+    const chartLines = trendNames.map((trendName, index) => {
+      return React.createElement(Recharts.Line, {
+        key: trendName,
+        type: 'monotone',
+        dataKey: trendName,
+        stroke: colors[index % colors.length],
+        strokeWidth: 3,
+        name: trendName,
+        dot: false
+      });
+    });
+
     return React.createElement(
       Recharts.ResponsiveContainer,
       { width: '100%', height: 320 },
@@ -161,55 +163,7 @@ async function createNativeChart() {
         React.createElement(Recharts.Legend, {
           wrapperStyle: { color: '#f1f1f1' }
         }),
-        React.createElement(Recharts.Line, {
-          type: 'monotone',
-          dataKey: 'aiTools',
-          stroke: '#5ee3ff',
-          strokeWidth: 3,
-          name: 'AI Tools'
-        }),
-        React.createElement(Recharts.Line, {
-          type: 'monotone',
-          dataKey: 'chatgpt',
-          stroke: '#8b5cf6',
-          strokeWidth: 3,
-          name: 'ChatGPT'
-        }),
-        React.createElement(Recharts.Line, {
-          type: 'monotone',
-          dataKey: 'ml',
-          stroke: '#ec4899',
-          strokeWidth: 3,
-          name: 'Machine Learning'
-        }),
-        React.createElement(Recharts.Line, {
-          type: 'monotone',
-          dataKey: 'blockchain',
-          stroke: '#f97316',
-          strokeWidth: 3,
-          name: 'Blockchain'
-        }),
-        React.createElement(Recharts.Line, {
-          type: 'monotone',
-          dataKey: 'metaverse',
-          stroke: '#10b981',
-          strokeWidth: 3,
-          name: 'Metaverse'
-        }),
-        React.createElement(Recharts.Line, {
-          type: 'monotone',
-          dataKey: 'nft',
-          stroke: '#f59e0b',
-          strokeWidth: 3,
-          name: 'NFT'
-        }),
-        React.createElement(Recharts.Line, {
-          type: 'monotone',
-          dataKey: 'crypto',
-          stroke: '#ef4444',
-          strokeWidth: 3,
-          name: 'Crypto'
-        })
+        ...chartLines
       )
     );
   };
@@ -229,11 +183,11 @@ async function createTrendTable() {
   // Try to fetch data from Supabase
   if (supabase) {
     try {
-      console.log('Attempting to fetch table data from Supabase...');
+      console.log('Fetching table data from trend_reach...');
       
       const { data: trendData, error } = await supabase
         .from('trend_reach')
-        .select('*')
+        .select('trend_name, reach_count, platform, created_at')
         .order('reach_count', { ascending: false })
         .limit(10);
 
