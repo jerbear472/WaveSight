@@ -4,6 +4,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 let supabase = null;
 let chartRoot = null;
+let currentData = null;
+let selectedTrends = 'all';
 
 // Initialize Supabase
 function initSupabase() {
@@ -90,7 +92,7 @@ const fallbackData = {
 };
 
 // Create chart with Canvas API
-function createChart(data) {
+function createChart(data, filteredTrends = 'all') {
   const chartContainer = document.getElementById('trendChart');
   if (!chartContainer) return;
 
@@ -124,12 +126,21 @@ function createChart(data) {
   const chartHeight = canvas.height - padding * 2;
 
   // Get all trend names
-  const trendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
-  const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981'];
+  let allTrendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
+  
+  // Filter trends based on selection
+  let trendNames;
+  if (filteredTrends === 'all') {
+    trendNames = allTrendNames;
+  } else {
+    trendNames = allTrendNames.filter(name => name.toLowerCase().includes(filteredTrends.toLowerCase()));
+  }
 
-  // Find max value for scaling
+  const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444'];
+
+  // Find max value for scaling (only from visible trends)
   const maxValue = Math.max(...data.flatMap(d => 
-    Object.values(d).filter(v => typeof v === 'number')
+    trendNames.map(trend => d[trend] || 0).filter(v => typeof v === 'number')
   ));
 
   // Draw grid lines
@@ -320,11 +331,54 @@ function createTrendTable(data) {
   tableBody.innerHTML = tableHTML;
 }
 
+// Filter chart function
+function filterChart() {
+  const filterSelect = document.getElementById('trendFilter');
+  selectedTrends = filterSelect.value;
+  
+  if (currentData) {
+    createChart(currentData.chartData, selectedTrends);
+  }
+}
+
+// Update trend filter dropdown
+function updateTrendFilter(data) {
+  const filterSelect = document.getElementById('trendFilter');
+  if (!filterSelect || !data) return;
+
+  // Get all unique trend names
+  const allTrends = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
+  
+  // Clear existing options except "All Trends"
+  filterSelect.innerHTML = '<option value="all">All Trends</option>';
+  
+  // Add individual trend options
+  allTrends.forEach(trend => {
+    const option = document.createElement('option');
+    option.value = trend;
+    option.textContent = trend;
+    filterSelect.appendChild(option);
+  });
+}
+
 // Search function
 function searchTrends() {
   const searchInput = document.getElementById('searchInput');
   const searchTerm = searchInput.value.toLowerCase();
-  console.log('Searching for:', searchTerm);
+  
+  if (searchTerm.trim() === '') {
+    selectedTrends = 'all';
+  } else {
+    selectedTrends = searchTerm;
+  }
+  
+  // Update dropdown to reflect search
+  const filterSelect = document.getElementById('trendFilter');
+  filterSelect.value = selectedTrends === 'all' ? 'all' : 'all';
+  
+  if (currentData) {
+    createChart(currentData.chartData, selectedTrends);
+  }
 }
 
 // Main initialization
@@ -338,9 +392,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Fetch and display data
   try {
     const data = await fetchData();
+    currentData = data; // Store data globally
+
+    // Update filter dropdown
+    updateTrendFilter(data.chartData);
 
     // Create chart
-    createChart(data.chartData);
+    createChart(data.chartData, selectedTrends);
 
     // Create table
     createTrendTable(data.tableData);
@@ -356,7 +414,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       console.log('Refreshing data...');
       const data = await fetchData();
-      createChart(data.chartData);
+      currentData = data;
+      updateTrendFilter(data.chartData);
+      createChart(data.chartData, selectedTrends);
       createTrendTable(data.tableData);
     } catch (error) {
       console.error('Error during refresh:', error);

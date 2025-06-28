@@ -27,6 +27,9 @@
         <div class="header">
             <h1 style="color: #5ee3ff; font-size: 2rem; margin: 0;">Social Media Trend Analytics</h1>
             <div class="submit-bar">
+                <select id="trendFilter" onchange="filterChart()">
+                    <option value="all">All Trends</option>
+                </select>
                 <input type="text" placeholder="Search trends..." id="searchInput">
                 <button class="submit-btn" onclick="searchTrends()">Search</button>
             </div>

@@ -27,7 +27,7 @@ body {
   color: #5ee3ff;
 }
 
-.submit-bar input {
+.submit-bar input, .submit-bar select {
   background: #1a1a2e;
   color: #cfcfcf;
   border: 1px solid #2e2e45;
@@ -36,6 +36,15 @@ body {
   margin-right: 8px;
   margin-bottom: 8px;
   width: 140px;
+}
+
+.submit-bar select {
+  cursor: pointer;
+}
+
+.submit-bar select:focus {
+  outline: none;
+  border-color: #5ee3ff;
 }
 
 .submit-btn {
