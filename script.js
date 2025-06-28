@@ -136,11 +136,13 @@ async function createNativeChart() {
   if (data.length === 0) {
     console.log('Using fallback chart data');
     data = [
-      { date: 'Jan 1', aiTools: 1200, chatgpt: 900, ml: 800 },
-      { date: 'Jan 2', aiTools: 1500, chatgpt: 1100, ml: 950 },
-      { date: 'Jan 3', aiTools: 1800, chatgpt: 1300, ml: 1100 },
-      { date: 'Jan 4', aiTools: 2100, chatgpt: 1600, ml: 1250 },
-      { date: 'Jan 5', aiTools: 1900, chatgpt: 1400, ml: 1150 }
+      { date: 'Jan 1', aiTools: 800, chatgpt: 600, ml: 400 },
+      { date: 'Jan 2', aiTools: 1200, chatgpt: 900, ml: 700 },
+      { date: 'Jan 3', aiTools: 1800, chatgpt: 1400, ml: 1200 },
+      { date: 'Jan 4', aiTools: 2400, chatgpt: 2000, ml: 1800 },
+      { date: 'Jan 5', aiTools: 2800, chatgpt: 2300, ml: 2100 },
+      { date: 'Jan 6', aiTools: 3200, chatgpt: 2700, ml: 2400 },
+      { date: 'Jan 7', aiTools: 3600, chatgpt: 3100, ml: 2800 }
     ];
   }
 
@@ -188,15 +190,15 @@ async function createNativeChart() {
             <line x1="0" y1="200" x2="400" y2="200" stroke="#2e2e45" stroke-width="1"/>
             
             <!-- AI Tools line -->
-            <path d="${createSmoothPath(data.map((d, i) => ({ x: i * 100 + 50, y: 250 - (d.aiTools / maxValue) * 200 })))}" 
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.aiTools / maxValue) * 210 })))}" 
                   fill="none" stroke="#5ee3ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- ChatGPT line -->
-            <path d="${createSmoothPath(data.map((d, i) => ({ x: i * 100 + 50, y: 250 - (d.chatgpt / maxValue) * 200 })))}" 
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.chatgpt / maxValue) * 210 })))}" 
                   fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- ML line -->
-            <path d="${createSmoothPath(data.map((d, i) => ({ x: i * 100 + 50, y: 250 - (d.ml / maxValue) * 200 })))}" 
+            <path d="${createSmoothPath(data.map((d, i) => ({ x: (i * (380 / (data.length - 1))) + 20, y: 230 - (d.ml / maxValue) * 210 })))}" 
                   fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             
