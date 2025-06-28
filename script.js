@@ -1,6 +1,6 @@
 // Supabase and YouTube API configuration
-const SUPABASE_URL = https://artdirswzxxskcdvstse.supabase.co; // Replace with your actual Supabase URL
-const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo; // Replace with your actual Supabase anon key
+const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
 const YOUTUBE_API_KEY = 'AIzaSyArP42EedqSSuYhKBA5fsPQPSdGyWxFtc4';
 
 let supabase = null;
@@ -16,14 +16,15 @@ function initSupabase() {
   if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
     try {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('Supabase initialized successfully');
+      console.log('✅ Supabase initialized successfully');
+      console.log('🔗 Connected to:', SUPABASE_URL);
       return true;
     } catch (error) {
-      console.error('Failed to initialize Supabase:', error);
+      console.error('❌ Failed to initialize Supabase:', error);
       return false;
     }
   } else {
-    console.log('Supabase credentials not configured - using fallback data');
+    console.log('❌ Supabase credentials not configured - using fallback data');
     supabase = null;
     return false;
   }
@@ -32,14 +33,17 @@ function initSupabase() {
 // YouTube API functions
 async function fetchYouTubeData(query = 'trending', maxResults = 50) {
   if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-    console.log('YouTube API key not configured');
+    console.log('❌ YouTube API key not configured');
     return null;
   }
+
+  console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
 
   try {
     // First, get search results
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&order=relevance&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
     
+    console.log('📡 Making YouTube Search API request...');
     const searchResponse = await fetch(searchUrl);
     if (!searchResponse.ok) {
       throw new Error(`YouTube Search API error: ${searchResponse.status}`);
@@ -48,9 +52,11 @@ async function fetchYouTubeData(query = 'trending', maxResults = 50) {
     const searchData = await searchResponse.json();
     
     if (!searchData.items || searchData.items.length === 0) {
-      console.log('No YouTube videos found');
+      console.log('⚠️ No YouTube videos found for query');
       return null;
     }
+
+    console.log(`📋 Found ${searchData.items.length} videos, fetching detailed statistics...`);
 
     // Get video IDs for detailed stats
     const videoIds = searchData.items.map(item => item.id.videoId).join(',');
@@ -70,11 +76,17 @@ async function fetchYouTubeData(query = 'trending', maxResults = 50) {
       };
     });
     
-    console.log(`Fetched ${enrichedData.length} YouTube videos with stats`);
+    console.log(`✅ Successfully fetched ${enrichedData.length} YouTube videos with statistics`);
+    console.log('📝 Sample video data:', {
+      title: enrichedData[0]?.snippet?.title,
+      channel: enrichedData[0]?.snippet?.channelTitle,
+      views: enrichedData[0]?.statistics?.viewCount
+    });
+    
     return enrichedData;
     
   } catch (error) {
-    console.error('Error fetching YouTube data:', error);
+    console.error('❌ Error fetching YouTube data:', error);
     return null;
   }
 }
@@ -124,24 +136,29 @@ async function processYouTubeDataForSupabase(youtubeData) {
 
 async function saveYouTubeDataToSupabase(processedData) {
   if (!supabase || !processedData || processedData.length === 0) {
-    console.log('Cannot save to Supabase: no connection or data');
+    console.log('❌ Cannot save to Supabase: no connection or data');
     return false;
   }
 
+  console.log(`🔄 Attempting to save ${processedData.length} YouTube videos to Supabase...`);
+  
   try {
     const { data, error } = await supabase
       .from('youtube_trends')
       .insert(processedData);
 
     if (error) {
-      console.error('Error saving YouTube data to Supabase:', error);
+      console.error('❌ Error saving YouTube data to Supabase:', error);
+      console.log('📝 Sample data being inserted:', processedData[0]);
       return false;
     }
 
-    console.log('YouTube data saved to Supabase successfully:', data);
+    console.log('✅ YouTube data saved to Supabase successfully!');
+    console.log(`📊 Saved ${processedData.length} videos to youtube_trends table`);
+    console.log('📝 Sample saved data:', processedData[0]);
     return true;
   } catch (error) {
-    console.error('Error in saveYouTubeDataToSupabase:', error);
+    console.error('❌ Error in saveYouTubeDataToSupabase:', error);
     return false;
   }
 }
@@ -551,22 +568,34 @@ function createChart(data, filteredTrends = 'all') {
 
 // Fetch data with YouTube integration
 async function fetchData() {
-  console.log('Fetching data with YouTube integration...');
+  console.log('🚀 Fetching data with YouTube integration...');
   
   // Try to fetch YouTube data and save to Supabase
   if (supabase && YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'YOUR_YOUTUBE_API_KEY') {
+    console.log('📊 Both Supabase and YouTube API are configured, proceeding...');
+    
     try {
       // Fetch fresh YouTube data
+      console.log('🎥 Fetching fresh YouTube trending data...');
       const youtubeData = await fetchYouTubeData('trending tech AI blockchain', 20);
+      
       if (youtubeData) {
+        console.log('🔄 Processing YouTube data for Supabase...');
         const processedData = await processYouTubeDataForSupabase(youtubeData);
-        await saveYouTubeDataToSupabase(processedData);
+        const saveSuccess = await saveYouTubeDataToSupabase(processedData);
+        
+        if (saveSuccess) {
+          console.log('💾 Data saved successfully to Supabase!');
+        }
       }
 
       // Fetch data from Supabase
+      console.log('📥 Fetching data from Supabase youtube_trends table...');
       const supabaseData = await fetchYouTubeDataFromSupabase();
+      
       if (supabaseData && supabaseData.length > 0) {
-        console.log('Using YouTube data from Supabase:', supabaseData.length, 'items');
+        console.log(`✅ Using ${supabaseData.length} YouTube records from Supabase`);
+        console.log('📝 Sample record:', supabaseData[0]);
         
         // Convert Supabase data to chart format
         const chartData = processSupabaseDataForChart(supabaseData);
@@ -575,10 +604,17 @@ async function fetchData() {
           chartData: chartData,
           tableData: supabaseData.slice(0, 10) // Show top 10 in table
         };
+      } else {
+        console.log('⚠️ No data found in Supabase youtube_trends table');
       }
     } catch (error) {
-      console.error('Error with YouTube/Supabase integration:', error);
+      console.error('❌ Error with YouTube/Supabase integration:', error);
     }
+  } else {
+    console.log('⚠️ Missing configuration:', {
+      supabase: !!supabase,
+      youtubeKey: !!(YOUTUBE_API_KEY && YOUTUBE_API_KEY !== 'YOUR_YOUTUBE_API_KEY')
+    });
   }
   
   console.log('Using enhanced fallback data...');
