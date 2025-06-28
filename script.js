@@ -7,6 +7,7 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Function to fetch data from Supabase
 async function fetchTrendData() {
   try {
+    console.log('Fetching data from trend_reach table...');
     const { data, error } = await supabase
       .from('trend_reach')
       .select('*')
@@ -17,6 +18,7 @@ async function fetchTrendData() {
       return null;
     }
     
+    console.log('Fetched data:', data);
     return data;
   } catch (err) {
     console.error('Error:', err);
@@ -41,19 +43,27 @@ const TrendChart = () => {
     const trendData = await fetchTrendData();
     
     if (trendData && trendData.length > 0) {
+      console.log('Processing trend data:', trendData);
+      
       // Group data by keyword and get top 20
       const keywordGroups = {};
       trendData.forEach(item => {
-        const keyword = item.keyword || 'Unknown';
+        // Handle different possible column names
+        const keyword = item.keyword || item.trend || item.name || `Trend ${item.id}`;
         if (!keywordGroups[keyword]) {
           keywordGroups[keyword] = [];
         }
         keywordGroups[keyword].push(item);
       });
 
+      console.log('Keyword groups:', keywordGroups);
+
       // Calculate average value for each keyword to determine top 20
       const keywordAverages = Object.keys(keywordGroups).map(keyword => {
-        const values = keywordGroups[keyword].map(item => item.value || 0);
+        const values = keywordGroups[keyword].map(item => {
+          // Handle different possible value column names
+          return item.value || item.reach || item.score || item.mentions || 0;
+        });
         const average = values.reduce((sum, val) => sum + val, 0) / values.length;
         return { keyword, average };
       });
@@ -65,21 +75,34 @@ const TrendChart = () => {
         .map(item => item.keyword);
 
       setKeywords(top20Keywords);
+      console.log('Top 20 keywords:', top20Keywords);
 
-      // Create chart data points
-      const allIds = [...new Set(trendData.map(item => item.id))].sort((a, b) => a - b);
-      
-      const processedData = allIds.map(id => {
-        const dataPoint = { name: `Point ${id}`, id };
+      // Create chart data points - group by time/date if available
+      const timeGroups = {};
+      trendData.forEach(item => {
+        // Use id, date, or timestamp as time identifier
+        const timeKey = item.date || item.timestamp || item.created_at || `Point ${item.id}`;
+        if (!timeGroups[timeKey]) {
+          timeGroups[timeKey] = {};
+        }
+        
+        const keyword = item.keyword || item.trend || item.name || `Trend ${item.id}`;
+        const value = item.value || item.reach || item.score || item.mentions || 0;
+        timeGroups[timeKey][keyword] = value;
+      });
+
+      // Convert to chart format
+      const processedData = Object.keys(timeGroups).map(timeKey => {
+        const dataPoint = { name: timeKey };
         
         top20Keywords.forEach(keyword => {
-          const item = trendData.find(d => d.id === id && d.keyword === keyword);
-          dataPoint[keyword] = item ? (item.value || 0) : 0;
+          dataPoint[keyword] = timeGroups[timeKey][keyword] || 0;
         });
         
         return dataPoint;
       });
       
+      console.log('Processed chart data:', processedData);
       setData(processedData);
     } else {
       // Fallback static data
@@ -163,6 +186,7 @@ async function updateCards() {
 // Function to create and populate table with Supabase data
 async function createTrendTable() {
   try {
+    console.log('Creating trend table...');
     const { data, error } = await supabase
       .from('trend_reach')
       .select('*')
@@ -170,35 +194,44 @@ async function createTrendTable() {
     
     if (error) {
       console.error('Error fetching table data:', error);
-      document.getElementById('trendTable').innerHTML = '<p>Error loading data</p>';
+      document.getElementById('trendTable').innerHTML = `<p>Error loading data: ${error.message}</p>`;
       return;
     }
     
     if (!data || data.length === 0) {
-      document.getElementById('trendTable').innerHTML = '<p>No data available</p>';
+      document.getElementById('trendTable').innerHTML = '<p>No data available in trend_reach table</p>';
       return;
     }
+    
+    console.log('Table data:', data);
+    
+    // Get all column names from the first row
+    const columns = Object.keys(data[0]);
     
     let tableHTML = `
       <table class="trend-table">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Keyword</th>
-            <th>Value</th>
+    `;
+    
+    // Create headers for all columns
+    columns.forEach(col => {
+      tableHTML += `<th>${col.charAt(0).toUpperCase() + col.slice(1)}</th>`;
+    });
+    
+    tableHTML += `
           </tr>
         </thead>
         <tbody>
     `;
     
+    // Create rows with all column data
     data.forEach(item => {
-      tableHTML += `
-        <tr>
-          <td>${item.id}</td>
-          <td>${item.keyword || 'N/A'}</td>
-          <td>${item.value || 'N/A'}</td>
-        </tr>
-      `;
+      tableHTML += '<tr>';
+      columns.forEach(col => {
+        tableHTML += `<td>${item[col] || 'N/A'}</td>`;
+      });
+      tableHTML += '</tr>';
     });
     
     tableHTML += `
@@ -209,7 +242,7 @@ async function createTrendTable() {
     document.getElementById('trendTable').innerHTML = tableHTML;
   } catch (err) {
     console.error('Error creating table:', err);
-    document.getElementById('trendTable').innerHTML = '<p>Error loading data</p>';
+    document.getElementById('trendTable').innerHTML = `<p>Error loading data: ${err.message}</p>`;
   }
 }
 
