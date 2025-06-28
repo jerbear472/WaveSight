@@ -167,10 +167,10 @@ async function createNativeChart() {
       
       <div class="chart-container">
         <div class="y-axis">
-          <div class="y-label">${Math.round(maxValue)}K</div>
-          <div class="y-label">${Math.round(maxValue * 0.75)}K</div>
-          <div class="y-label">${Math.round(maxValue * 0.5)}K</div>
-          <div class="y-label">${Math.round(maxValue * 0.25)}K</div>
+          <div class="y-label">${maxValue >= 1000000 ? (maxValue / 1000000).toFixed(1) + 'M' : Math.round(maxValue / 1000) + 'K'}</div>
+          <div class="y-label">${(maxValue * 0.75) >= 1000000 ? ((maxValue * 0.75) / 1000000).toFixed(1) + 'M' : Math.round((maxValue * 0.75) / 1000) + 'K'}</div>
+          <div class="y-label">${(maxValue * 0.5) >= 1000000 ? ((maxValue * 0.5) / 1000000).toFixed(1) + 'M' : Math.round((maxValue * 0.5) / 1000) + 'K'}</div>
+          <div class="y-label">${(maxValue * 0.25) >= 1000000 ? ((maxValue * 0.25) / 1000000).toFixed(1) + 'M' : Math.round((maxValue * 0.25) / 1000) + 'K'}</div>
           <div class="y-label">0</div>
         </div>
         
