@@ -18,18 +18,29 @@ function createSmoothPath(points) {
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
     const current = points[i];
+    const next = points[i + 1];
     
-    // Calculate control points for smooth curves
-    const tension = 0.3;
-    const dx = current.x - prev.x;
-    const dy = current.y - prev.y;
-    
-    const cp1x = prev.x + dx * tension;
-    const cp1y = prev.y + dy * tension;
-    const cp2x = current.x - dx * tension;
-    const cp2y = current.y - dy * tension;
-    
-    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${current.x} ${current.y}`;
+    if (i === 1) {
+      // First curve - use current and next point for smoother start
+      const cp1x = prev.x + (current.x - prev.x) * 0.5;
+      const cp1y = prev.y;
+      const cp2x = current.x - (current.x - prev.x) * 0.2;
+      const cp2y = current.y;
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${current.x} ${current.y}`;
+    } else {
+      // Calculate smooth control points using previous, current, and next points
+      const tension = 0.4;
+      const prevPoint = points[i - 2] || prev;
+      const nextPoint = next || current;
+      
+      // Calculate control point distances
+      const cp1x = prev.x + (current.x - prevPoint.x) * tension;
+      const cp1y = prev.y + (current.y - prevPoint.y) * tension;
+      const cp2x = current.x - (nextPoint.x - prev.x) * tension;
+      const cp2y = current.y - (nextPoint.y - prev.y) * tension;
+      
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${current.x} ${current.y}`;
+    }
   }
   
   return path;
@@ -103,12 +114,7 @@ function createNativeChart() {
             <path d="${createSmoothPath(data.map((d, i) => ({ x: i * 100 + 50, y: 250 - (d.ml / maxValue) * 200 })))}" 
                   fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
-            <!-- Data points -->
-            ${data.map((d, i) => `
-              <circle cx="${i * 100 + 50}" cy="${250 - (d.aiTools / maxValue) * 200}" r="4" fill="#5ee3ff"/>
-              <circle cx="${i * 100 + 50}" cy="${250 - (d.chatgpt / maxValue) * 200}" r="4" fill="#8b5cf6"/>
-              <circle cx="${i * 100 + 50}" cy="${250 - (d.ml / maxValue) * 200}" r="4" fill="#ec4899"/>
-            `).join('')}
+            
           </svg>
           
           <div class="x-axis">
