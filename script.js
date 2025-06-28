@@ -96,11 +96,16 @@ function createChart(data, filteredTrends = 'all') {
   // Clear existing content
   chartContainer.innerHTML = '';
 
-  // Create canvas element
+  // Create canvas element with high DPI support
   const canvas = document.createElement('canvas');
   const containerWidth = chartContainer.clientWidth || 800;
-  canvas.width = containerWidth;
-  canvas.height = 300;
+  const dpr = window.devicePixelRatio || 1;
+  
+  // Set actual canvas size (accounting for device pixel ratio)
+  canvas.width = containerWidth * dpr;
+  canvas.height = 300 * dpr;
+  
+  // Set display size (CSS pixels)
   canvas.style.width = '100%';
   canvas.style.height = '300px';
   canvas.style.background = '#13131f';
@@ -110,6 +115,13 @@ function createChart(data, filteredTrends = 'all') {
   
   const ctx = canvas.getContext('2d');
   
+  // Scale context to account for device pixel ratio
+  ctx.scale(dpr, dpr);
+  
+  // Enable anti-aliasing for smooth text
+  ctx.textRenderingOptimization = 'optimizeQuality';
+  ctx.imageSmoothingEnabled = true;
+  
   if (!data || data.length === 0) {
     ctx.fillStyle = '#f1f1f1';
     ctx.font = '16px Inter';
@@ -118,10 +130,12 @@ function createChart(data, filteredTrends = 'all') {
     return;
   }
 
-  // Chart dimensions
+  // Chart dimensions (use display size, not canvas size)
   const padding = 60;
-  const chartWidth = canvas.width - padding * 2;
-  const chartHeight = canvas.height - padding * 2;
+  const displayWidth = containerWidth;
+  const displayHeight = 300;
+  const chartWidth = displayWidth - padding * 2;
+  const chartHeight = displayHeight - padding * 2;
 
   // Get all trend names
   let allTrendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
@@ -156,7 +170,7 @@ function createChart(data, filteredTrends = 'all') {
 
   // Draw y-axis labels
   ctx.fillStyle = '#9ca3af';
-  ctx.font = '11px Inter';
+  ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'right';
   
   for (let i = 0; i <= 4; i++) {
@@ -167,11 +181,11 @@ function createChart(data, filteredTrends = 'all') {
 
   // Draw x-axis labels
   ctx.fillStyle = '#9ca3af';
-  ctx.font = '10px Inter';
+  ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
   ctx.textAlign = 'center';
   data.forEach((item, index) => {
     const x = padding + (chartWidth * index) / (data.length - 1);
-    ctx.fillText(item.date, x, canvas.height - 15);
+    ctx.fillText(item.date, x, displayHeight - 15);
   });
 
   // Draw trend lines
@@ -206,7 +220,7 @@ function createChart(data, filteredTrends = 'all') {
     ctx.fillStyle = color;
     ctx.fillRect(20, legendY, 8, 8);
     ctx.fillStyle = '#f1f1f1';
-    ctx.font = '11px Inter';
+    ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(trendName, 32, legendY + 7);
   });
