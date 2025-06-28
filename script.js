@@ -100,28 +100,28 @@ function createChart(data, filteredTrends = 'all') {
   const canvas = document.createElement('canvas');
   const containerWidth = chartContainer.clientWidth || 800;
   const dpr = window.devicePixelRatio || 1;
-  
+
   // Set actual canvas size (accounting for device pixel ratio)
   canvas.width = containerWidth * dpr;
   canvas.height = 300 * dpr;
-  
+
   // Set display size (CSS pixels)
   canvas.style.width = '100%';
   canvas.style.height = '300px';
   canvas.style.background = '#13131f';
   canvas.style.borderRadius = '12px';
-  
+
   chartContainer.appendChild(canvas);
-  
+
   const ctx = canvas.getContext('2d');
-  
+
   // Scale context to account for device pixel ratio
   ctx.scale(dpr, dpr);
-  
+
   // Enable anti-aliasing for smooth text
   ctx.textRenderingOptimization = 'optimizeQuality';
   ctx.imageSmoothingEnabled = true;
-  
+
   if (!data || data.length === 0) {
     ctx.fillStyle = '#f1f1f1';
     ctx.font = '16px Inter';
@@ -140,7 +140,7 @@ function createChart(data, filteredTrends = 'all') {
 
   // Get all trend names
   let allTrendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
-  
+
   // Filter trends based on selection
   let trendNames;
   if (filteredTrends === 'all') {
@@ -182,7 +182,7 @@ function createChart(data, filteredTrends = 'all') {
     // Draw grid lines
     ctx.strokeStyle = '#2e2e45';
     ctx.lineWidth = 1;
-    
+
     // Horizontal grid lines
     for (let i = 0; i <= 4; i++) {
       const y = padding + legendHeight + (chartHeight * i) / 4;
@@ -196,7 +196,7 @@ function createChart(data, filteredTrends = 'all') {
     ctx.fillStyle = '#9ca3af';
     ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'right';
-    
+
     for (let i = 0; i <= 4; i++) {
       const value = maxValue * (4 - i) / 4;
       const y = padding + legendHeight + (chartHeight * i) / 4;
@@ -205,7 +205,7 @@ function createChart(data, filteredTrends = 'all') {
 
     // Draw x-axis labels
     ctx.fillStyle = '#9ca3af';
-    ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.font = 'bold 11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
     data.forEach((item, index) => {
       const x = padding + (chartWidth * index) / (data.length - 1);
@@ -213,23 +213,23 @@ function createChart(data, filteredTrends = 'all') {
     });
 
     // Draw horizontal legend at the top
-    ctx.font = 'bold 11px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.font = 'bold 11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'left';
-    
+
     let legendX = padding;
     const legendY = 20;
-    
+
     trendNames.forEach((trendName, trendIndex) => {
       const color = colors[trendIndex % colors.length];
-      
+
       // Draw legend box
       ctx.fillStyle = color;
       ctx.fillRect(legendX, legendY, 8, 8);
-      
+
       // Draw legend text
       ctx.fillStyle = '#f1f1f1';
       ctx.fillText(trendName, legendX + 12, legendY + 7);
-      
+
       // Calculate text width and move to next position
       const textWidth = ctx.measureText(trendName).width;
       legendX += textWidth + 25; // 12 for box + text + 25 for spacing
@@ -244,56 +244,56 @@ function createChart(data, filteredTrends = 'all') {
     // Draw trend lines with animation
     finalPositions.forEach((positions, trendIndex) => {
       if (positions.length === 0) return;
-      
+
       const color = colors[trendIndex % colors.length];
       const baseY = padding + legendHeight + chartHeight; // Bottom of chart
-      
+
       // Create gradient for the fill
       const gradient = ctx.createLinearGradient(0, padding + legendHeight, 0, baseY);
       gradient.addColorStop(0, color + '40'); // 25% opacity at top
       gradient.addColorStop(1, color + '08'); // 3% opacity at bottom
-      
+
       // Draw filled area first
       ctx.fillStyle = gradient;
       ctx.beginPath();
-      
+
       // Start from bottom left
       if (positions.length > 0) {
         const firstAnimatedY = baseY + (positions[0].y - baseY) * easeOutCubic(animationProgress);
         ctx.moveTo(positions[0].x, baseY);
         ctx.lineTo(positions[0].x, firstAnimatedY);
-        
+
         // Draw the smooth curve path for fill using cubic Bézier curves
         positions.forEach((finalPos, pointIndex) => {
           const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
-          
+
           if (pointIndex === 0) {
             // Already moved to first point above
           } else {
             const prevPos = positions[pointIndex - 1];
             const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
-            
+
             // Calculate control points for smooth cubic Bézier curve
             const tension = 0.4; // Adjust this value to control curve smoothness (0.1 to 0.5)
             const deltaX = finalPos.x - prevPos.x;
-            
+
             const cp1x = prevPos.x + deltaX * tension;
             const cp1y = prevAnimatedY;
             const cp2x = finalPos.x - deltaX * tension;
             const cp2y = animatedY;
-            
+
             // Use cubic Bézier curve for smooth fill
             ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, finalPos.x, animatedY);
           }
         });
-        
+
         // Close the path back to bottom
         const lastPos = positions[positions.length - 1];
         ctx.lineTo(lastPos.x, baseY);
         ctx.closePath();
         ctx.fill();
       }
-      
+
       // Draw the line on top
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
@@ -301,31 +301,31 @@ function createChart(data, filteredTrends = 'all') {
       ctx.lineJoin = 'round';
 
       ctx.beginPath();
-      
+
       // Create smooth curves using cubic Bézier curves
       positions.forEach((finalPos, pointIndex) => {
         const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
-        
+
         if (pointIndex === 0) {
           ctx.moveTo(finalPos.x, animatedY);
         } else {
           const prevPos = positions[pointIndex - 1];
           const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
-          
+
           // Calculate control points for smooth cubic Bézier curve
           const tension = 0.4; // Adjust this value to control curve smoothness
           const deltaX = finalPos.x - prevPos.x;
-          
+
           const cp1x = prevPos.x + deltaX * tension;
           const cp1y = prevAnimatedY;
           const cp2x = finalPos.x - deltaX * tension;
           const cp2y = animatedY;
-          
+
           // Use cubic Bézier curve for smooth transitions
           ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, finalPos.x, animatedY);
         }
       });
-      
+
       ctx.stroke();
     });
   }
@@ -370,7 +370,7 @@ async function fetchData() {
 
     // Try common table names that might contain trend data
     const possibleTables = ['trends', 'trend_reach', 'table_range', 'social_trends', 'trend_data'];
-    
+
     for (const tableName of possibleTables) {
       try {
         console.log(`Trying table: ${tableName}`);
@@ -424,7 +424,7 @@ async function fetchData() {
 
     // Process the data for chart and table
     const processedChartData = processDataForChart(allData);
-    
+
     return {
       chartData: processedChartData,
       tableData: allData,
@@ -446,7 +446,7 @@ function processDataForChart(rawData) {
   // Analyze the data structure to identify key columns
   const sample = rawData[0];
   const columns = Object.keys(sample);
-  
+
   console.log('Available columns:', columns);
 
   // Try to identify trend name column
@@ -470,17 +470,17 @@ function processDataForChart(rawData) {
   // Create individual data points for each trend and date combination
   const trendMap = new Map();
   const dates = ['1/1', '1/15', '2/1', '2/15', '3/1', '3/15', '4/1', '4/15', '5/1', '5/15', '6/1', '6/15'];
-  
+
   // Group raw data by trend name to track individual trends over time
   rawData.forEach((item, index) => {
     const trendName = item[trendNameColumn] || `Trend ${index + 1}`;
     const reach = typeof item[reachColumn] === 'number' ? item[reachColumn] : 
                   parseInt(item[reachColumn]) || Math.floor(Math.random() * 1000000) + 500000;
-    
+
     if (!trendMap.has(trendName)) {
       trendMap.set(trendName, []);
     }
-    
+
     // Assign a date for this data point
     let timeKey;
     if (dateColumn && item[dateColumn]) {
@@ -491,7 +491,7 @@ function processDataForChart(rawData) {
       const trendData = trendMap.get(trendName);
       timeKey = dates[trendData.length % dates.length] || dates[0];
     }
-    
+
     trendMap.get(trendName).push({
       date: timeKey,
       reach: reach
@@ -501,23 +501,23 @@ function processDataForChart(rawData) {
   // Convert to chart format - each date gets its own data point with actual values
   const chartData = [];
   const usedDates = new Set();
-  
+
   // Collect all dates that have data
   trendMap.forEach((dataPoints) => {
     dataPoints.forEach(point => usedDates.add(point.date));
   });
-  
+
   // Sort dates chronologically
   const sortedDates = Array.from(usedDates).sort((a, b) => {
     const [aMonth, aDay] = a.split('/').map(Number);
     const [bMonth, bDay] = b.split('/').map(Number);
     return (aMonth * 100 + aDay) - (bMonth * 100 + bDay);
   });
-  
+
   // Create chart data structure
   sortedDates.slice(0, 12).forEach(date => {
     const dataPoint = { date };
-    
+
     trendMap.forEach((dataPoints, trendName) => {
       // Find the actual reach for this trend on this specific date
       const pointForDate = dataPoints.find(point => point.date === date);
@@ -528,7 +528,7 @@ function processDataForChart(rawData) {
         dataPoint[trendName] = 0;
       }
     });
-    
+
     chartData.push(dataPoint);
   });
 
@@ -544,7 +544,7 @@ function createTrendTable(data) {
   // Analyze data structure
   const sample = data[0];
   const columns = Object.keys(sample);
-  
+
   // Try to identify key columns
   const trendNameColumn = columns.find(col => 
     col.includes('trend') || col.includes('name') || col.includes('title')
@@ -585,7 +585,7 @@ function createTrendTable(data) {
 function filterChart() {
   const filterSelect = document.getElementById('trendFilter');
   selectedTrends = filterSelect.value;
-  
+
   if (currentData) {
     createChart(currentData.chartData, selectedTrends);
   }
@@ -605,12 +605,12 @@ function updateTrendFilter(chartData) {
       }
     });
   });
-  
+
   console.log('Available trends for filter:', allTrends);
-  
+
   // Clear existing options except "All Trends"
   filterSelect.innerHTML = '<option value="all">All Trends</option>';
-  
+
   // Add individual trend options
   allTrends.forEach(trend => {
     const option = document.createElement('option');
@@ -624,17 +624,17 @@ function updateTrendFilter(chartData) {
 function searchTrends() {
   const searchInput = document.getElementById('searchInput');
   const searchTerm = searchInput.value.toLowerCase();
-  
+
   if (searchTerm.trim() === '') {
     selectedTrends = 'all';
   } else {
     selectedTrends = searchTerm;
   }
-  
+
   // Update dropdown to reflect search
   const filterSelect = document.getElementById('trendFilter');
   filterSelect.value = selectedTrends === 'all' ? 'all' : 'all';
-  
+
   if (currentData) {
     createChart(currentData.chartData, selectedTrends);
   }
