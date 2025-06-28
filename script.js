@@ -1,7 +1,8 @@
 
 // Initialize Supabase client
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://your-project-ref.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your-actual-anon-key';
+// Replace these with your actual Supabase credentials
+const SUPABASE_URL = 'https://your-project-ref.supabase.co';
+const SUPABASE_ANON_KEY = 'your-actual-anon-key';
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Function to fetch data from Supabase
@@ -200,8 +201,64 @@ async function initChart() {
   });
 }
 
+// Function to create and populate table with Supabase data
+async function createTrendTable() {
+  try {
+    const { data, error } = await supabase
+      .from('trends')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching table data:', error);
+      document.getElementById('trendTable').innerHTML = '<p>Error loading data</p>';
+      return;
+    }
+    
+    if (!data || data.length === 0) {
+      document.getElementById('trendTable').innerHTML = '<p>No data available</p>';
+      return;
+    }
+    
+    let tableHTML = `
+      <table class="trend-table">
+        <thead>
+          <tr>
+            <th>Keyword</th>
+            <th>Date</th>
+            <th>Value</th>
+            <th>Created At</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    data.forEach(item => {
+      tableHTML += `
+        <tr>
+          <td>${item.keyword}</td>
+          <td>${item.date}</td>
+          <td>${item.value}</td>
+          <td>${new Date(item.created_at).toLocaleDateString()}</td>
+        </tr>
+      `;
+    });
+    
+    tableHTML += `
+        </tbody>
+      </table>
+    `;
+    
+    document.getElementById('trendTable').innerHTML = tableHTML;
+  } catch (err) {
+    console.error('Error creating table:', err);
+    document.getElementById('trendTable').innerHTML = '<p>Error loading data</p>';
+  }
+}
+
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', async () => {
   await initChart();
   await updateCards();
+  await createTrendTable();
 });
