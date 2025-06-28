@@ -11,7 +11,7 @@ async function fetchTrendData() {
     const { data, error } = await supabase
       .from('trends')
       .select('*')
-      .order('created_at', { ascending: true });
+      .order('date', { ascending: true });
     
     if (error) {
       console.error('Error fetching data:', error);
@@ -25,41 +25,10 @@ async function fetchTrendData() {
   }
 }
 
-// Function to update cards with Supabase data
+// Function to update cards with Supabase data - keeping static cards for now
 async function updateCards() {
-  try {
-    const { data, error } = await supabase
-      .from('trend_cards')
-      .select('*')
-      .order('score', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching cards data:', error);
-      return;
-    }
-    
-    const cardsContainer = document.querySelector('.trend-cards');
-    cardsContainer.innerHTML = '';
-    
-    data.forEach((item, index) => {
-      const glowClasses = ['blue-glow', 'purple-glow', 'pink-glow', 'orange-glow'];
-      const glowClass = glowClasses[index % glowClasses.length];
-      
-      const cardHTML = `
-        <div class="card ${glowClass}">
-          <div class="card-title">${item.title}</div>
-          <div class="card-mentions">${item.mentions} Mentions</div>
-          <div class="card-footer">
-            <span class="platform">${item.platform}</span>
-            <span class="score">${item.score}</span>
-          </div>
-        </div>
-      `;
-      cardsContainer.innerHTML += cardHTML;
-    });
-  } catch (err) {
-    console.error('Error updating cards:', err);
-  }
+  // Keep existing static cards since trend_cards table doesn't exist
+  console.log('Using static card data');
 }
 
 // Initialize chart with Supabase data
@@ -207,7 +176,7 @@ async function createTrendTable() {
     const { data, error } = await supabase
       .from('trends')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('date', { ascending: false });
     
     if (error) {
       console.error('Error fetching table data:', error);
@@ -224,10 +193,10 @@ async function createTrendTable() {
       <table class="trend-table">
         <thead>
           <tr>
+            <th>ID</th>
             <th>Keyword</th>
             <th>Date</th>
             <th>Value</th>
-            <th>Created At</th>
           </tr>
         </thead>
         <tbody>
@@ -236,10 +205,10 @@ async function createTrendTable() {
     data.forEach(item => {
       tableHTML += `
         <tr>
-          <td>${item.keyword}</td>
-          <td>${item.date}</td>
-          <td>${item.value}</td>
-          <td>${new Date(item.created_at).toLocaleDateString()}</td>
+          <td>${item.id}</td>
+          <td>${item.keyword || 'N/A'}</td>
+          <td>${item.date || 'N/A'}</td>
+          <td>${item.value || 'N/A'}</td>
         </tr>
       `;
     });

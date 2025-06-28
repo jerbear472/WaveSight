@@ -186,25 +186,49 @@ canvas {
   width: 100%;
   border-collapse: collapse;
   margin-top: 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 0 12px rgba(100, 100, 255, 0.1);
 }
 
 .trend-table th,
 .trend-table td {
-  padding: 12px;
+  padding: 16px 20px;
   text-align: left;
   border-bottom: 1px solid #2e2e45;
 }
 
 .trend-table th {
-  background: #13131f;
-  color: #f4f4f5;
+  background: linear-gradient(135deg, #1a1a2e, #13131f);
+  color: #5ee3ff;
   font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 
 .trend-table td {
   color: #e5e7eb;
+  font-size: 0.9rem;
+  background: #1a1a2e;
 }
 
-.trend-table tr:hover {
+.trend-table tr:hover td {
   background: #13131f;
+  color: #f4f4f5;
+}
+
+.trend-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Add some visual enhancements */
+.trend-table td:first-child {
+  color: #8b5cf6;
+  font-weight: 600;
+}
+
+.trend-table td:last-child {
+  color: #5ee3ff;
+  font-weight: 600;
 }
