@@ -1,6 +1,6 @@
 // Supabase and YouTube API configuration
-const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // Replace with your actual Supabase URL
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY'; // Replace with your actual Supabase anon key
+const SUPABASE_URL = https://artdirswzxxskcdvstse.supabase.co; // Replace with your actual Supabase URL
+const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo; // Replace with your actual Supabase anon key
 const YOUTUBE_API_KEY = 'AIzaSyArP42EedqSSuYhKBA5fsPQPSdGyWxFtc4';
 
 let supabase = null;
