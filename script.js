@@ -156,7 +156,7 @@ async function updateCards() {
 async function createTrendTable() {
   try {
     const { data, error } = await supabase
-      .from('trends')
+      .from('trend_reach')
       .select('*')
       .order('id', { ascending: false });
     
@@ -177,7 +177,6 @@ async function createTrendTable() {
           <tr>
             <th>ID</th>
             <th>Keyword</th>
-            <th>Date</th>
             <th>Value</th>
           </tr>
         </thead>
@@ -189,7 +188,6 @@ async function createTrendTable() {
         <tr>
           <td>${item.id}</td>
           <td>${item.keyword || 'N/A'}</td>
-          <td>${item.date || 'N/A'}</td>
           <td>${item.value || 'N/A'}</td>
         </tr>
       `;
