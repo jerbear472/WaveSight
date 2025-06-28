@@ -264,10 +264,10 @@ function createChart(data, filteredTrends = 'all') {
         ctx.stroke();
       }
       
-      // Draw month label closer to x-axis
+      // Draw month label much closer to x-axis
       const monthIndex = parseInt(range.month);
       const monthName = monthNames[monthIndex] || range.month;
-      ctx.fillText(monthName, centerX, displayHeight - 5);
+      ctx.fillText(monthName, centerX, padding + legendHeight + chartHeight + 20);
     });
 
     // Draw horizontal legend at the top
