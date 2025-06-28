@@ -67,15 +67,15 @@ function createNativeChart() {
             
             <!-- AI Tools line -->
             <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.aiTools / maxValue) * 200}`).join(' ')}" 
-                      fill="none" stroke="#5ee3ff" stroke-width="3"/>
+                      fill="none" stroke="#5ee3ff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- ChatGPT line -->
             <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.chatgpt / maxValue) * 200}`).join(' ')}" 
-                      fill="none" stroke="#8b5cf6" stroke-width="3"/>
+                      fill="none" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- ML line -->
             <polyline points="${data.map((d, i) => `${i * 100 + 50},${250 - (d.ml / maxValue) * 200}`).join(' ')}" 
-                      fill="none" stroke="#ec4899" stroke-width="3"/>
+                      fill="none" stroke="#ec4899" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
             
             <!-- Data points -->
             ${data.map((d, i) => `
