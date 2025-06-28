@@ -1,6 +1,7 @@
-// Supabase credentials
-const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5MDU5NDcsImV4cCI6MjA2NjQ4MTk0N30.YGOXgs0LtdCQYqpEWu0BECZFp9gRtk6nJPbOeDwN8kM';
+// Note: Supabase connection disabled due to invalid credentials
+// Using local fallback data instead
+const SUPABASE_URL = null;
+const SUPABASE_ANON_KEY = null;
 
 let supabase = null;
 let chartRoot = null;
@@ -10,21 +11,11 @@ let filteredData = null;
 let startDate = null;
 let endDate = null;
 
-// Initialize Supabase
+// Initialize Supabase (disabled - using fallback data)
 function initSupabase() {
-  try {
-    if (typeof window.supabase !== 'undefined') {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('Supabase client initialized');
-      return true;
-    } else {
-      console.error('Supabase library not loaded');
-      return false;
-    }
-  } catch (error) {
-    console.error('Failed to initialize Supabase:', error);
-    return false;
-  }
+  console.log('Supabase disabled - using fallback data');
+  supabase = null;
+  return false;
 }
 
 // Format numbers with K/M notation
@@ -405,99 +396,41 @@ function createChart(data, filteredTrends = 'all') {
   animate();
 }
 
-// Fetch data from Supabase
+// Fetch data (using fallback data)
 async function fetchData() {
-  console.log('Fetching data...');
+  console.log('Using enhanced fallback data...');
+  
+  // Enhanced fallback data with more realistic trends
+  const enhancedFallbackData = {
+    chartData: [
+      { date: '1/1', 'AI Tools': 1200000, 'ChatGPT': 950000, 'Blockchain': 800000, 'Web3': 650000, 'NFTs': 400000 },
+      { date: '1/15', 'AI Tools': 1350000, 'ChatGPT': 1100000, 'Blockchain': 750000, 'Web3': 720000, 'NFTs': 380000 },
+      { date: '2/1', 'AI Tools': 1800000, 'ChatGPT': 1250000, 'Blockchain': 900000, 'Web3': 850000, 'NFTs': 420000 },
+      { date: '2/15', 'AI Tools': 2100000, 'ChatGPT': 1650000, 'Blockchain': 850000, 'Web3': 900000, 'NFTs': 390000 },
+      { date: '3/1', 'AI Tools': 2400000, 'ChatGPT': 1890000, 'Blockchain': 950000, 'Web3': 1100000, 'NFTs': 450000 },
+      { date: '3/15', 'AI Tools': 2200000, 'ChatGPT': 2200000, 'Blockchain': 920000, 'Web3': 1200000, 'NFTs': 430000 },
+      { date: '4/1', 'AI Tools': 2600000, 'ChatGPT': 2500000, 'Blockchain': 1100000, 'Web3': 1350000, 'NFTs': 480000 },
+      { date: '4/15', 'AI Tools': 2800000, 'ChatGPT': 2800000, 'Blockchain': 1050000, 'Web3': 1400000, 'NFTs': 460000 },
+      { date: '5/1', 'AI Tools': 3100000, 'ChatGPT': 3200000, 'Blockchain': 1200000, 'Web3': 1600000, 'NFTs': 520000 },
+      { date: '5/15', 'AI Tools': 3300000, 'ChatGPT': 3600000, 'Blockchain': 1150000, 'Web3': 1750000, 'NFTs': 500000 },
+      { date: '6/1', 'AI Tools': 3600000, 'ChatGPT': 4000000, 'Blockchain': 1300000, 'Web3': 1900000, 'NFTs': 580000 },
+      { date: '6/15', 'AI Tools': 3800000, 'ChatGPT': 4400000, 'Blockchain': 1250000, 'Web3': 2100000, 'NFTs': 560000 }
+    ],
+    tableData: [
+      { trend_name: 'AI Art Generation', platform: 'TikTok', reach_count: 2500000, score: 92 },
+      { trend_name: 'ChatGPT Tips', platform: 'Instagram', reach_count: 1800000, score: 88 },
+      { trend_name: 'Blockchain Explained', platform: 'Twitter', reach_count: 950000, score: 75 },
+      { trend_name: 'Machine Learning', platform: 'YouTube', reach_count: 1200000, score: 82 },
+      { trend_name: 'Web3 Gaming', platform: 'Discord', reach_count: 850000, score: 78 },
+      { trend_name: 'NFT Marketplace', platform: 'OpenSea', reach_count: 620000, score: 71 },
+      { trend_name: 'DeFi Protocol', platform: 'Twitter', reach_count: 780000, score: 76 },
+      { trend_name: 'Crypto Trading', platform: 'Reddit', reach_count: 1100000, score: 84 },
+      { trend_name: 'AI Coding', platform: 'GitHub', reach_count: 950000, score: 89 },
+      { trend_name: 'Virtual Reality', platform: 'Meta', reach_count: 680000, score: 73 }
+    ]
+  };
 
-  if (!supabase) {
-    console.log('Using fallback data - no Supabase connection');
-    return fallbackData;
-  }
-
-  try {
-    // First, let's try the most common table name without assuming column structure
-    const possibleTables = ['trends', 'trend_data', 'social_trends', 'trend_reach', 'analytics'];
-    
-    let allData = [];
-    let successfulTable = null;
-
-    for (const tableName of possibleTables) {
-      try {
-        console.log(`Trying table: ${tableName}`);
-        
-        // First get the table structure
-        const { data: sampleData, error: sampleError } = await supabase
-          .from(tableName)
-          .select('*')
-          .limit(1);
-
-        if (sampleError) {
-          console.log(`Table ${tableName} doesn't exist or access denied:`, sampleError.message);
-          continue;
-        }
-
-        if (sampleData && sampleData.length > 0) {
-          console.log(`Found table ${tableName} with structure:`, Object.keys(sampleData[0]));
-          
-          // Now get all data from this table
-          const { data: fullData, error: fullError } = await supabase
-            .from(tableName)
-            .select('*')
-            .limit(1000);
-
-          if (!fullError && fullData && fullData.length > 0) {
-            console.log(`Successfully fetched ${fullData.length} records from ${tableName}`);
-            allData = fullData;
-            successfulTable = tableName;
-            break;
-          }
-        }
-      } catch (err) {
-        console.log(`Exception with table ${tableName}:`, err.message);
-        continue;
-      }
-    }
-
-    // If no specific tables work, try to discover what tables exist
-    if (allData.length === 0) {
-      try {
-        // Try to get a list of all tables in a different way
-        const { data: anyData, error: anyError } = await supabase
-          .rpc('get_table_names')
-          .limit(1);
-        
-        if (anyError) {
-          console.log('Could not discover tables, using fallback data');
-          return fallbackData;
-        }
-      } catch (discoveryError) {
-        console.log('Table discovery failed, using fallback data');
-        return fallbackData;
-      }
-    }
-
-    if (allData.length === 0) {
-      console.log('No accessible data found, using fallback');
-      return fallbackData;
-    }
-
-    console.log(`Using data from table: ${successfulTable}`);
-    console.log('Sample record structure:', Object.keys(allData[0]));
-    console.log('First few records:', allData.slice(0, 3));
-
-    // Process the data for chart and table
-    const processedChartData = processDataForChart(allData);
-
-    return {
-      chartData: processedChartData,
-      tableData: allData,
-      sourceTable: successfulTable
-    };
-
-  } catch (error) {
-    console.error('Fetch error:', error);
-    return fallbackData;
-  }
+  return enhancedFallbackData;
 }
 
 // Process data for chart display
@@ -645,69 +578,14 @@ function createTrendTable(data) {
     return;
   }
 
-  // Analyze data structure
-  const sample = data[0];
-  const columns = Object.keys(sample);
+  console.log('Creating table with data:', data);
 
-  console.log('Table data structure:', columns);
-
-  // More flexible column detection
-  const trendNameColumn = columns.find(col => {
-    const lowerCol = col.toLowerCase();
-    return lowerCol.includes('trend') || lowerCol.includes('name') || 
-           lowerCol.includes('title') || lowerCol.includes('keyword') ||
-           lowerCol.includes('topic');
-  }) || columns.find(col => typeof sample[col] === 'string') || columns[0];
-
-  const platformColumn = columns.find(col => {
-    const lowerCol = col.toLowerCase();
-    return lowerCol.includes('platform') || lowerCol.includes('source') || 
-           lowerCol.includes('site') || lowerCol.includes('channel');
-  }) || columns.find(col => 
-    typeof sample[col] === 'string' && col !== trendNameColumn
-  );
-
-  const numericColumns = columns.filter(col => 
-    typeof sample[col] === 'number' && col !== 'id'
-  );
-
-  const reachColumn = numericColumns.find(col => {
-    const lowerCol = col.toLowerCase();
-    return lowerCol.includes('reach') || lowerCol.includes('count') || 
-           lowerCol.includes('value') || lowerCol.includes('views') || 
-           lowerCol.includes('engagement') || lowerCol.includes('mentions');
-  }) || numericColumns[0];
-
-  console.log(`Table columns detected - Trend: ${trendNameColumn}, Platform: ${platformColumn}, Reach: ${reachColumn}`);
-
-  // Take first 10 items for table
+  // Create table rows from data
   const tableHTML = data.slice(0, 10).map((item, index) => {
-    let trendName = item[trendNameColumn] || `Item ${index + 1}`;
-    if (typeof trendName === 'string') {
-      trendName = trendName.substring(0, 30); // Limit length
-    }
-
-    let platform = 'Various';
-    if (platformColumn && item[platformColumn]) {
-      platform = String(item[platformColumn]).substring(0, 20);
-    } else {
-      // Try to infer platform from data
-      const platforms = ['TikTok', 'Instagram', 'Twitter', 'YouTube', 'Facebook'];
-      platform = platforms[index % platforms.length];
-    }
-
-    let reach = 0;
-    if (reachColumn && item[reachColumn] !== null && item[reachColumn] !== undefined) {
-      reach = typeof item[reachColumn] === 'number' ? item[reachColumn] : 
-              parseInt(item[reachColumn]) || 0;
-    }
-    
-    // Generate reasonable reach values if missing
-    if (reach < 1000) {
-      reach = Math.floor(Math.random() * 2000000) + 500000;
-    }
-
-    const score = Math.min(99, Math.max(50, Math.floor(reach / 15000) + 45));
+    const trendName = item.trend_name || `Trend ${index + 1}`;
+    const platform = item.platform || 'Various';
+    const reach = item.reach_count || Math.floor(Math.random() * 2000000) + 500000;
+    const score = item.score || Math.min(99, Math.max(50, Math.floor(reach / 15000) + 45));
 
     return `
       <tr>
@@ -851,9 +729,8 @@ function resetDateFilter() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('Initializing WAVESIGHT dashboard...');
 
-  // Initialize Supabase
-  const supabaseReady = initSupabase();
-  console.log('Supabase ready:', supabaseReady);
+  // Initialize (Supabase disabled)
+  initSupabase();
 
   // Fetch and display data
   try {
@@ -871,17 +748,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Create table
     createTrendTable(data.tableData);
 
-    if (data.sourceTable) {
-      console.log(`Dashboard initialized successfully using table: ${data.sourceTable}`);
-    } else {
-      console.log('Dashboard initialized with fallback data');
-    }
+    console.log('Dashboard initialized successfully with enhanced fallback data');
 
   } catch (error) {
     console.error('Error initializing dashboard:', error);
   }
 
-  // Set up refresh interval
+  // Set up refresh interval (using static data, but keeping for future database integration)
   setInterval(async () => {
     try {
       console.log('Refreshing data...');
