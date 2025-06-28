@@ -7,6 +7,22 @@ body {
   color: #f1f1f1;
 }
 
+/* Global header font family */
+h1, h2, h3, .logo, .header-title {
+  font-family: 'Satoshi', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+}
+
+/* Optional: Logo class specifically */
+.logo {
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
