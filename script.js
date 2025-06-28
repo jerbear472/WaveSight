@@ -207,33 +207,23 @@ function createChart(data, filteredTrends = 'all') {
       ctx.fillText(formatNumber(value), padding - 10, y + 4);
     }
 
-    // Draw dual x-axis labels (days with 7-day intervals above, months below)
+    // Draw x-axis labels (months only)
     ctx.fillStyle = '#9ca3af';
-    ctx.font = 'bold 10px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
     
-    // Track months for major axis
+    // Track months for axis
     let currentMonth = '';
     let monthRanges = [];
     let monthStart = 0;
     
-    // Draw day labels every 7 days and collect month data
+    // Collect month data
     data.forEach((item, index) => {
-      const x = padding + (chartWidth * index) / (data.length - 1);
-      
-      // Parse date to get month and day
+      // Parse date to get month
       const dateParts = item.date.split('/');
       const month = dateParts[0];
-      const day = parseInt(dateParts[1]);
       
-      // Draw day labels only every 7 days (7, 14, 21, 28) or first/last of dataset
-      if (index === 0 || index === data.length - 1 || day % 7 === 0) {
-        ctx.fillStyle = '#e5e7eb';
-        ctx.font = 'bold 11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.fillText(day.toString(), x, displayHeight - 35);
-      }
-      
-      // Track month changes for major axis
+      // Track month changes
       if (currentMonth !== month) {
         if (currentMonth !== '') {
           monthRanges.push({
@@ -256,10 +246,7 @@ function createChart(data, filteredTrends = 'all') {
       }
     });
     
-    // Draw major axis (months) below days
-    ctx.fillStyle = '#9ca3af';
-    ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
-    
+    // Draw months
     const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
     monthRanges.forEach(range => {
@@ -273,11 +260,11 @@ function createChart(data, filteredTrends = 'all') {
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(startX, padding + legendHeight);
-        ctx.lineTo(startX, displayHeight - 50);
+        ctx.lineTo(startX, displayHeight - 30);
         ctx.stroke();
       }
       
-      // Draw month label below day labels
+      // Draw month label
       const monthIndex = parseInt(range.month);
       const monthName = monthNames[monthIndex] || range.month;
       ctx.fillText(monthName, centerX, displayHeight - 15);
