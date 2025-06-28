@@ -263,10 +263,23 @@ function createChart(data, filteredTrends = 'all') {
         ctx.moveTo(positions[0].x, baseY);
         ctx.lineTo(positions[0].x, firstAnimatedY);
         
-        // Draw the line path
+        // Draw the smooth curve path for fill
         positions.forEach((finalPos, pointIndex) => {
           const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
-          ctx.lineTo(finalPos.x, animatedY);
+          
+          if (pointIndex === 0) {
+            // Already moved to first point above
+          } else {
+            const prevPos = positions[pointIndex - 1];
+            const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
+            
+            // Calculate control point for smooth curve
+            const controlX = (prevPos.x + finalPos.x) / 2;
+            const controlY = (prevAnimatedY + animatedY) / 2;
+            
+            // Use quadratic curve for smooth fill
+            ctx.quadraticCurveTo(controlX, prevAnimatedY, finalPos.x, animatedY);
+          }
         });
         
         // Close the path back to bottom
@@ -283,17 +296,23 @@ function createChart(data, filteredTrends = 'all') {
       ctx.lineJoin = 'round';
 
       ctx.beginPath();
-      let firstPoint = true;
       
+      // Create smooth curves using quadratic curves
       positions.forEach((finalPos, pointIndex) => {
-        // Calculate animated position
         const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
         
-        if (firstPoint) {
+        if (pointIndex === 0) {
           ctx.moveTo(finalPos.x, animatedY);
-          firstPoint = false;
         } else {
-          ctx.lineTo(finalPos.x, animatedY);
+          const prevPos = positions[pointIndex - 1];
+          const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
+          
+          // Calculate control point for smooth curve
+          const controlX = (prevPos.x + finalPos.x) / 2;
+          const controlY = (prevAnimatedY + animatedY) / 2;
+          
+          // Use quadratic curve for smooth transitions
+          ctx.quadraticCurveTo(controlX, prevAnimatedY, finalPos.x, animatedY);
         }
       });
       
