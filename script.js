@@ -27,24 +27,63 @@ async function fetchTrendData() {
 // React Chart Component using Recharts
 const TrendChart = () => {
   const [data, setData] = React.useState([]);
+  const [keywords, setKeywords] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
+
+  const colors = [
+    '#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b',
+    '#ef4444', '#3b82f6', '#84cc16', '#f472b6', '#06b6d4', '#8b5a2b',
+    '#6366f1', '#d946ef', '#14b8a6', '#f97066', '#a855f7', '#22c55e',
+    '#fb923c', '#64748b'
+  ];
 
   const fetchAndProcessData = async () => {
     const trendData = await fetchTrendData();
     
     if (trendData && trendData.length > 0) {
-      // Process the data for Recharts
-      const processedData = trendData.map((item, index) => ({
-        name: `Point ${index + 1}`,
-        id: item.id,
-        keyword: item.keyword || 'Unknown',
-        value: item.value || 0,
-        originalData: item
-      }));
+      // Group data by keyword and get top 20
+      const keywordGroups = {};
+      trendData.forEach(item => {
+        const keyword = item.keyword || 'Unknown';
+        if (!keywordGroups[keyword]) {
+          keywordGroups[keyword] = [];
+        }
+        keywordGroups[keyword].push(item);
+      });
+
+      // Calculate average value for each keyword to determine top 20
+      const keywordAverages = Object.keys(keywordGroups).map(keyword => {
+        const values = keywordGroups[keyword].map(item => item.value || 0);
+        const average = values.reduce((sum, val) => sum + val, 0) / values.length;
+        return { keyword, average };
+      });
+
+      // Sort and get top 20
+      const top20Keywords = keywordAverages
+        .sort((a, b) => b.average - a.average)
+        .slice(0, 20)
+        .map(item => item.keyword);
+
+      setKeywords(top20Keywords);
+
+      // Create chart data points
+      const allIds = [...new Set(trendData.map(item => item.id))].sort((a, b) => a - b);
+      
+      const processedData = allIds.map(id => {
+        const dataPoint = { name: `Point ${id}`, id };
+        
+        top20Keywords.forEach(keyword => {
+          const item = trendData.find(d => d.id === id && d.keyword === keyword);
+          dataPoint[keyword] = item ? (item.value || 0) : 0;
+        });
+        
+        return dataPoint;
+      });
       
       setData(processedData);
     } else {
       // Fallback static data
+      setKeywords(['AI-generated images', 'ChatGPT', 'Elden Ring', 'Pineapple on pizza']);
       setData([
         { name: 'Mar 1', 'AI-generated images': 35, 'ChatGPT': 20, 'Elden Ring': 15, 'Pineapple on pizza': 10 },
         { name: 'Mar 7', 'AI-generated images': 45, 'ChatGPT': 34, 'Elden Ring': 25, 'Pineapple on pizza': 18 },
@@ -99,49 +138,18 @@ const TrendChart = () => {
         React.createElement(Recharts.Legend, {
           wrapperStyle: { color: '#e5e7eb' }
         }),
-        data.length > 0 && data[0].keyword ? 
+        // Render lines for each keyword with different colors
+        keywords.map((keyword, index) => 
           React.createElement(Recharts.Line, {
+            key: keyword,
             type: 'monotone',
-            dataKey: 'value',
-            stroke: '#5ee3ff',
+            dataKey: keyword,
+            stroke: colors[index % colors.length],
             strokeWidth: 2,
-            dot: { fill: '#5ee3ff', strokeWidth: 2, r: 4 },
-            activeDot: { r: 6, stroke: '#5ee3ff', strokeWidth: 2 }
-          }) :
-          [
-            React.createElement(Recharts.Line, {
-              key: 'ai',
-              type: 'monotone',
-              dataKey: 'AI-generated images',
-              stroke: '#5ee3ff',
-              strokeWidth: 2,
-              dot: { fill: '#5ee3ff' }
-            }),
-            React.createElement(Recharts.Line, {
-              key: 'chatgpt',
-              type: 'monotone',
-              dataKey: 'ChatGPT',
-              stroke: '#8b5cf6',
-              strokeWidth: 2,
-              dot: { fill: '#8b5cf6' }
-            }),
-            React.createElement(Recharts.Line, {
-              key: 'elden',
-              type: 'monotone',
-              dataKey: 'Elden Ring',
-              stroke: '#ec4899',
-              strokeWidth: 2,
-              dot: { fill: '#ec4899' }
-            }),
-            React.createElement(Recharts.Line, {
-              key: 'pizza',
-              type: 'monotone',
-              dataKey: 'Pineapple on pizza',
-              stroke: '#f97316',
-              strokeWidth: 2,
-              dot: { fill: '#f97316' }
-            })
-          ]
+            dot: { fill: colors[index % colors.length], strokeWidth: 1, r: 3 },
+            activeDot: { r: 5, stroke: colors[index % colors.length], strokeWidth: 2 }
+          })
+        )
       )
     )
   );
