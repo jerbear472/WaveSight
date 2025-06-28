@@ -263,7 +263,7 @@ function createChart(data, filteredTrends = 'all') {
         ctx.moveTo(positions[0].x, baseY);
         ctx.lineTo(positions[0].x, firstAnimatedY);
         
-        // Draw the smooth curve path for fill
+        // Draw the smooth curve path for fill using cubic Bézier curves
         positions.forEach((finalPos, pointIndex) => {
           const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
           
@@ -273,12 +273,17 @@ function createChart(data, filteredTrends = 'all') {
             const prevPos = positions[pointIndex - 1];
             const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
             
-            // Calculate control point for smooth curve
-            const controlX = (prevPos.x + finalPos.x) / 2;
-            const controlY = (prevAnimatedY + animatedY) / 2;
+            // Calculate control points for smooth cubic Bézier curve
+            const tension = 0.4; // Adjust this value to control curve smoothness (0.1 to 0.5)
+            const deltaX = finalPos.x - prevPos.x;
             
-            // Use quadratic curve for smooth fill
-            ctx.quadraticCurveTo(controlX, prevAnimatedY, finalPos.x, animatedY);
+            const cp1x = prevPos.x + deltaX * tension;
+            const cp1y = prevAnimatedY;
+            const cp2x = finalPos.x - deltaX * tension;
+            const cp2y = animatedY;
+            
+            // Use cubic Bézier curve for smooth fill
+            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, finalPos.x, animatedY);
           }
         });
         
@@ -297,7 +302,7 @@ function createChart(data, filteredTrends = 'all') {
 
       ctx.beginPath();
       
-      // Create smooth curves using quadratic curves
+      // Create smooth curves using cubic Bézier curves
       positions.forEach((finalPos, pointIndex) => {
         const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
         
@@ -307,12 +312,17 @@ function createChart(data, filteredTrends = 'all') {
           const prevPos = positions[pointIndex - 1];
           const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
           
-          // Calculate control point for smooth curve
-          const controlX = (prevPos.x + finalPos.x) / 2;
-          const controlY = (prevAnimatedY + animatedY) / 2;
+          // Calculate control points for smooth cubic Bézier curve
+          const tension = 0.4; // Adjust this value to control curve smoothness
+          const deltaX = finalPos.x - prevPos.x;
           
-          // Use quadratic curve for smooth transitions
-          ctx.quadraticCurveTo(controlX, prevAnimatedY, finalPos.x, animatedY);
+          const cp1x = prevPos.x + deltaX * tension;
+          const cp1y = prevAnimatedY;
+          const cp2x = finalPos.x - deltaX * tension;
+          const cp2y = animatedY;
+          
+          // Use cubic Bézier curve for smooth transitions
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, finalPos.x, animatedY);
         }
       });
       
