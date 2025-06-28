@@ -1,4 +1,4 @@
-// Supabase credentials - these need to be updated with valid credentials
+// Supabase credentials
 const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5MDU5NDcsImV4cCI6MjA2NjQ4MTk0N30.YGOXgs0LtdCQYqpEWu0BECZFp9gRtk6nJPbOeDwN8kM';
 
@@ -79,32 +79,116 @@ const fallbackData = {
   ]
 };
 
-// Create simple chart without external libraries
-function createSimpleChart(data) {
+// Create chart with Canvas API
+function createChart(data) {
   const chartContainer = document.getElementById('trendChart');
   if (!chartContainer) return;
 
   // Clear existing content
   chartContainer.innerHTML = '';
 
-  // Create a simple text-based chart for now
-  const chartHTML = `
-    <div style="padding: 20px; background: #13131f; border-radius: 12px; color: #f1f1f1;">
-      <h3 style="margin-bottom: 20px; color: #5ee3ff;">Chart Data Preview</h3>
-      <div style="font-family: monospace; font-size: 14px;">
-        ${data.map(item => `
-          <div style="margin-bottom: 10px; padding: 8px; background: #1a1a2e; border-radius: 6px;">
-            <strong>${item.date}</strong>: 
-            ${Object.keys(item).filter(k => k !== 'date').map(trend => 
-              `${trend}: ${formatNumber(item[trend])}`
-            ).join(', ')}
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `;
+  // Create canvas element
+  const canvas = document.createElement('canvas');
+  canvas.width = 800;
+  canvas.height = 300;
+  canvas.style.width = '100%';
+  canvas.style.height = '300px';
+  canvas.style.background = '#13131f';
+  canvas.style.borderRadius = '12px';
+  
+  chartContainer.appendChild(canvas);
+  
+  const ctx = canvas.getContext('2d');
+  
+  if (!data || data.length === 0) {
+    ctx.fillStyle = '#f1f1f1';
+    ctx.font = '16px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+    return;
+  }
 
-  chartContainer.innerHTML = chartHTML;
+  // Chart dimensions
+  const padding = 60;
+  const chartWidth = canvas.width - padding * 2;
+  const chartHeight = canvas.height - padding * 2;
+
+  // Get all trend names
+  const trendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
+  const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981'];
+
+  // Find max value for scaling
+  const maxValue = Math.max(...data.flatMap(d => 
+    Object.values(d).filter(v => typeof v === 'number')
+  ));
+
+  // Draw grid lines
+  ctx.strokeStyle = '#2e2e45';
+  ctx.lineWidth = 1;
+  
+  // Horizontal grid lines
+  for (let i = 0; i <= 4; i++) {
+    const y = padding + (chartHeight * i) / 4;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(padding + chartWidth, y);
+    ctx.stroke();
+  }
+
+  // Draw y-axis labels
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '12px Inter';
+  ctx.textAlign = 'right';
+  
+  for (let i = 0; i <= 4; i++) {
+    const value = maxValue * (4 - i) / 4;
+    const y = padding + (chartHeight * i) / 4;
+    ctx.fillText(formatNumber(value), padding - 10, y + 4);
+  }
+
+  // Draw x-axis labels
+  ctx.textAlign = 'center';
+  data.forEach((item, index) => {
+    const x = padding + (chartWidth * index) / (data.length - 1);
+    ctx.fillText(item.date, x, canvas.height - 20);
+  });
+
+  // Draw trend lines
+  trendNames.forEach((trendName, trendIndex) => {
+    const color = colors[trendIndex % colors.length];
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    let firstPoint = true;
+    
+    data.forEach((item, index) => {
+      if (item[trendName] !== undefined) {
+        const x = padding + (chartWidth * index) / (data.length - 1);
+        const y = padding + chartHeight - ((item[trendName] / maxValue) * chartHeight);
+        
+        if (firstPoint) {
+          ctx.moveTo(x, y);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+    });
+    
+    ctx.stroke();
+
+    // Draw legend
+    const legendY = 20 + (trendIndex * 20);
+    ctx.fillStyle = color;
+    ctx.fillRect(20, legendY, 10, 10);
+    ctx.fillStyle = '#f1f1f1';
+    ctx.font = '12px Inter';
+    ctx.textAlign = 'left';
+    ctx.fillText(trendName, 35, legendY + 8);
+  });
 }
 
 // Fetch data from Supabase
@@ -117,30 +201,54 @@ async function fetchData() {
   }
 
   try {
-    // Test connection first
-    const connectionTest = await testSupabaseConnection();
-    if (!connectionTest) {
-      console.log('Connection test failed, using fallback data');
-      return fallbackData;
-    }
+    // Try different table names and column structures
+    let trendData = null;
+    let error = null;
 
-    // Fetch actual data
-    const { data: trendData, error } = await supabase
+    // Try trend_reach table first
+    const result1 = await supabase
       .from('trend_reach')
       .select('*')
       .limit(50);
-
-    if (error) {
-      console.error('Error fetching data:', error);
-      return fallbackData;
+    
+    if (!result1.error && result1.data) {
+      trendData = result1.data;
+      console.log('Successfully fetched from trend_reach:', trendData);
+    } else {
+      console.log('trend_reach failed:', result1.error);
+      
+      // Try table_range table
+      const result2 = await supabase
+        .from('table_range')
+        .select('*')
+        .limit(50);
+      
+      if (!result2.error && result2.data) {
+        trendData = result2.data;
+        console.log('Successfully fetched from table_range:', trendData);
+      } else {
+        console.log('table_range failed:', result2.error);
+        
+        // Try any table with similar structure
+        const result3 = await supabase
+          .from('trends')
+          .select('*')
+          .limit(50);
+        
+        if (!result3.error && result3.data) {
+          trendData = result3.data;
+          console.log('Successfully fetched from trends:', trendData);
+        } else {
+          console.log('All table attempts failed, using fallback');
+          return fallbackData;
+        }
+      }
     }
 
     if (!trendData || trendData.length === 0) {
       console.log('No data returned from Supabase');
       return fallbackData;
     }
-
-    console.log('Successfully fetched data:', trendData);
 
     // Process the data for chart
     const processedChartData = processDataForChart(trendData);
@@ -222,7 +330,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const data = await fetchData();
 
     // Create chart
-    createSimpleChart(data.chartData);
+    createChart(data.chartData);
 
     // Create table
     createTrendTable(data.tableData);
@@ -238,7 +346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       console.log('Refreshing data...');
       const data = await fetchData();
-      createSimpleChart(data.chartData);
+      createChart(data.chartData);
       createTrendTable(data.tableData);
     } catch (error) {
       console.error('Error during refresh:', error);
