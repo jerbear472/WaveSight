@@ -388,8 +388,8 @@ function createEventPredictionCards() {
     const range = maxValue - minValue || 1;
     
     const pathData = event.sentiment_over_time.map((point, index) => {
-      const x = (index / (event.sentiment_over_time.length - 1)) * 300;
-      const y = 80 - ((point.value - minValue) / range) * 60;
+      const x = (index / (event.sentiment_over_time.length - 1)) * 265;
+      const y = 80 - ((point.value - minValue) / range) * 70;
       return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
     }).join(' ');
 
@@ -409,15 +409,28 @@ function createEventPredictionCards() {
             <div class="sentiment-chart-section">
               <h3>Sentiment Over Time</h3>
               <div class="mini-chart-container">
-                <svg class="mini-chart" viewBox="0 0 300 80">
+                <svg class="mini-chart" viewBox="0 0 300 100">
                   <defs>
                     <linearGradient id="chartGradient${event.id}">
                       <stop offset="0%" stop-color="#5ee3ff" stop-opacity="0.8"/>
                       <stop offset="100%" stop-color="#5ee3ff" stop-opacity="0.2"/>
                     </linearGradient>
                   </defs>
-                  <path d="${pathData}" stroke="#5ee3ff" stroke-width="3" fill="none"/>
-                  <path d="${pathData} L 300 80 L 0 80 Z" fill="url(#chartGradient${event.id})"/>
+                  <!-- Y-axis labels -->
+                  <text x="10" y="15" fill="#9ca3af" font-size="10" text-anchor="middle">100%</text>
+                  <text x="10" y="55" fill="#9ca3af" font-size="10" text-anchor="middle">50%</text>
+                  <text x="10" y="90" fill="#9ca3af" font-size="10" text-anchor="middle">0%</text>
+                  <!-- Grid lines -->
+                  <line x1="25" y1="10" x2="290" y2="10" stroke="rgba(156, 163, 175, 0.2)" stroke-width="1"/>
+                  <line x1="25" y1="50" x2="290" y2="50" stroke="rgba(156, 163, 175, 0.2)" stroke-width="1"/>
+                  <line x1="25" y1="90" x2="290" y2="90" stroke="rgba(156, 163, 175, 0.2)" stroke-width="1"/>
+                  <!-- Chart title -->
+                  <text x="150" y="8" fill="#f1f1f1" font-size="10" text-anchor="middle" font-weight="600">Positive Sentiment %</text>
+                  <!-- Chart path adjusted for new viewBox -->
+                  <g transform="translate(25, 10)">
+                    <path d="${pathData}" stroke="#5ee3ff" stroke-width="3" fill="none"/>
+                    <path d="${pathData} L 265 80 L 0 80 Z" fill="url(#chartGradient${event.id})"/>
+                  </g>
                 </svg>
                 <div class="chart-labels">
                   ${event.sentiment_over_time.map(point => `<span>${point.date}</span>`).join('')}
