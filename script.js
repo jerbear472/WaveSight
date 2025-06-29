@@ -681,7 +681,8 @@ function processSupabaseDataForChart(supabaseData) {
     'Gaming': ['gaming', 'game', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'valorant'],
     'Social Media': ['tiktok', 'instagram', 'youtube', 'twitter', 'facebook', 'influencer', 'viral', 'content'],
     'Health & Fitness': ['health', 'fitness', 'workout', 'diet', 'nutrition', 'wellness', 'meditation', 'yoga'],
-    'Finance': ['finance', 'investing', 'stocks', 'money', 'business', 'entrepreneur', 'passive income', 'real estate'],
+    'Finance': ['finance', 'investing', 'stocks',```text
+money', 'business', 'entrepreneur', 'passive income', 'real estate'],
     'Education': ['education', 'learning', 'course', 'tutorial', 'study', 'school', 'university', 'skill'],
     'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine', 'minimalism', 'productivity', 'self improvement'],
     'Food & Cooking': ['food', 'cooking', 'recipe', 'chef', 'restaurant', 'baking', 'kitchen', 'meal prep'],
@@ -737,7 +738,30 @@ function processSupabaseDataForChart(supabaseData) {
     chartData.push(dataPoint);
   });
 
-  return chartData;
+  // Limit chart data to top 8 trends
+  const trendTotals = {};
+  chartData.forEach(dataPoint => {
+    Object.keys(dataPoint).forEach(trend => {
+      if (trend !== 'date') {
+        trendTotals[trend] = (trendTotals[trend] || 0) + dataPoint[trend];
+      }
+    });
+  });
+
+  const sortedTrends = Object.entries(trendTotals)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([trend]) => trend);
+
+  const limitedChartData = chartData.map(dataPoint => {
+    const limitedDataPoint = { date: dataPoint.date };
+    sortedTrends.forEach(trend => {
+      limitedDataPoint[trend] = dataPoint[trend] || 0;
+    });
+    return limitedDataPoint;
+  });
+  
+  return limitedChartData;
 }
 
 // Process data for chart display
@@ -845,7 +869,7 @@ function processDataForChart(rawData) {
       const avgB = b[1].reduce((sum, point) => sum + point.reach, 0) / b[1].length;
       return avgB - avgA;
     })
-    .slice(0, 5); // Limit to top 5 trends
+    .slice(0, 8); // Limit to top 8 trends
 
   // Create chart data structure
   const usedDates = new Set();
