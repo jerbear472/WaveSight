@@ -699,7 +699,7 @@ function processSupabaseDataForChart(supabaseData) {
     });
   }
 
-// Initialize dates
+  // Initialize dates
   dates.forEach(date => {
     dateMap.set(date, {});
   });
