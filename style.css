@@ -572,6 +572,42 @@ h1, h2, h3, .logo, .header-title {
   gap: 12px;
 }
 
+.sentiment-bars {
+  padding: 20px;
+}
+
+.sentiment-bar {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar-label {
+  min-width: 100px;
+  font-size: 0.9rem;
+  color: #f1f1f1;
+}
+
+.bar-fill {
+  height: 20px;
+  border-radius: 10px;
+  min-width: 20px;
+  transition: width 0.3s ease;
+}
+
+.bar-fill.positive {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.bar-fill.negative {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.bar-fill.unclear {
+  background: linear-gradient(90deg, #eab308, #ca8a04);
+}
+
 .confidence-score {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;

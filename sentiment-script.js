@@ -121,7 +121,7 @@ function getFallbackSentimentData() {
   ];
 }
 
-// Create sentiment dashboard with React and Recharts
+// Create sentiment dashboard with fallback for when Recharts isn't available
 function createSentimentDashboard(data) {
   const dashboardContainer = document.getElementById('sentimentDashboard');
   if (!dashboardContainer || !data || data.length === 0) {
@@ -138,7 +138,14 @@ function createSentimentDashboard(data) {
     return acc;
   }, {});
 
-  // Create React component
+  // Check if Recharts is available
+  if (typeof Recharts === 'undefined') {
+    console.log('⚠️ Recharts not available, creating simple dashboard');
+    createSimpleSentimentDashboard(groupedData, dashboardContainer);
+    return;
+  }
+
+  // Create React component with Recharts
   const SentimentDashboard = () => {
     const [loading, setLoading] = React.useState(false);
 
@@ -225,9 +232,54 @@ function createSentimentDashboard(data) {
     );
   };
 
-  // Render the React component
-  const root = ReactDOM.createRoot(dashboardContainer);
-  root.render(React.createElement(SentimentDashboard));
+  try {
+    // Render the React component
+    const root = ReactDOM.createRoot(dashboardContainer);
+    root.render(React.createElement(SentimentDashboard));
+  } catch (error) {
+    console.error('Error rendering React dashboard:', error);
+    createSimpleSentimentDashboard(groupedData, dashboardContainer);
+  }
+}
+
+// Simple fallback dashboard without Recharts
+function createSimpleSentimentDashboard(groupedData, container) {
+  const dashboardHTML = Object.entries(groupedData).map(([topic, entries]) => {
+    const latest = entries[entries.length - 1] || {};
+    const confidence = Math.round(latest.confidence || 0);
+    const yes = latest.sentiment_yes || 0;
+    const no = latest.sentiment_no || 0;
+    const unclear = latest.sentiment_unclear || 0;
+    
+    return `
+      <div class="sentiment-card">
+        <div class="sentiment-card-header">
+          <h3 class="sentiment-topic">${topic}</h3>
+          <div class="sentiment-summary">
+            <span class="confidence-score">Confidence: ${confidence}%</span>
+          </div>
+        </div>
+        <div class="sentiment-chart-container">
+          <div class="sentiment-bars">
+            <div class="sentiment-bar">
+              <span class="bar-label">Positive: ${yes}</span>
+              <div class="bar-fill positive" style="width: ${yes > 0 ? (yes / (yes + no + unclear)) * 100 : 0}%"></div>
+            </div>
+            <div class="sentiment-bar">
+              <span class="bar-label">Negative: ${no}</span>
+              <div class="bar-fill negative" style="width: ${no > 0 ? (no / (yes + no + unclear)) * 100 : 0}%"></div>
+            </div>
+            <div class="sentiment-bar">
+              <span class="bar-label">Unclear: ${unclear}</span>
+              <div class="bar-fill unclear" style="width: ${unclear > 0 ? (unclear / (yes + no + unclear)) * 100 : 0}%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  container.innerHTML = `<div class="sentiment-dashboard-grid">${dashboardHTML}</div>`;
 }
 
 // Create cultural prediction cards
