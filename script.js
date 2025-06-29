@@ -1007,65 +1007,127 @@ function searchTrends() {
 }
 
 // Date range filter function
-function filterByDateRange() {
+async function filterByDateRange() {
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
 
   startDate = startDateInput.value;
   endDate = endDateInput.value;
 
-  if (!currentData) return;
-
   if (!startDate && !endDate) {
     filteredData = null;
-    createChart(currentData.chartData, selectedTrends);
+    if (currentData) {
+      createChart(currentData.chartData, selectedTrends);
+    }
     return;
   }
 
-  // Convert chart dates to comparable format
-  const filterData = currentData.chartData.filter(item => {
-    if (!item.date) return true;
+  console.log(`🗓️ Filtering data from ${startDate} to ${endDate}`);
 
-    // Parse date format (assuming MM/DD or M/D format)
-    const dateParts = item.date.split('/');
-    if (dateParts.length !== 2) return true;
+  try {
+    // Get fresh data from Supabase with date filtering
+    let filteredApiData = [];
+    
+    if (supabase) {
+      let query = supabase
+        .from('youtube_trends')
+        .select('*')
+        .order('published_at', { ascending: false });
 
-    const month = parseInt(dateParts[0]);
-    const day = parseInt(dateParts[1]);
+      // Add date filters if provided
+      if (startDate) {
+        query = query.gte('published_at', startDate + 'T00:00:00');
+      }
+      if (endDate) {
+        query = query.lte('published_at', endDate + 'T23:59:59');
+      }
 
-    // Assume current year for comparison
-    const currentYear = new Date().getFullYear();
-    const itemDate = new Date(currentYear, month - 1, day);
-
-    let isInRange = true;
-
-    if (startDate) {
-      const start = new Date(startDate);
-      isInRange = isInRange && itemDate >= start;
+      const { data, error } = await query.limit(100);
+      
+      if (!error && data && data.length > 0) {
+        filteredApiData = data;
+        console.log(`✅ Found ${filteredApiData.length} videos in date range`);
+      } else {
+        console.log('⚠️ No data found in date range');
+        filteredApiData = [];
+      }
     }
 
-    if (endDate) {
-      const end = new Date(endDate);
-      isInRange = isInRange && itemDate <= end;
+    // Process the filtered API data into chart format
+    if (filteredApiData.length > 0) {
+      const filteredChartData = processSupabaseDataForChart(filteredApiData);
+      filteredData = filteredChartData;
+      
+      // Update table with filtered data
+      createTrendTable(filteredApiData.slice(0, 10));
+      
+      // Show date range info
+      console.log(`📊 Chart updated with data from ${startDate} to ${endDate}`);
+    } else {
+      // No data in range, show empty chart
+      filteredData = [];
+      console.log('📊 No data found in selected date range');
     }
 
-    return isInRange;
-  });
+    createChart(filteredData, selectedTrends);
+    
+  } catch (error) {
+    console.error('❌ Error filtering by date range:', error);
+    
+    // Fallback to original chart data filtering
+    if (currentData && currentData.chartData) {
+      filteredData = currentData.chartData.filter(item => {
+        // This is a fallback for mock data with MM/DD format
+        if (!item.date) return true;
 
-  filteredData = filterData;
-  createChart(filteredData, selectedTrends);
+        const dateParts = item.date.split('/');
+        if (dateParts.length !== 2) return true;
+
+        const month = parseInt(dateParts[0]);
+        const day = parseInt(dateParts[1]);
+        const currentYear = new Date().getFullYear();
+        const itemDate = new Date(currentYear, month - 1, day);
+
+        let isInRange = true;
+        if (startDate) {
+          const start = new Date(startDate);
+          isInRange = isInRange && itemDate >= start;
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          isInRange = isInRange && itemDate <= end;
+        }
+
+        return isInRange;
+      });
+
+      createChart(filteredData, selectedTrends);
+    }
+  }
 }
 
 // Reset date filter function
-function resetDateFilter() {
+async function resetDateFilter() {
   document.getElementById('startDate').value = '';
   document.getElementById('endDate').value = '';
   startDate = null;
   endDate = null;
   filteredData = null;
 
-  if (currentData) {
-    createChart(currentData.chartData, selectedTrends);
+  console.log('🔄 Resetting date filter, fetching all data...');
+
+  try {
+    // Fetch fresh unfiltered data
+    const data = await fetchData();
+    currentData = data;
+    updateTrendFilter(data.chartData);
+    createChart(data.chartData, selectedTrends);
+    createTrendTable(data.tableData);
+  } catch (error) {
+    console.error('❌ Error resetting filter:', error);
+    if (currentData) {
+      createChart(currentData.chartData, selectedTrends);
+    }
   }
 }
 
