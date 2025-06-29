@@ -1,0 +1,57 @@
+import { useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+
+export default function SentimentDashboard() {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const res = await fetch('/api/sentiment_forecasts'); // Update this with your actual endpoint
+        const json = await res.json();
+        setData(json);
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch sentiment data", err);
+      }
+    }
+    fetchData();
+  }, []);
+
+  // Group data by topic for separate charts
+  const grouped = data.reduce((acc, item) => {
+    acc[item.topic] = acc[item.topic] || [];
+    acc[item.topic].push(item);
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-6">
+      {loading ? (
+        <Skeleton className="w-full h-72" />
+      ) : (
+        Object.entries(grouped).map(([topic, entries]) => (
+          <Card key={topic} className="bg-zinc-900 text-white p-4 rounded-2xl shadow-xl">
+            <CardContent>
+              <h2 className="text-xl font-bold mb-4">{topic}</h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={entries}>
+                  <XAxis dataKey="date" stroke="#ccc" />
+                  <YAxis stroke="#ccc" />
+                  <Tooltip contentStyle={{ backgroundColor: '#1f1f1f', borderColor: '#333' }} />
+                  <Legend />
+                  <Line type="monotone" dataKey="sentiment_yes" stroke="#22c55e" strokeWidth={2} name="Yes" />
+                  <Line type="monotone" dataKey="sentiment_no" stroke="#ef4444" strokeWidth={2} name="No" />
+                  <Line type="monotone" dataKey="sentiment_unclear" stroke="#eab308" strokeWidth={2} name="Unclear" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+}
