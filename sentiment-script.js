@@ -638,7 +638,7 @@ function createEventPredictionCards() {
     const maxValue = Math.max(...event.sentiment_over_time.map(d => d.value));
     const minValue = Math.min(...event.sentiment_over_time.map(d => d.value));
     const range = maxValue - minValue || 1;
-    
+
     const pathData = event.sentiment_over_time.map((point, index) => {
       const x = (index / (event.sentiment_over_time.length - 1)) * 265;
       const y = 80 - ((point.value - minValue) / range) * 70;
@@ -652,11 +652,11 @@ function createEventPredictionCards() {
             W WAVESIGHT
           </div>
         </div>
-        
+
         <div class="event-main-content">
           <h2 class="event-title">${event.title}</h2>
           <p class="event-subtitle">${event.subtitle}</p>
-          
+
           <div class="event-content-grid">
             <div class="sentiment-chart-section">
               <h3>Sentiment Over Time</h3>
@@ -689,13 +689,13 @@ function createEventPredictionCards() {
                 </div>
               </div>
             </div>
-            
+
             <div class="prediction-section">
               <h3>PREDICTION</h3>
               <div class="prediction-result ${event.prediction_class}">
                 ${event.prediction}
               </div>
-              
+
               <div class="percentage-breakdown">
                 <div class="percentage-item">
                   <span class="percentage-label">YES</span>
@@ -708,7 +708,7 @@ function createEventPredictionCards() {
               </div>
             </div>
           </div>
-          
+
           <div class="source-analysis-section">
             <h3>Source Analysis</h3>
             <div class="source-platforms">
