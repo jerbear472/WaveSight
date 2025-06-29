@@ -375,7 +375,7 @@ app.use((req, res, next) => {
 // Proxy sentiment analysis requests to Python server
 app.post('/api/analyze-sentiment', async (req, res) => {
   try {
-    const response = await fetch('http://localhost:5001/api/analyze-sentiment', {
+    const response = await fetch('http://0.0.0.0:5001/api/analyze-sentiment', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
