@@ -230,6 +230,38 @@ function createSentimentDashboard(data) {
   root.render(React.createElement(SentimentDashboard));
 }
 
+// Create cultural prediction cards
+function createPredictionCards(data) {
+  const cardsContainer = document.getElementById('predictionCards');
+  if (!cardsContainer || !data || data.length === 0) {
+    return;
+  }
+
+  // Get recent predictions (last 5)
+  const recentPredictions = data.slice(0, 5);
+  
+  const cardsHTML = recentPredictions.map(item => {
+    const outcomeClass = item.prediction_outcome ? item.prediction_outcome.toLowerCase() : 'uncertain';
+    const momentum = item.cultural_momentum || 'Stable';
+    const certainty = item.certainty_score || 0;
+    
+    return `
+      <div class="prediction-card">
+        <h3>"Will ${item.topic} happen?"</h3>
+        <div class="prediction-result ${outcomeClass}">
+          <span class="confidence">${Math.round(item.confidence)}% Confidence</span>
+          <span class="outcome">Prediction: ${item.prediction_outcome || 'Uncertain'}</span>
+          <div style="margin-top: 10px; font-size: 0.8em; opacity: 0.7;">
+            Momentum: ${momentum} | Certainty: ${Math.round(certainty)}%
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  cardsContainer.innerHTML = cardsHTML;
+}
+
 // Create sentiment table
 function createSentimentTable(data) {
   const tableBody = document.getElementById('sentimentTableBody');
@@ -329,6 +361,15 @@ async function refreshSentimentData() {
   }
 }
 
+// Quick analyze function for topic chips
+function quickAnalyze(topic) {
+  document.getElementById('topicInput').value = topic;
+  analyzeTopic();
+}
+
+// Make function globally available
+window.quickAnalyze = quickAnalyze;
+
 // Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('🚀 Initializing sentiment dashboard...');
@@ -342,6 +383,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     sentimentData = data;
 
     console.log('Loaded sentiment data:', data);
+
+    // Create prediction cards
+    createPredictionCards(data);
 
     // Create dashboard
     createSentimentDashboard(data);

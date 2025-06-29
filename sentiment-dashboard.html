@@ -39,11 +39,52 @@
                 <button class="submit-btn" onclick="analyzeTopic()">Analyze Sentiment</button>
                 <button class="submit-btn" onclick="refreshSentimentData()" style="background: #10B981;">Refresh Data</button>
             </div>
+            <div class="topic-suggestions">
+                <p style="margin: 10px 0 5px 0; font-size: 0.9em; opacity: 0.7;">Trending Cultural Questions:</p>
+                <div class="suggestion-chips">
+                    <span class="chip" onclick="quickAnalyze('Will GTA 6 release in 2025')">Will GTA 6 release in 2025?</span>
+                    <span class="chip" onclick="quickAnalyze('Will AI replace programmers')">Will AI replace programmers?</span>
+                    <span class="chip" onclick="quickAnalyze('Will crypto hit new ATH')">Will crypto hit new ATH?</span>
+                    <span class="chip" onclick="quickAnalyze('Will remote work continue')">Will remote work continue?</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h2>Cultural Sentiment Forecasting</h2>
+            <div class="prediction-cards" id="predictionCards"></div>
         </div>
 
         <div class="chart-section">
             <h2>Sentiment Analysis Overview</h2>
             <div id="sentimentDashboard"></div>
+        </div>
+
+        <div class="chart-section">
+            <h2>Cultural Prediction Examples</h2>
+            <div class="examples-grid">
+                <div class="example-card">
+                    <h3>"Will GTA 6 release this year?"</h3>
+                    <div class="prediction-result unlikely">
+                        <span class="confidence">71% say NO</span>
+                        <span class="outcome">Prediction: Delayed</span>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <h3>"Will AI replace programmers in 2025?"</h3>
+                    <div class="prediction-result uncertain">
+                        <span class="confidence">52% say NO</span>
+                        <span class="outcome">Prediction: Uncertain</span>
+                    </div>
+                </div>
+                <div class="example-card">
+                    <h3>"Will crypto hit new ATH this year?"</h3>
+                    <div class="prediction-result likely">
+                        <span class="confidence">68% say YES</span>
+                        <span class="outcome">Prediction: Likely</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="chart-section">

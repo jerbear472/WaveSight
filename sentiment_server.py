@@ -224,7 +224,15 @@ def analyze_sentiment():
 
         print(f"Results — Yes: {yes}, No: {no}, Unclear: {unclear}, Confidence: {confidence}%")
 
-        # Save to Supabase
+        # Calculate cultural prediction metrics
+        total_responses = yes + no + unclear
+        certainty_score = ((yes + no) / total_responses) * 100 if total_responses > 0 else 0
+        
+        # Determine prediction outcome
+        prediction_outcome = "Likely" if confidence > 65 else "Uncertain" if confidence > 45 else "Unlikely"
+        cultural_momentum = "Rising" if yes > no * 1.5 else "Declining" if no > yes * 1.5 else "Stable"
+
+        # Save to Supabase with enhanced metrics
         sentiment_data = {
             "topic": topic,
             "platform": "Reddit",
@@ -232,7 +240,11 @@ def analyze_sentiment():
             "sentiment_yes": yes,
             "sentiment_no": no,
             "sentiment_unclear": unclear,
-            "confidence": confidence
+            "confidence": confidence,
+            "certainty_score": round(certainty_score, 2),
+            "prediction_outcome": prediction_outcome,
+            "cultural_momentum": cultural_momentum,
+            "total_responses": total_responses
         }
 
         try:

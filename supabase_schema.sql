@@ -80,6 +80,12 @@ CREATE TABLE sentiment_forecasts (
   -- Calculated confidence percentage
   confidence DECIMAL(5,2) DEFAULT 0.00,
   
+  -- Cultural prediction metrics
+  certainty_score DECIMAL(5,2) DEFAULT 0.00,
+  prediction_outcome VARCHAR(50) DEFAULT 'Uncertain',
+  cultural_momentum VARCHAR(50) DEFAULT 'Stable',
+  total_responses INTEGER DEFAULT 0,
+  
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
