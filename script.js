@@ -672,13 +672,33 @@ function processSupabaseDataForChart(supabaseData) {
     dateMap.set(date, {});
   });
 
-  // Group trends by keywords
+  // Group trends by keywords - Expanded to 25+ categories
   const trendGroups = {
-    'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai'],
-    'Tech Trends': ['technology', 'tech', 'innovation', 'startup'],
-    'Blockchain': ['blockchain', 'crypto', 'bitcoin', 'ethereum', 'web3'],
-    'Programming': ['coding', 'programming', 'developer', 'software'],
-    'Gaming': ['gaming', 'game', 'esports', 'streamer']
+    'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai', 'gpt', 'claude', 'midjourney', 'stable diffusion'],
+    'Crypto': ['crypto', 'bitcoin', 'ethereum', 'dogecoin', 'trading', 'defi', 'nft', 'altcoin', 'binance'],
+    'Blockchain': ['blockchain', 'web3', 'smart contract', 'solana', 'polygon', 'cardano', 'chainlink'],
+    'Programming': ['coding', 'programming', 'developer', 'software', 'javascript', 'python', 'react', 'node'],
+    'Gaming': ['gaming', 'game', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'valorant'],
+    'Social Media': ['tiktok', 'instagram', 'youtube', 'twitter', 'facebook', 'influencer', 'viral', 'content'],
+    'Health & Fitness': ['health', 'fitness', 'workout', 'diet', 'nutrition', 'wellness', 'meditation', 'yoga'],
+    'Finance': ['finance', 'investing', 'stocks', 'money', 'business', 'entrepreneur', 'passive income', 'real estate'],
+    'Education': ['education', 'learning', 'course', 'tutorial', 'study', 'school', 'university', 'skill'],
+    'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine', 'minimalism', 'productivity', 'self improvement'],
+    'Food & Cooking': ['food', 'cooking', 'recipe', 'chef', 'restaurant', 'baking', 'kitchen', 'meal prep'],
+    'Travel': ['travel', 'vacation', 'trip', 'adventure', 'destination', 'backpacking', 'culture', 'explore'],
+    'Fashion': ['fashion', 'style', 'outfit', 'clothing', 'makeup', 'beauty', 'skincare', 'haul'],
+    'Music': ['music', 'song', 'artist', 'album', 'concert', 'band', 'guitar', 'piano', 'remix'],
+    'Sports': ['sports', 'football', 'basketball', 'soccer', 'baseball', 'tennis', 'olympics', 'athlete'],
+    'Movies & TV': ['movie', 'film', 'series', 'netflix', 'review', 'trailer', 'actor', 'cinema'],
+    'Science': ['science', 'physics', 'chemistry', 'biology', 'space', 'nasa', 'research', 'discovery'],
+    'Politics': ['politics', 'election', 'government', 'policy', 'news', 'debate', 'vote', 'democracy'],
+    'Environment': ['climate', 'environment', 'sustainability', 'green', 'renewable', 'eco', 'carbon', 'nature'],
+    'Psychology': ['psychology', 'mental health', 'therapy', 'mindset', 'behavior', 'motivation', 'anxiety'],
+    'Art & Design': ['art', 'design', 'creative', 'drawing', 'painting', 'graphic', 'artist', 'portfolio'],
+    'Automotive': ['car', 'automotive', 'vehicle', 'tesla', 'electric', 'racing', 'motorcycle', 'review'],
+    'Real Estate': ['real estate', 'property', 'house', 'apartment', 'rent', 'buy', 'investment', 'mortgage'],
+    'Parenting': ['parenting', 'kids', 'children', 'baby', 'family', 'mom', 'dad', 'pregnancy'],
+    'Pets': ['pets', 'dog', 'cat', 'animal', 'puppy', 'kitten', 'training', 'care']
   };
 
   // Categorize and aggregate data
