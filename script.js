@@ -1,7 +1,7 @@
-// Supabase and YouTube API configuration - temporarily hardcoded
-const SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co'; 
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
-const YOUTUBE_API_KEY = 'AIzaSyArP42EedqSSuYhKBA5fsPQPSdGyWxFtc4';
+// Configuration
+let SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
+let SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
+let YOUTUBE_API_KEY = null; // Will be handled by server
 
 let supabase = null;
 let chartRoot = null;
@@ -1073,49 +1073,33 @@ async function fetchYouTubeDataNow() {
 // Make the function globally available
 window.fetchYouTubeDataNow = fetchYouTubeDataNow;
 
-// Main initialization
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('Initializing WAVESIGHT dashboard...');
-
-  // Initialize Supabase
-  initSupabase();
-
-  // Fetch and display data
+// Function to fetch fresh YouTube data
+async function fetchFreshYouTubeData() {
   try {
-    const data = await fetchData();
-    currentData = data; // Store data globally
+    console.log('🔄 Fetching fresh YouTube data...');
 
-    console.log('Loaded data:', data);
+    const response = await fetch('/api/fetch-youtube?q=trending tech AI blockchain crypto&maxResults=25');
+    const result = await response.json();
 
-    // Update filter dropdown with chart data to get trend names
-    updateTrendFilter(data.chartData);
-
-    // Create chart
-    createChart(data.chartData, selectedTrends);
-
-    // Create table
-    createTrendTable(data.tableData);
-
-    console.log('Dashboard initialized successfully');
-
-    // Show instruction for manual fetch
-    console.log('💡 To manually fetch YouTube data, run: fetchYouTubeDataNow()');
-
-  } catch (error) {
-    console.error('Error initializing dashboard:', error);
-  }
-
-  // Set up refresh interval
-  setInterval(async () => {
-    try {
-      console.log('Refreshing data...');
-      const data = await fetchData();
-      currentData = data;
-      updateTrendFilter(data.chartData);
-      createChart(data.chartData, selectedTrends);
-      createTrendTable(data.tableData);
-    } catch (error) {
-      console.error('Error during refresh:', error);
+    if (result.success) {
+      console.log(`✅ Fetched ${result.count} new videos`);
+      // Refresh the display
+      location.reload();
+    } else {
+      console.error('❌ Failed to fetch data:', result.message);
     }
-  }, 60000); // Refresh every 60 seconds
+  } catch (error) {
+    console.error('❌ Error fetching fresh data:', error);
+  }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('🚀 Fetching data with YouTube integration...');
+
+  const data = await fetchData();
+  if (data) {
+    updateChart(data.chartData);
+    updateTable(data.tableData);
+  }
 });
