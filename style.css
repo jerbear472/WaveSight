@@ -664,23 +664,24 @@ h1, h2, h3, .logo, .header-title {
 /* Event Prediction Cards */
 .event-predictions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
   margin-bottom: 40px;
 }
 
 .event-prediction-card {
   background: linear-gradient(145deg, #0a0a12 0%, #13131f 50%, #1a1a2e 100%);
   border: 1px solid rgba(94, 227, 255, 0.2);
-  border-radius: 24px;
+  border-radius: 16px;
   padding: 0;
   overflow: hidden;
   box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.4),
+    0 15px 30px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(94, 227, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transition: all 0.3s ease;
   position: relative;
+  min-height: 400px;
 }
 
 .event-prediction-card::before {
@@ -715,16 +716,16 @@ h1, h2, h3, .logo, .header-title {
 }
 
 .event-main-content {
-  padding: 32px;
+  padding: 20px;
 }
 
 .event-title {
-  font-size: 2rem;
+  font-size: 1.2rem;
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 8px 0;
   letter-spacing: -0.02em;
-  line-height: 1.1;
+  line-height: 1.2;
 }
 
 .event-subtitle {
@@ -737,10 +738,10 @@ h1, h2, h3, .logo, .header-title {
 }
 
 .event-content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 32px;
-  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
 .sentiment-chart-section h3,
@@ -774,12 +775,12 @@ h1, h2, h3, .logo, .header-title {
 }
 
 .prediction-result {
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   text-align: center;
-  padding: 16px;
-  border-radius: 12px;
+  padding: 12px;
+  border-radius: 8px;
   text-transform: uppercase;
   letter-spacing: -0.02em;
 }
@@ -989,6 +990,18 @@ h1, h2, h3, .logo, .header-title {
 }
 
 /* Responsive design */
+@media (max-width: 1200px) {
+  .event-predictions-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .event-predictions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .sentiment-dashboard-grid {
     grid-template-columns: 1fr;
@@ -1013,11 +1026,11 @@ h1, h2, h3, .logo, .header-title {
   }
 
   .event-title {
-    font-size: 1.5rem;
+    font-size: 1.1rem;
   }
 
   .prediction-result {
-    font-size: 2rem;
+    font-size: 1.2rem;
   }
 
   .nav-links {

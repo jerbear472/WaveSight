@@ -287,7 +287,7 @@ function getEventPredictionsData() {
     {
       id: 1,
       title: "WILL TRUMP WIN IN 2024?",
-      subtitle: "PUBLIC SENTIMENT",
+      subtitle: "POLITICAL SENTIMENT",
       prediction: "Likely",
       prediction_class: "likely",
       yes_percentage: 62,
@@ -307,8 +307,8 @@ function getEventPredictionsData() {
     },
     {
       id: 2,
-      title: "WILL AI REPLACE PROGRAMMERS BY 2025?",
-      subtitle: "TECH INDUSTRY SENTIMENT",
+      title: "WILL AI REPLACE PROGRAMMERS?",
+      subtitle: "TECH INDUSTRY",
       prediction: "Unlikely",
       prediction_class: "unlikely",
       yes_percentage: 28,
@@ -328,7 +328,7 @@ function getEventPredictionsData() {
     },
     {
       id: 3,
-      title: "WILL CRYPTO HIT NEW ATH IN 2025?",
+      title: "CRYPTO NEW ATH 2025?",
       subtitle: "MARKET SENTIMENT",
       prediction: "Likely",
       prediction_class: "likely",
@@ -349,7 +349,7 @@ function getEventPredictionsData() {
     },
     {
       id: 4,
-      title: "WILL GTA 6 RELEASE IN 2025?",
+      title: "GTA 6 RELEASE 2025?",
       subtitle: "GAMING COMMUNITY",
       prediction: "Uncertain",
       prediction_class: "uncertain",
@@ -366,6 +366,258 @@ function getEventPredictionsData() {
         { platform: "Reddit", percentage: 35, icon: "🔴" },
         { platform: "X", percentage: 48, icon: "𝕏" },
         { platform: "YouTube", percentage: 52, icon: "📺" }
+      ]
+    },
+    {
+      id: 5,
+      title: "REMOTE WORK PERMANENT?",
+      subtitle: "WORKPLACE TRENDS",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 74,
+      no_percentage: 26,
+      confidence: 81,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 70 },
+        { date: "Jan 8", value: 72 },
+        { date: "Jan 15", value: 74 },
+        { date: "Jan 22", value: 78 }
+      ],
+      source_analysis: [
+        { platform: "LinkedIn", percentage: 82, icon: "💼" },
+        { platform: "Reddit", percentage: 71, icon: "🔴" },
+        { platform: "X", percentage: 69, icon: "𝕏" }
+      ]
+    },
+    {
+      id: 6,
+      title: "EV DOMINATE 2030?",
+      subtitle: "AUTOMOTIVE FUTURE",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 71,
+      no_percentage: 29,
+      confidence: 77,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 65 },
+        { date: "Jan 8", value: 68 },
+        { date: "Jan 15", value: 71 },
+        { date: "Jan 22", value: 75 }
+      ],
+      source_analysis: [
+        { platform: "X", percentage: 76, icon: "𝕏" },
+        { platform: "Reddit", percentage: 68, icon: "🔴" },
+        { platform: "YouTube", percentage: 73, icon: "📺" }
+      ]
+    },
+    {
+      id: 7,
+      title: "NETFLIX LOSE MARKET?",
+      subtitle: "STREAMING WARS",
+      prediction: "Uncertain",
+      prediction_class: "uncertain",
+      yes_percentage: 48,
+      no_percentage: 52,
+      confidence: 54,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 55 },
+        { date: "Jan 8", value: 50 },
+        { date: "Jan 15", value: 45 },
+        { date: "Jan 22", value: 48 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 52, icon: "🔴" },
+        { platform: "X", percentage: 45, icon: "𝕏" },
+        { platform: "TikTok", percentage: 47, icon: "🎵" }
+      ]
+    },
+    {
+      id: 8,
+      title: "SPACE TOURISM BOOM?",
+      subtitle: "AEROSPACE INDUSTRY",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 66,
+      no_percentage: 34,
+      confidence: 69,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 58 },
+        { date: "Jan 8", value: 62 },
+        { date: "Jan 15", value: 66 },
+        { date: "Jan 22", value: 70 }
+      ],
+      source_analysis: [
+        { platform: "X", percentage: 72, icon: "𝕏" },
+        { platform: "Reddit", percentage: 61, icon: "🔴" },
+        { platform: "YouTube", percentage: 65, icon: "📺" }
+      ]
+    },
+    {
+      id: 9,
+      title: "COLLEGE BUBBLE BURST?",
+      subtitle: "EDUCATION TRENDS",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 63,
+      no_percentage: 37,
+      confidence: 70,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 58 },
+        { date: "Jan 8", value: 60 },
+        { date: "Jan 15", value: 63 },
+        { date: "Jan 22", value: 67 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 71, icon: "🔴" },
+        { platform: "X", percentage: 58, icon: "𝕏" },
+        { platform: "LinkedIn", percentage: 60, icon: "💼" }
+      ]
+    },
+    {
+      id: 10,
+      title: "METAVERSE GO MAINSTREAM?",
+      subtitle: "VR/AR ADOPTION",
+      prediction: "Unlikely",
+      prediction_class: "unlikely",
+      yes_percentage: 31,
+      no_percentage: 69,
+      confidence: 65,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 38 },
+        { date: "Jan 8", value: 35 },
+        { date: "Jan 15", value: 31 },
+        { date: "Jan 22", value: 28 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 25, icon: "🔴" },
+        { platform: "X", percentage: 33, icon: "𝕏" },
+        { platform: "Discord", percentage: 35, icon: "💬" }
+      ]
+    },
+    {
+      id: 11,
+      title: "FAST FOOD $20 MEALS?",
+      subtitle: "INFLATION IMPACT",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 73,
+      no_percentage: 27,
+      confidence: 78,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 68 },
+        { date: "Jan 8", value: 70 },
+        { date: "Jan 15", value: 73 },
+        { date: "Jan 22", value: 76 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 79, icon: "🔴" },
+        { platform: "X", percentage: 71, icon: "𝕏" },
+        { platform: "TikTok", percentage: 69, icon: "🎵" }
+      ]
+    },
+    {
+      id: 12,
+      title: "SOCIAL MEDIA DECLINE?",
+      subtitle: "PLATFORM FATIGUE",
+      prediction: "Uncertain",
+      prediction_class: "uncertain",
+      yes_percentage: 44,
+      no_percentage: 56,
+      confidence: 51,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 50 },
+        { date: "Jan 8", value: 47 },
+        { date: "Jan 15", value: 44 },
+        { date: "Jan 22", value: 42 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 51, icon: "🔴" },
+        { platform: "X", percentage: 38, icon: "𝕏" },
+        { platform: "LinkedIn", percentage: 43, icon: "💼" }
+      ]
+    },
+    {
+      id: 13,
+      title: "RENEWABLE ENERGY 50%?",
+      subtitle: "CLIMATE TRANSITION",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 69,
+      no_percentage: 31,
+      confidence: 74,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 64 },
+        { date: "Jan 8", value: 67 },
+        { date: "Jan 15", value: 69 },
+        { date: "Jan 22", value: 72 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 75, icon: "🔴" },
+        { platform: "X", percentage: 66, icon: "𝕏" },
+        { platform: "LinkedIn", percentage: 67, icon: "💼" }
+      ]
+    },
+    {
+      id: 14,
+      title: "HOUSING CRASH 2025?",
+      subtitle: "REAL ESTATE MARKET",
+      prediction: "Uncertain",
+      prediction_class: "uncertain",
+      yes_percentage: 49,
+      no_percentage: 51,
+      confidence: 53,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 55 },
+        { date: "Jan 8", value: 52 },
+        { date: "Jan 15", value: 49 },
+        { date: "Jan 22", value: 47 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 56, icon: "🔴" },
+        { platform: "X", percentage: 44, icon: "𝕏" },
+        { platform: "LinkedIn", percentage: 47, icon: "💼" }
+      ]
+    },
+    {
+      id: 15,
+      title: "STREAMING PRICE $50?",
+      subtitle: "ENTERTAINMENT COSTS",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 67,
+      no_percentage: 33,
+      confidence: 72,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 62 },
+        { date: "Jan 8", value: 65 },
+        { date: "Jan 15", value: 67 },
+        { date: "Jan 22", value: 70 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 73, icon: "🔴" },
+        { platform: "X", percentage: 64, icon: "𝕏" },
+        { platform: "TikTok", percentage: 64, icon: "🎵" }
+      ]
+    },
+    {
+      id: 16,
+      title: "UBI PILOT PROGRAMS?",
+      subtitle: "ECONOMIC POLICY",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 61,
+      no_percentage: 39,
+      confidence: 66,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 56 },
+        { date: "Jan 8", value: 59 },
+        { date: "Jan 15", value: 61 },
+        { date: "Jan 22", value: 64 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 68, icon: "🔴" },
+        { platform: "X", percentage: 57, icon: "𝕏" },
+        { platform: "LinkedIn", percentage: 58, icon: "💼" }
       ]
     }
   ];
