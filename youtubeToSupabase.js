@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -34,53 +33,53 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
         'programming coding tutorial javascript python',
         'tech review smartphone laptop computer',
         'software development web development',
-        
+
         // Crypto & Finance
         'bitcoin cryptocurrency trading investment',
         'ethereum blockchain defi nft market',
         'dogecoin altcoin crypto news analysis',
         'stock market investing finance tips',
         'real estate investment property business',
-        
+
         // Entertainment & Gaming
         'gaming gameplay walkthrough review',
         'movie trailer film review cinema',
         'music video song artist concert',
         'netflix series tv show entertainment',
         'esports tournament gaming highlights',
-        
+
         // Lifestyle & Health
         'fitness workout health nutrition diet',
         'cooking recipe food chef kitchen',
         'travel vlog destination adventure',
         'lifestyle daily routine productivity',
         'fashion style beauty makeup skincare',
-        
+
         // Sports & Activities
         'sports highlights football basketball',
         'soccer fifa world cup tournament',
         'tennis golf baseball sports news',
         'olympics athletics competition',
         'extreme sports adventure outdoor',
-        
+
         // Education & Science
         'education tutorial learning course',
         'science physics chemistry biology',
         'space nasa astronomy discovery',
         'history documentary educational',
         'art design creative tutorial',
-        
+
         // Automotive & Tech
         'car review automotive tesla electric',
         'motorcycle racing automotive news',
         'drone technology gadget review',
         'smartphone tech unboxing review',
-        
+
         // Animals & Nature
         'animals pets dogs cats funny',
         'wildlife nature documentary',
         'environment climate sustainability',
-        
+
         // Business & Career
         'entrepreneur business startup success',
         'career advice job interview tips',
@@ -94,18 +93,18 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
     for (const searchQuery of searchQueries) {
       try {
         console.log(`🔍 Searching for: "${searchQuery}"`);
-        
+
         // First, get search results
         const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&order=relevance&maxResults=${videosPerQuery}&key=${YOUTUBE_API_KEY}`;
-        
+
         const searchResponse = await fetch(searchUrl);
         if (!searchResponse.ok) {
           console.log(`⚠️ Failed to fetch for query "${searchQuery}": ${searchResponse.status}`);
           continue;
         }
-        
+
         const searchData = await searchResponse.json();
-        
+
         if (searchData.items && searchData.items.length > 0) {
           allVideos.push(...searchData.items);
           console.log(`📋 Found ${searchData.items.length} videos for "${searchQuery}"`);
@@ -115,7 +114,7 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
         continue;
       }
     }
-    
+
     if (allVideos.length === 0) {
       console.log('⚠️ No YouTube videos found for any query');
       return [];
@@ -125,13 +124,13 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
 
     // Get video IDs for detailed stats (limit to avoid URL length issues)
     const videoIds = allVideos.slice(0, 50).map(item => item.id.videoId).join(',');
-    
+
     // Fetch detailed video statistics
     const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-    
+
     const statsResponse = await fetch(statsUrl);
     const statsData = statsResponse.ok ? await statsResponse.json() : { items: [] };
-    
+
     // Merge search data with statistics
     const enrichedData = allVideos.slice(0, 50).map(item => {
       const stats = statsData.items?.find(stat => stat.id === item.id.videoId);
@@ -140,10 +139,10 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
         statistics: stats?.statistics || {}
       };
     });
-    
+
     console.log(`✅ Successfully fetched ${enrichedData.length} YouTube videos with statistics`);
     return enrichedData;
-    
+
   } catch (error) {
     console.error('❌ Error fetching YouTube data:', error);
     throw error;
@@ -154,23 +153,23 @@ function processYouTubeDataForSupabase(youtubeData) {
   return youtubeData.map(item => {
     const stats = item.statistics || {};
     const snippet = item.snippet;
-    
+
     // Calculate trend score based on engagement
     const viewCount = parseInt(stats.viewCount) || 0;
     const likeCount = parseInt(stats.likeCount) || 0;
     const commentCount = parseInt(stats.commentCount) || 0;
-    
+
     // Simple trend score calculation (0-100)
     const engagementRatio = viewCount > 0 ? (likeCount + commentCount) / viewCount * 1000 : 0;
     const trendScore = Math.min(100, Math.max(0, Math.floor(engagementRatio * 10) + 50));
-    
+
     // Comprehensive categorization
     const title = snippet.title.toLowerCase();
     const description = (snippet.description || '').toLowerCase();
     const content = title + ' ' + description;
-    
+
     let category = 'General';
-    
+
     // Define comprehensive keyword categories
     const categories = {
       'Sports': ['sports', 'football', 'basketball', 'soccer', 'baseball', 'tennis', 'golf', 'nfl', 'nba', 'fifa', 'olympics', 'athlete', 'team', 'match', 'game', 'score', 'championship', 'league', 'player', 'coach'],
@@ -198,7 +197,7 @@ function processYouTubeDataForSupabase(youtubeData) {
       'Real Estate': ['real estate', 'property', 'house', 'apartment', 'rent', 'buy', 'investment', 'mortgage', 'home', 'market'],
       'Parenting': ['parenting', 'kids', 'children', 'baby', 'family', 'mom', 'dad', 'pregnancy', 'childcare', 'toddler']
     };
-    
+
     // Find the best matching category
     let maxMatches = 0;
     for (const [categoryName, keywords] of Object.entries(categories)) {
@@ -212,11 +211,11 @@ function processYouTubeDataForSupabase(youtubeData) {
     // Create historical dates going back 3 years
     const now = new Date();
     const historicalDate = new Date(now);
-    
+
     // Distribute videos across the last 3 years (1095 days)
     const daysBack = Math.floor(Math.random() * 1095);
     historicalDate.setDate(historicalDate.getDate() - daysBack);
-    
+
     // Add some randomness to make the data more realistic
     const hoursBack = Math.floor(Math.random() * 24);
     const minutesBack = Math.floor(Math.random() * 60);
@@ -245,7 +244,7 @@ function processYouTubeDataForSupabase(youtubeData) {
 async function saveDataToSupabase(processedData) {
   try {
     console.log(`💾 Saving ${processedData.length} videos to Supabase...`);
-    
+
     const { data, error } = await supabase
       .from('youtube_trends')
       .upsert(processedData, { 
@@ -273,12 +272,12 @@ app.get('/api/fetch-youtube', async (req, res) => {
   try {
     const query = req.query.q || 'trending';
     const maxResults = parseInt(req.query.maxResults) || 50;
-    
+
     console.log('🚀 API: Fetching YouTube data...');
-    
+
     // Fetch YouTube data
     const youtubeData = await fetchYouTubeVideos(query, maxResults);
-    
+
     if (youtubeData.length === 0) {
       return res.status(404).json({ 
         success: false, 
@@ -286,20 +285,20 @@ app.get('/api/fetch-youtube', async (req, res) => {
         data: []
       });
     }
-    
+
     // Process for Supabase
     const processedData = processYouTubeDataForSupabase(youtubeData);
-    
+
     // Save to Supabase
     const savedData = await saveDataToSupabase(processedData);
-    
+
     res.json({
       success: true,
       message: `Successfully fetched and saved ${processedData.length} videos`,
       data: savedData || processedData,
       count: processedData.length
     });
-    
+
   } catch (error) {
     console.error('❌ API Error:', error);
     res.status(500).json({
@@ -313,7 +312,7 @@ app.get('/api/fetch-youtube', async (req, res) => {
 app.get('/api/youtube-data', async (req, res) => {
   try {
     console.log('📥 API: Fetching YouTube data from Supabase...');
-    
+
     const { data, error } = await supabase
       .from('youtube_trends')
       .select('*')
@@ -329,7 +328,7 @@ app.get('/api/youtube-data', async (req, res) => {
       data: data || [],
       count: data?.length || 0
     });
-    
+
   } catch (error) {
     console.error('❌ API Error fetching from Supabase:', error);
     res.status(500).json({
@@ -357,6 +356,41 @@ app.get('/api/health', (req, res) => {
     youtube_api: YOUTUBE_API_KEY ? 'Configured' : 'Missing',
     supabase: SUPABASE_URL ? 'Configured' : 'Missing'
   });
+});
+
+// Add CORS headers
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
+// Proxy sentiment analysis requests to Python server
+app.post('/api/analyze-sentiment', async (req, res) => {
+  try {
+    const response = await fetch('http://localhost:5001/api/analyze-sentiment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(req.body)
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (error) {
+    console.error('❌ Error proxying to sentiment server:', error);
+    res.status(500).json({ 
+      error: 'Sentiment analysis server not available. Please start the Sentiment Analysis Server workflow.' 
+    });
+  }
 });
 
 // Serve static files from root directory

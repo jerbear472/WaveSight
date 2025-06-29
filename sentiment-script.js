@@ -274,12 +274,44 @@ async function analyzeTopic() {
 
   console.log(`🔍 Analyzing sentiment for topic: ${topic}`);
   
-  // In a real implementation, this would trigger the sentiment analysis
-  // For now, we'll show a message
-  alert(`Sentiment analysis for "${topic}" has been queued. This feature requires the Python sentiment analysis script to be running.`);
+  // Show loading state
+  const analyzeBtn = document.querySelector('button[onclick="analyzeTopic()"]');
+  const originalText = analyzeBtn.textContent;
+  analyzeBtn.textContent = 'Analyzing...';
+  analyzeBtn.disabled = true;
   
-  // Clear the input
-  topicInput.value = '';
+  try {
+    // Call the Python sentiment analysis API
+    const response = await fetch('/api/analyze-sentiment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ topic: topic })
+    });
+    
+    const result = await response.json();
+    
+    if (response.ok && result.success) {
+      alert(`✅ Analysis complete! ${result.message}\nResults: ${result.data.sentiment_yes} positive, ${result.data.sentiment_no} negative, ${result.data.sentiment_unclear} unclear\nConfidence: ${result.data.confidence}%`);
+      
+      // Refresh the dashboard to show new data
+      await refreshSentimentData();
+    } else {
+      alert(`❌ Analysis failed: ${result.error || result.message}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error calling sentiment analysis:', error);
+    alert('❌ Failed to analyze sentiment. Make sure the sentiment server is running.');
+  } finally {
+    // Restore button state
+    analyzeBtn.textContent = originalText;
+    analyzeBtn.disabled = false;
+    
+    // Clear the input
+    topicInput.value = '';
+  }
 }
 
 // Refresh sentiment data

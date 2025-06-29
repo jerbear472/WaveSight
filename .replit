@@ -34,6 +34,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "nix-shell -p nodejs --run \"node youtubeToSupabase.js\""
 
+[[workflows.workflow]]
+name = "Sentiment Analysis Server"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python sentiment_server.py"
+
 [[ports]]
 localPort = 80
 externalPort = 80
