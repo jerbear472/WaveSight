@@ -689,6 +689,15 @@ function processSupabaseDataForChart(supabaseData) {
     date.setMonth(date.getMonth() - i);
     const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
     dates.push(monthStr);
+    dateMap.set(monthStr, {
+      date: monthStr,
+      'AI Tools': 0,
+      'Crypto': 0,
+      'Gaming': 0,
+      'Technology': 0,
+      'Entertainment': 0
+    });
+  }.push(monthStr);
   }
 
   // Initialize dates
