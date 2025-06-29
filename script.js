@@ -674,7 +674,7 @@ function processSupabaseDataForChart(supabaseData) {
 
   // Group trends by keywords
   const trendGroups = {
-    'AI Tools': ['AI', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai'],
+    'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai'],
     'Tech Trends': ['technology', 'tech', 'innovation', 'startup'],
     'Blockchain': ['blockchain', 'crypto', 'bitcoin', 'ethereum', 'web3'],
     'Programming': ['coding', 'programming', 'developer', 'software'],
@@ -1093,13 +1093,61 @@ async function fetchFreshYouTubeData() {
   }
 }
 
+// Helper functions for updating display
+function updateChart(chartData) {
+  if (chartData) {
+    currentData = { chartData, tableData: currentData?.tableData || [] };
+    updateTrendFilter(chartData);
+    createChart(chartData, selectedTrends);
+  }
+}
+
+function updateTable(tableData) {
+  if (tableData) {
+    createTrendTable(tableData);
+  }
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', async function() {
-  console.log('🚀 Fetching data with YouTube integration...');
+  console.log('🚀 Initializing WAVESIGHT dashboard...');
 
-  const data = await fetchData();
-  if (data) {
-    updateChart(data.chartData);
-    updateTable(data.tableData);
+  // Initialize Supabase
+  initSupabase();
+
+  // Fetch and display data
+  try {
+    const data = await fetchData();
+    currentData = data; // Store data globally
+
+    console.log('Loaded data:', data);
+
+    // Update filter dropdown with chart data to get trend names
+    updateTrendFilter(data.chartData);
+
+    // Create chart
+    createChart(data.chartData, selectedTrends);
+
+    // Create table
+    createTrendTable(data.tableData);
+
+    console.log('Dashboard initialized successfully');
+
+  } catch (error) {
+    console.error('Error initializing dashboard:', error);
   }
+
+  // Set up refresh interval
+  setInterval(async () => {
+    try {
+      console.log('Refreshing data...');
+      const data = await fetchData();
+      currentData = data;
+      updateTrendFilter(data.chartData);
+      createChart(data.chartData, selectedTrends);
+      createTrendTable(data.tableData);
+    } catch (error) {
+      console.error('Error during refresh:', error);
+    }
+  }, 60000); // Refresh every 60 seconds
 });
