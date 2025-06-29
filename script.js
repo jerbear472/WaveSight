@@ -678,11 +678,11 @@ function processSupabaseDataForChart(supabaseData) {
 
   // Group data by date and aggregate reach by trend - Extended to show years of data
   const dateMap = new Map();
-  
+
   // Create date range going back 3 years with monthly intervals
   const dates = [];
   const currentDate = new Date();
-  
+
   // Generate monthly data points for the last 3 years (36 months)
   for (let i = 35; i >= 0; i--) {
     const date = new Date(currentDate);
@@ -699,7 +699,7 @@ function processSupabaseDataForChart(supabaseData) {
     });
   }
 
-  // Initialize dates
+// Initialize dates
   dates.forEach(date => {
     dateMap.set(date, {});
   });
@@ -805,7 +805,7 @@ function processSupabaseDataForChart(supabaseData) {
     });
     return limitedDataPoint;
   });
-  
+
   return limitedChartData;
 }
 
@@ -1060,7 +1060,7 @@ async function filterByDateRange() {
   try {
     // Get fresh data from Supabase with date filtering
     let filteredApiData = [];
-    
+
     if (supabase) {
       let query = supabase
         .from('youtube_trends')
@@ -1076,7 +1076,7 @@ async function filterByDateRange() {
       }
 
       const { data, error } = await query.limit(100);
-      
+
       if (!error && data && data.length > 0) {
         filteredApiData = data;
         console.log(`✅ Found ${filteredApiData.length} videos in date range`);
@@ -1090,10 +1090,10 @@ async function filterByDateRange() {
     if (filteredApiData.length > 0) {
       const filteredChartData = processSupabaseDataForChart(filteredApiData);
       filteredData = filteredChartData;
-      
+
       // Update table with filtered data
       createTrendTable(filteredApiData.slice(0, 10));
-      
+
       // Show date range info
       console.log(`📊 Chart updated with data from ${startDate} to ${endDate}`);
     } else {
@@ -1103,10 +1103,10 @@ async function filterByDateRange() {
     }
 
     createChart(filteredData, selectedTrends);
-    
+
   } catch (error) {
     console.error('❌ Error filtering by date range:', error);
-    
+
     // Fallback to original chart data filtering
     if (currentData && currentData.chartData) {
       filteredData = currentData.chartData.filter(item => {
