@@ -28,16 +28,21 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 50) {
     let searchQueries = [query];
     if (query === 'trending' || query.includes('trending tech AI blockchain crypto')) {
       searchQueries = [
-        'trending tech AI blockchain crypto',
-        'sports highlights football basketball',
-        'health fitness workout nutrition',
-        'cooking food recipes chef',
-        'travel adventure destinations',
-        'music trending songs artists',
-        'movies trailers reviews',
-        'gaming esports streamers',
-        'fashion style beauty makeup',
-        'education tutorials learning'
+        'sports highlights football basketball soccer',
+        'health fitness workout nutrition wellness',
+        'cooking food recipes chef kitchen',
+        'travel adventure destinations vacation',
+        'music trending songs artists concert',
+        'movies trailers reviews netflix',
+        'gaming esports streamers twitch',
+        'fashion style beauty makeup skincare',
+        'education tutorials learning course',
+        'science physics space nasa discovery',
+        'lifestyle vlog daily routine productivity',
+        'art design creative drawing painting',
+        'automotive car tesla electric vehicle',
+        'pets dogs cats animals funny cute',
+        'real estate property house investment'
       ];
     }
 
@@ -117,13 +122,50 @@ function processYouTubeDataForSupabase(youtubeData) {
     const engagementRatio = viewCount > 0 ? (likeCount + commentCount) / viewCount * 1000 : 0;
     const trendScore = Math.min(100, Math.max(0, Math.floor(engagementRatio * 10) + 50));
     
-    // Categorize content
+    // Comprehensive categorization
     const title = snippet.title.toLowerCase();
+    const description = (snippet.description || '').toLowerCase();
+    const content = title + ' ' + description;
+    
     let category = 'General';
-    if (title.includes('ai') || title.includes('artificial intelligence')) category = 'AI';
-    else if (title.includes('crypto') || title.includes('blockchain')) category = 'Crypto';
-    else if (title.includes('tech') || title.includes('technology')) category = 'Technology';
-    else if (title.includes('gaming') || title.includes('game')) category = 'Gaming';
+    
+    // Define comprehensive keyword categories
+    const categories = {
+      'Sports': ['sports', 'football', 'basketball', 'soccer', 'baseball', 'tennis', 'golf', 'nfl', 'nba', 'fifa', 'olympics', 'athlete', 'team', 'match', 'game', 'score', 'championship', 'league', 'player', 'coach'],
+      'Health & Fitness': ['health', 'fitness', 'workout', 'exercise', 'diet', 'nutrition', 'wellness', 'yoga', 'meditation', 'gym', 'weight', 'muscle', 'cardio', 'running', 'training', 'healthy', 'doctor', 'medical'],
+      'Food & Cooking': ['food', 'cooking', 'recipe', 'chef', 'kitchen', 'meal', 'dinner', 'lunch', 'breakfast', 'baking', 'restaurant', 'ingredients', 'taste', 'delicious', 'easy recipe', 'how to cook'],
+      'Travel': ['travel', 'vacation', 'trip', 'destination', 'adventure', 'explore', 'journey', 'visit', 'tourist', 'city', 'country', 'hotel', 'flight', 'backpack', 'culture', 'guide'],
+      'Music': ['music', 'song', 'artist', 'album', 'concert', 'band', 'singer', 'guitar', 'piano', 'drums', 'lyrics', 'remix', 'cover', 'live', 'studio', 'melody'],
+      'Movies & TV': ['movie', 'film', 'series', 'tv show', 'netflix', 'review', 'trailer', 'actor', 'actress', 'cinema', 'director', 'episode', 'season', 'streaming', 'drama', 'comedy'],
+      'Gaming': ['gaming', 'game', 'gamer', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'valorant', 'league of legends', 'console', 'pc gaming', 'mobile game', 'gameplay'],
+      'Fashion': ['fashion', 'style', 'outfit', 'clothing', 'makeup', 'beauty', 'skincare', 'haul', 'trends', 'designer', 'model', 'runway', 'accessories', 'jewelry'],
+      'Education': ['education', 'learning', 'course', 'tutorial', 'study', 'school', 'university', 'skill', 'lesson', 'teach', 'professor', 'class', 'knowledge', 'academic'],
+      'Science': ['science', 'physics', 'chemistry', 'biology', 'space', 'nasa', 'research', 'discovery', 'experiment', 'laboratory', 'scientist', 'theory', 'evolution'],
+      'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai', 'claude', 'midjourney', 'gpt', 'deep learning', 'neural network', 'automation'],
+      'Crypto': ['crypto', 'bitcoin', 'ethereum', 'cryptocurrency', 'trading', 'nft', 'dogecoin', 'altcoin', 'binance', 'defi', 'mining', 'wallet', 'investment'],
+      'Blockchain': ['blockchain', 'web3', 'smart contract', 'decentralized', 'solana', 'polygon', 'cardano', 'chainlink', 'dapp', 'protocol'],
+      'Programming': ['programming', 'coding', 'developer', 'software', 'javascript', 'python', 'react', 'html', 'css', 'node', 'github', 'tutorial'],
+      'Finance': ['finance', 'investing', 'stocks', 'money', 'business', 'entrepreneur', 'passive income', 'real estate', 'bank', 'economy', 'market'],
+      'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine', 'minimalism', 'productivity', 'self improvement', 'motivation', 'habits', 'morning routine'],
+      'Art & Design': ['art', 'design', 'creative', 'drawing', 'painting', 'graphic', 'artist', 'portfolio', 'illustration', 'digital art', 'photoshop'],
+      'Automotive': ['car', 'automotive', 'vehicle', 'tesla', 'electric car', 'racing', 'motorcycle', 'driving', 'auto', 'engine', 'review'],
+      'Pets': ['pets', 'dog', 'cat', 'animal', 'puppy', 'kitten', 'pet care', 'veterinary', 'training', 'cute', 'funny animals'],
+      'Politics': ['politics', 'election', 'government', 'policy', 'news', 'debate', 'vote', 'democracy', 'president', 'congress'],
+      'Psychology': ['psychology', 'mental health', 'therapy', 'mindset', 'behavior', 'motivation', 'anxiety', 'depression', 'self help'],
+      'Environment': ['climate', 'environment', 'sustainability', 'green', 'renewable', 'eco', 'carbon', 'nature', 'conservation', 'recycling'],
+      'Real Estate': ['real estate', 'property', 'house', 'apartment', 'rent', 'buy', 'investment', 'mortgage', 'home', 'market'],
+      'Parenting': ['parenting', 'kids', 'children', 'baby', 'family', 'mom', 'dad', 'pregnancy', 'childcare', 'toddler']
+    };
+    
+    // Find the best matching category
+    let maxMatches = 0;
+    for (const [categoryName, keywords] of Object.entries(categories)) {
+      const matches = keywords.filter(keyword => content.includes(keyword)).length;
+      if (matches > maxMatches) {
+        maxMatches = matches;
+        category = categoryName;
+      }
+    }
 
     return {
       video_id: item.id.videoId,
