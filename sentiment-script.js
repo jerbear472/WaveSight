@@ -1,4 +1,3 @@
-
 // Sentiment Dashboard Configuration
 let SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 let SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
@@ -30,7 +29,7 @@ async function fetchSentimentData() {
 
   try {
     console.log('📥 Fetching sentiment data from Supabase...');
-    
+
     const { data, error } = await supabase
       .from('sentiment_forecasts')
       .select('*')
@@ -153,7 +152,7 @@ function createSentimentDashboard(data) {
       Object.entries(groupedData).map(([topic, entries]) => {
         // Sort entries by date
         const sortedEntries = entries.sort((a, b) => new Date(a.date) - new Date(b.date));
-        
+
         return React.createElement('div', {
           key: topic,
           className: 'sentiment-card'
@@ -250,7 +249,7 @@ function createSimpleSentimentDashboard(groupedData, container) {
     const yes = latest.sentiment_yes || 0;
     const no = latest.sentiment_no || 0;
     const unclear = latest.sentiment_unclear || 0;
-    
+
     return `
       <div class="sentiment-card">
         <div class="sentiment-card-header">
@@ -278,7 +277,7 @@ function createSimpleSentimentDashboard(groupedData, container) {
       </div>
     `;
   }).join('');
-  
+
   container.innerHTML = `<div class="sentiment-dashboard-grid">${dashboardHTML}</div>`;
 }
 
@@ -291,12 +290,12 @@ function createPredictionCards(data) {
 
   // Get recent predictions (last 5)
   const recentPredictions = data.slice(0, 5);
-  
+
   const cardsHTML = recentPredictions.map(item => {
     const outcomeClass = item.prediction_outcome ? item.prediction_outcome.toLowerCase() : 'uncertain';
     const momentum = item.cultural_momentum || 'Stable';
     const certainty = item.certainty_score || 0;
-    
+
     return `
       <div class="prediction-card">
         <h3>"Will ${item.topic} happen?"</h3>
@@ -328,7 +327,7 @@ function createSentimentTable(data) {
   const tableHTML = sortedData.slice(0, 10).map(item => {
     const confidenceClass = item.confidence >= 70 ? 'high-confidence' : 
                            item.confidence >= 50 ? 'medium-confidence' : 'low-confidence';
-    
+
     return `
       <tr>
         <td class="topic-cell">${item.topic}</td>
@@ -357,13 +356,13 @@ async function analyzeTopic() {
   }
 
   console.log(`🔍 Analyzing sentiment for topic: ${topic}`);
-  
+
   // Show loading state
   const analyzeBtn = document.querySelector('button[onclick="analyzeTopic()"]');
   const originalText = analyzeBtn.textContent;
   analyzeBtn.textContent = 'Analyzing...';
   analyzeBtn.disabled = true;
-  
+
   try {
     // Call the Python sentiment analysis API
     const response = await fetch('/api/analyze-sentiment', {
@@ -373,18 +372,18 @@ async function analyzeTopic() {
       },
       body: JSON.stringify({ topic: topic })
     });
-    
+
     const result = await response.json();
-    
+
     if (response.ok && result.success) {
       alert(`✅ Analysis complete! ${result.message}\nResults: ${result.data.sentiment_yes} positive, ${result.data.sentiment_no} negative, ${result.data.sentiment_unclear} unclear\nConfidence: ${result.data.confidence}%`);
-      
+
       // Refresh the dashboard to show new data
       await refreshSentimentData();
     } else {
       alert(`❌ Analysis failed: ${result.error || result.message}`);
     }
-    
+
   } catch (error) {
     console.error('❌ Error calling sentiment analysis:', error);
     alert('❌ Failed to analyze sentiment. Make sure the sentiment server is running.');
@@ -392,7 +391,7 @@ async function analyzeTopic() {
     // Restore button state
     analyzeBtn.textContent = originalText;
     analyzeBtn.disabled = false;
-    
+
     // Clear the input
     topicInput.value = '';
   }
@@ -401,7 +400,7 @@ async function analyzeTopic() {
 // Refresh sentiment data
 async function refreshSentimentData() {
   console.log('🔄 Refreshing sentiment data...');
-  
+
   try {
     const data = await fetchSentimentData();
     sentimentData = data;
@@ -421,6 +420,78 @@ function quickAnalyze(topic) {
 
 // Make function globally available
 window.quickAnalyze = quickAnalyze;
+
+// Analyze sentiment using Reddit data
+async function analyzeSentiment() {
+  const topicInput = document.getElementById('sentimentTopic');
+  const topic = topicInput.value.trim();
+
+  if (!topic) {
+    alert('Please enter a topic to analyze');
+    return;
+  }
+
+  // Show loading state
+  const results = document.getElementById('sentimentResults');
+  results.innerHTML = '<div class="loading">🔍 Fetching Reddit data and analyzing sentiment...</div>';
+
+  try {
+    console.log(`🔍 Analyzing sentiment for topic: ${topic}`);
+    console.log('📡 Connecting to Reddit API via sentiment server...');
+
+    // Check if sentiment server is running
+    const healthResponse = await fetch('http://0.0.0.0:5001/api/health');
+    if (!healthResponse.ok) {
+      throw new Error('Sentiment analysis server is not running. Please start the "Sentiment Analysis Server" workflow.');
+    }
+
+    const response = await fetch('http://0.0.0.0:5001/api/analyze-sentiment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        topic: topic,
+        limit: 100
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Reddit API error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    if (result.success) {
+      console.log('✅ Reddit sentiment analysis completed:', result);
+      console.log(`📊 Analyzed ${result.total_comments} Reddit comments`);
+
+      // Display results
+      displaySentimentResults(result.data);
+
+      // Refresh dashboard with new data
+      await loadSentimentData();
+    } else {
+      throw new Error(result.message || 'Reddit analysis failed');
+    }
+
+  } catch (error) {
+    console.error('❌ Error analyzing Reddit sentiment:', error);
+    results.innerHTML = `
+      <div class="error">
+        <h3>Reddit Connection Error</h3>
+        <p>${error.message}</p>
+        <small>
+          <strong>To fix this:</strong><br>
+          1. Start the "Sentiment Analysis Server" workflow<br>
+          2. Ensure Reddit API credentials are configured<br>
+          3. Check that ports 5001 is accessible
+        </small>
+      </div>
+    `;
+  }
+}
 
 // Initialize dashboard on page load
 document.addEventListener('DOMContentLoaded', async function() {
