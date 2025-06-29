@@ -290,15 +290,28 @@ function createChart(data, filteredTrends = 'all') {
   // Get all trend names
   let allTrendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
 
+  // Calculate trend totals for prioritization
+  const trendTotals = {};
+  allTrendNames.forEach(trend => {
+    trendTotals[trend] = data.reduce((sum, dataPoint) => sum + (dataPoint[trend] || 0), 0);
+  });
+
+  // Sort trends by total value and limit to top 8
+  const sortedAllTrends = allTrendNames.sort((a, b) => trendTotals[b] - trendTotals[a]).slice(0, 8);
+
   // Filter trends based on selection
   let trendNames;
   if (filteredTrends === 'all') {
-    trendNames = allTrendNames;
+    trendNames = sortedAllTrends;
   } else {
-    trendNames = allTrendNames.filter(name => name.toLowerCase().includes(filteredTrends.toLowerCase()));
+    trendNames = sortedAllTrends.filter(name => name.toLowerCase().includes(filteredTrends.toLowerCase()));
   }
 
-  const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444'];
+  // Expanded color palette with unique colors
+  const colors = [
+    '#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#06b6d4',
+    '#84cc16', '#f472b6', '#a855f7', '#22d3ee', '#fb923c', '#34d399', '#fbbf24', '#f87171'
+  ];
 
   // Find max value for scaling (only from visible trends)
   const maxValue = Math.max(...data.flatMap(d => 
@@ -681,8 +694,7 @@ function processSupabaseDataForChart(supabaseData) {
     'Gaming': ['gaming', 'game', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'valorant'],
     'Social Media': ['tiktok', 'instagram', 'youtube', 'twitter', 'facebook', 'influencer', 'viral', 'content'],
     'Health & Fitness': ['health', 'fitness', 'workout', 'diet', 'nutrition', 'wellness', 'meditation', 'yoga'],
-    'Finance': ['finance', 'investing', 'stocks',```text
-money', 'business', 'entrepreneur', 'passive income', 'real estate'],
+    'Finance': ['finance', 'investing', 'stocks', 'money', 'business', 'entrepreneur', 'passive income', 'real estate'],
     'Education': ['education', 'learning', 'course', 'tutorial', 'study', 'school', 'university', 'skill'],
     'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine', 'minimalism', 'productivity', 'self improvement'],
     'Food & Cooking': ['food', 'cooking', 'recipe', 'chef', 'restaurant', 'baking', 'kitchen', 'meal prep'],
