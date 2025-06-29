@@ -686,7 +686,7 @@ function processSupabaseDataForChart(supabaseData) {
     const dateIndex = index % dates.length;
     const date = dates[dateIndex];
 
-    const title = item.trend_name.toLowerCase();
+    const title = (item.title || item.trend_name || '').toLowerCase();
     let category = 'Other';
 
     // Find matching category
@@ -701,7 +701,7 @@ function processSupabaseDataForChart(supabaseData) {
     if (!dateMap.get(date)[category]) {
       dateMap.get(date)[category] = 0;
     }
-    dateMap.get(date)[category] += item.reach_count || 100000;
+    dateMap.get(date)[category] += item.view_count || item.reach_count || 100000;
   });
 
   // Convert to chart format
