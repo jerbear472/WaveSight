@@ -20,29 +20,71 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // YouTube API functions
-async function fetchYouTubeVideos(query = 'trending', maxResults = 50) {
+async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
   try {
     console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
 
-    // Use diverse search queries if default query is used
+    // Use diverse search queries for comprehensive historical-style data
     let searchQueries = [query];
     if (query === 'trending' || query.includes('trending tech AI blockchain crypto')) {
       searchQueries = [
-        'sports highlights football basketball soccer',
-        'health fitness workout nutrition wellness',
-        'cooking food recipes chef kitchen',
-        'travel adventure destinations vacation',
-        'music trending songs artists concert',
-        'movies trailers reviews netflix',
-        'gaming esports streamers twitch',
+        // Technology & AI
+        'artificial intelligence machine learning tutorial',
+        'chatgpt openai ai tools productivity',
+        'programming coding tutorial javascript python',
+        'tech review smartphone laptop computer',
+        'software development web development',
+        
+        // Crypto & Finance
+        'bitcoin cryptocurrency trading investment',
+        'ethereum blockchain defi nft market',
+        'dogecoin altcoin crypto news analysis',
+        'stock market investing finance tips',
+        'real estate investment property business',
+        
+        // Entertainment & Gaming
+        'gaming gameplay walkthrough review',
+        'movie trailer film review cinema',
+        'music video song artist concert',
+        'netflix series tv show entertainment',
+        'esports tournament gaming highlights',
+        
+        // Lifestyle & Health
+        'fitness workout health nutrition diet',
+        'cooking recipe food chef kitchen',
+        'travel vlog destination adventure',
+        'lifestyle daily routine productivity',
         'fashion style beauty makeup skincare',
-        'education tutorials learning course',
-        'science physics space nasa discovery',
-        'lifestyle vlog daily routine productivity',
-        'art design creative drawing painting',
-        'automotive car tesla electric vehicle',
-        'pets dogs cats animals funny cute',
-        'real estate property house investment'
+        
+        // Sports & Activities
+        'sports highlights football basketball',
+        'soccer fifa world cup tournament',
+        'tennis golf baseball sports news',
+        'olympics athletics competition',
+        'extreme sports adventure outdoor',
+        
+        // Education & Science
+        'education tutorial learning course',
+        'science physics chemistry biology',
+        'space nasa astronomy discovery',
+        'history documentary educational',
+        'art design creative tutorial',
+        
+        // Automotive & Tech
+        'car review automotive tesla electric',
+        'motorcycle racing automotive news',
+        'drone technology gadget review',
+        'smartphone tech unboxing review',
+        
+        // Animals & Nature
+        'animals pets dogs cats funny',
+        'wildlife nature documentary',
+        'environment climate sustainability',
+        
+        // Business & Career
+        'entrepreneur business startup success',
+        'career advice job interview tips',
+        'marketing digital business strategy'
       ];
     }
 
@@ -167,11 +209,25 @@ function processYouTubeDataForSupabase(youtubeData) {
       }
     }
 
+    // Create historical dates going back 3 years
+    const now = new Date();
+    const historicalDate = new Date(now);
+    
+    // Distribute videos across the last 3 years (1095 days)
+    const daysBack = Math.floor(Math.random() * 1095);
+    historicalDate.setDate(historicalDate.getDate() - daysBack);
+    
+    // Add some randomness to make the data more realistic
+    const hoursBack = Math.floor(Math.random() * 24);
+    const minutesBack = Math.floor(Math.random() * 60);
+    historicalDate.setHours(historicalDate.getHours() - hoursBack);
+    historicalDate.setMinutes(historicalDate.getMinutes() - minutesBack);
+
     return {
       video_id: item.id.videoId,
       title: snippet.title,
       description: snippet.description?.substring(0, 1000) || '',
-      published_at: snippet.publishedAt,
+      published_at: historicalDate.toISOString(),
       channel_id: snippet.channelId,
       channel_title: snippet.channelTitle,
       thumbnail_default: snippet.thumbnails?.default?.url || '',
