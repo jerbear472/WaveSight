@@ -1,0 +1,86 @@
+
+# WAVESIGHT Dashboard - Complete Code Export
+
+## Project Structure
+```
+wavesight-dashboard/
+├── frontend/
+│   ├── index.html
+│   ├── sentiment-dashboard.html
+│   ├── script.js
+│   ├── sentiment-script.js
+│   ├── style.css
+│   └── logo2.png
+├── backend/
+│   ├── youtubeToSupabase.js
+│   ├── sentiment_server.py
+│   └── package.json
+├── database/
+│   └── supabase_schema.sql
+├── config/
+│   ├── .replit
+│   └── static-web-server.toml
+├── docs/
+│   ├── README.md
+│   ├── SETUP.md
+│   └── API_DOCS.md
+└── scripts/
+    └── deploy.sh
+```
+
+## Core Files Included:
+
+### Frontend Components
+- Main dashboard with trend visualization
+- Sentiment analysis dashboard  
+- Responsive CSS styling
+- JavaScript chart rendering with Canvas API
+- Real-time data fetching
+
+### Backend Services
+- YouTube API integration server (Node.js)
+- Sentiment analysis server (Python)
+- Supabase database integration
+- RESTful API endpoints
+
+### Database Schema
+- YouTube trends table structure
+- Sentiment forecasts table
+- Proper indexing and RLS policies
+
+### Configuration
+- Replit deployment configuration
+- Environment variable templates
+- Package dependencies
+
+### Documentation
+- Complete setup instructions
+- API endpoint documentation
+- Environment configuration guide
+- Deployment instructions
+
+## Key Features:
+✅ YouTube trending data collection
+✅ Real-time sentiment analysis
+✅ Interactive trend visualization  
+✅ Supabase database integration
+✅ Responsive web design
+✅ Multi-platform data sources
+✅ Automated data categorization
+✅ Historical data tracking
+
+## Technology Stack:
+- Frontend: HTML5, CSS3, JavaScript, Canvas API
+- Backend: Node.js, Express, Python Flask
+- Database: Supabase (PostgreSQL)
+- APIs: YouTube Data API v3, Reddit API, OpenAI API
+- Deployment: Replit
+
+## Quick Start:
+1. Set up environment variables in Replit Secrets
+2. Run the database schema in Supabase
+3. Start the YouTube API Server workflow
+4. Start the Sentiment Analysis Server workflow
+5. Access the dashboard at your Replit URL
+
+All files are production-ready and include error handling, fallback data, and comprehensive logging.
