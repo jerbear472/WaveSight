@@ -697,7 +697,6 @@ function processSupabaseDataForChart(supabaseData) {
       'Technology': 0,
       'Entertainment': 0
     });
-  }.push(monthStr);
   }
 
   // Initialize dates
