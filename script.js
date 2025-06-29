@@ -695,13 +695,24 @@ function processSupabaseDataForChart(supabaseData) {
       'Crypto': 0,
       'Gaming': 0,
       'Technology': 0,
-      'Entertainment': 0
+      'Entertainment': 0,
+      'Movies & TV': 0,
+      'General': 0
     });
   }
 
   // Initialize dates
   dates.forEach(date => {
-    dateMap.set(date, {});
+    dateMap.set(date, {
+      date: date,
+      'AI Tools': 0,
+      'Crypto': 0,
+      'Gaming': 0,
+      'Technology': 0,
+      'Entertainment': 0,
+      'Movies & TV': 0,
+      'General': 0
+    });
   });
 
   // Group trends by keywords - Expanded to 25+ categories
