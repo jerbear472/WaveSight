@@ -1098,7 +1098,7 @@ async function fetchFreshYouTubeData() {
   try {
     console.log('🔄 Fetching fresh YouTube data...');
 
-    const response = await fetch('/api/fetch-youtube?q=trending tech AI blockchain crypto&maxResults=25');
+    const response = await fetch('/api/fetch-youtube?q=trending&maxResults=50');
     const result = await response.json();
 
     if (result.success) {

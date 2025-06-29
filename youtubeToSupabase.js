@@ -24,25 +24,60 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 50) {
   try {
     console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
 
-    // First, get search results
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&order=relevance&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`;
-    
-    const searchResponse = await fetch(searchUrl);
-    if (!searchResponse.ok) {
-      throw new Error(`YouTube Search API error: ${searchResponse.status} - ${searchResponse.statusText}`);
+    // Use diverse search queries if default query is used
+    let searchQueries = [query];
+    if (query === 'trending' || query.includes('trending tech AI blockchain crypto')) {
+      searchQueries = [
+        'trending tech AI blockchain crypto',
+        'sports highlights football basketball',
+        'health fitness workout nutrition',
+        'cooking food recipes chef',
+        'travel adventure destinations',
+        'music trending songs artists',
+        'movies trailers reviews',
+        'gaming esports streamers',
+        'fashion style beauty makeup',
+        'education tutorials learning'
+      ];
+    }
+
+    let allVideos = [];
+    const videosPerQuery = Math.ceil(maxResults / searchQueries.length);
+
+    for (const searchQuery of searchQueries) {
+      try {
+        console.log(`🔍 Searching for: "${searchQuery}"`);
+        
+        // First, get search results
+        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&order=relevance&maxResults=${videosPerQuery}&key=${YOUTUBE_API_KEY}`;
+        
+        const searchResponse = await fetch(searchUrl);
+        if (!searchResponse.ok) {
+          console.log(`⚠️ Failed to fetch for query "${searchQuery}": ${searchResponse.status}`);
+          continue;
+        }
+        
+        const searchData = await searchResponse.json();
+        
+        if (searchData.items && searchData.items.length > 0) {
+          allVideos.push(...searchData.items);
+          console.log(`📋 Found ${searchData.items.length} videos for "${searchQuery}"`);
+        }
+      } catch (queryError) {
+        console.log(`⚠️ Error with query "${searchQuery}":`, queryError.message);
+        continue;
+      }
     }
     
-    const searchData = await searchResponse.json();
-    
-    if (!searchData.items || searchData.items.length === 0) {
-      console.log('⚠️ No YouTube videos found for query');
+    if (allVideos.length === 0) {
+      console.log('⚠️ No YouTube videos found for any query');
       return [];
     }
 
-    console.log(`📋 Found ${searchData.items.length} videos, fetching detailed statistics...`);
+    console.log(`📋 Total found ${allVideos.length} videos, fetching detailed statistics...`);
 
-    // Get video IDs for detailed stats
-    const videoIds = searchData.items.map(item => item.id.videoId).join(',');
+    // Get video IDs for detailed stats (limit to avoid URL length issues)
+    const videoIds = allVideos.slice(0, 50).map(item => item.id.videoId).join(',');
     
     // Fetch detailed video statistics
     const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
@@ -51,7 +86,7 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 50) {
     const statsData = statsResponse.ok ? await statsResponse.json() : { items: [] };
     
     // Merge search data with statistics
-    const enrichedData = searchData.items.map(item => {
+    const enrichedData = allVideos.slice(0, 50).map(item => {
       const stats = statsData.items?.find(stat => stat.id === item.id.videoId);
       return {
         ...item,
@@ -138,8 +173,8 @@ async function saveDataToSupabase(processedData) {
 // API Routes
 app.get('/api/fetch-youtube', async (req, res) => {
   try {
-    const query = req.query.q || 'trending tech AI blockchain crypto';
-    const maxResults = parseInt(req.query.maxResults) || 25;
+    const query = req.query.q || 'trending';
+    const maxResults = parseInt(req.query.maxResults) || 50;
     
     console.log('🚀 API: Fetching YouTube data...');
     
