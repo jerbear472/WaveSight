@@ -281,7 +281,191 @@ function createSimpleSentimentDashboard(groupedData, container) {
   container.innerHTML = `<div class="sentiment-dashboard-grid">${dashboardHTML}</div>`;
 }
 
-// Create cultural prediction cards
+// Get enhanced event predictions data
+function getEventPredictionsData() {
+  return [
+    {
+      id: 1,
+      title: "WILL TRUMP WIN IN 2024?",
+      subtitle: "PUBLIC SENTIMENT",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 62,
+      no_percentage: 38,
+      confidence: 75,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 60 },
+        { date: "Jan 8", value: 65 },
+        { date: "Jan 15", value: 70 },
+        { date: "Jan 22", value: 80 }
+      ],
+      source_analysis: [
+        { platform: "X", percentage: 57, icon: "𝕏" },
+        { platform: "TikTok", percentage: 64, icon: "🎵" },
+        { platform: "Reddit", percentage: 51, icon: "🔴" }
+      ]
+    },
+    {
+      id: 2,
+      title: "WILL AI REPLACE PROGRAMMERS BY 2025?",
+      subtitle: "TECH INDUSTRY SENTIMENT",
+      prediction: "Unlikely",
+      prediction_class: "unlikely",
+      yes_percentage: 28,
+      no_percentage: 72,
+      confidence: 68,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 35 },
+        { date: "Jan 8", value: 32 },
+        { date: "Jan 15", value: 28 },
+        { date: "Jan 22", value: 25 }
+      ],
+      source_analysis: [
+        { platform: "LinkedIn", percentage: 15, icon: "💼" },
+        { platform: "Reddit", percentage: 35, icon: "🔴" },
+        { platform: "X", percentage: 25, icon: "𝕏" }
+      ]
+    },
+    {
+      id: 3,
+      title: "WILL CRYPTO HIT NEW ATH IN 2025?",
+      subtitle: "MARKET SENTIMENT",
+      prediction: "Likely",
+      prediction_class: "likely",
+      yes_percentage: 68,
+      no_percentage: 32,
+      confidence: 72,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 55 },
+        { date: "Jan 8", value: 62 },
+        { date: "Jan 15", value: 65 },
+        { date: "Jan 22", value: 75 }
+      ],
+      source_analysis: [
+        { platform: "X", percentage: 78, icon: "𝕏" },
+        { platform: "Reddit", percentage: 65, icon: "🔴" },
+        { platform: "Discord", percentage: 72, icon: "💬" }
+      ]
+    },
+    {
+      id: 4,
+      title: "WILL GTA 6 RELEASE IN 2025?",
+      subtitle: "GAMING COMMUNITY",
+      prediction: "Uncertain",
+      prediction_class: "uncertain",
+      yes_percentage: 45,
+      no_percentage: 55,
+      confidence: 52,
+      sentiment_over_time: [
+        { date: "Jan 1", value: 60 },
+        { date: "Jan 8", value: 50 },
+        { date: "Jan 15", value: 45 },
+        { date: "Jan 22", value: 40 }
+      ],
+      source_analysis: [
+        { platform: "Reddit", percentage: 35, icon: "🔴" },
+        { platform: "X", percentage: 48, icon: "𝕏" },
+        { platform: "YouTube", percentage: 52, icon: "📺" }
+      ]
+    }
+  ];
+}
+
+// Create event prediction cards with enhanced design
+function createEventPredictionCards() {
+  const cardsContainer = document.getElementById('eventPredictionCards');
+  if (!cardsContainer) {
+    console.log('Event prediction cards container not found');
+    return;
+  }
+
+  const eventData = getEventPredictionsData();
+
+  const cardsHTML = eventData.map(event => {
+    // Generate mini chart path
+    const maxValue = Math.max(...event.sentiment_over_time.map(d => d.value));
+    const minValue = Math.min(...event.sentiment_over_time.map(d => d.value));
+    const range = maxValue - minValue || 1;
+    
+    const pathData = event.sentiment_over_time.map((point, index) => {
+      const x = (index / (event.sentiment_over_time.length - 1)) * 300;
+      const y = 80 - ((point.value - minValue) / range) * 60;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+
+    return `
+      <div class="event-prediction-card">
+        <div class="event-card-header">
+          <div class="wavesight-logo">
+            W WAVESIGHT
+          </div>
+        </div>
+        
+        <div class="event-main-content">
+          <h2 class="event-title">${event.title}</h2>
+          <p class="event-subtitle">${event.subtitle}</p>
+          
+          <div class="event-content-grid">
+            <div class="sentiment-chart-section">
+              <h3>Sentiment Over Time</h3>
+              <div class="mini-chart-container">
+                <svg class="mini-chart" viewBox="0 0 300 80">
+                  <defs>
+                    <linearGradient id="chartGradient${event.id}">
+                      <stop offset="0%" stop-color="#5ee3ff" stop-opacity="0.8"/>
+                      <stop offset="100%" stop-color="#5ee3ff" stop-opacity="0.2"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="${pathData}" stroke="#5ee3ff" stroke-width="3" fill="none"/>
+                  <path d="${pathData} L 300 80 L 0 80 Z" fill="url(#chartGradient${event.id})"/>
+                </svg>
+                <div class="chart-labels">
+                  ${event.sentiment_over_time.map(point => `<span>${point.date}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+            
+            <div class="prediction-section">
+              <h3>PREDICTION</h3>
+              <div class="prediction-result ${event.prediction_class}">
+                ${event.prediction}
+              </div>
+              
+              <div class="percentage-breakdown">
+                <div class="percentage-item">
+                  <span class="percentage-label">YES</span>
+                  <span class="percentage-value">${event.yes_percentage}%</span>
+                </div>
+                <div class="percentage-item">
+                  <span class="percentage-label">NO</span>
+                  <span class="percentage-value">${event.no_percentage}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="source-analysis-section">
+            <h3>Source Analysis</h3>
+            <div class="source-platforms">
+              ${event.source_analysis.map(source => `
+                <div class="source-platform">
+                  <span class="platform-icon">${source.icon}</span>
+                  <span class="platform-percentage">${source.percentage}%</span>
+                  <span class="platform-name">${source.platform}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  cardsContainer.innerHTML = cardsHTML;
+  console.log(`✅ Created ${eventData.length} event prediction cards`);
+}
+
+// Create cultural prediction cards (existing functionality)
 function createPredictionCards(data) {
   const cardsContainer = document.getElementById('predictionCards');
   if (!cardsContainer || !data || data.length === 0) {
@@ -501,6 +685,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   initSupabase();
 
   try {
+    // Create event prediction cards first
+    createEventPredictionCards();
+
     // Fetch and display sentiment data
     const data = await fetchSentimentData();
     sentimentData = data;
