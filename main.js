@@ -8,7 +8,7 @@ const supabase = createClient(
 );
 
 // 2. YouTube config
-const YOUTUBE_;
+const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&chart=mostPopular&maxResults=5&regionCode=US&key=${YOUTUBE_API_KEY}`;
 
 async function fetchYouTubeTrends() {

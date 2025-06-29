@@ -700,7 +700,6 @@ function processSupabaseDataForChart(supabaseData) {
     // Add to date map
     if (!dateMap.get(date)[category]) {
       dateMap.get(date)[category] = 0;
-    }ap.get(date)[category] = 0;
     }
     dateMap.get(date)[category] += item.reach_count || 100000;
   });
