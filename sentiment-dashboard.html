@@ -1,0 +1,72 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAVESIGHT - Sentiment Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
+
+    <!-- Load required libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header-bar">
+            <div class="logo-group">
+                <img src="logo2.png" alt="Logo" class="logo-icon">
+                <span class="logo-text">WAVESIGHT</span>
+            </div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Trends</a>
+                <a href="sentiment-dashboard.html" class="nav-link active">Sentiment</a>
+            </div>
+            <button class="menu-btn">☰</button>
+        </div>
+
+        <div class="header">
+            <div class="hero-text">
+                <h1 class="hero-title">Sentiment Forecasting Dashboard</h1>
+                <p class="hero-subtitle">AI-Powered Social Sentiment Analysis</p>
+                <p class="hero-description">Track public sentiment across platforms with predictive insights</p>
+            </div>
+            <div class="submit-bar">
+                <input type="text" placeholder="Enter topic to analyze..." id="topicInput">
+                <button class="submit-btn" onclick="analyzeTopic()">Analyze Sentiment</button>
+                <button class="submit-btn" onclick="refreshSentimentData()" style="background: #10B981;">Refresh Data</button>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h2>Sentiment Analysis Overview</h2>
+            <div id="sentimentDashboard"></div>
+        </div>
+
+        <div class="chart-section">
+            <h2>Latest Sentiment Reports</h2>
+            <table class="trend-table" id="sentimentTable">
+                <thead>
+                    <tr>
+                        <th>Topic</th>
+                        <th>Platform</th>
+                        <th>Date</th>
+                        <th>Confidence</th>
+                        <th>Yes Votes</th>
+                        <th>No Votes</th>
+                        <th>Unclear</th>
+                    </tr>
+                </thead>
+                <tbody id="sentimentTableBody">
+                    <!-- Table content will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="sentiment-script.js"></script>
+</body>
+</html>

@@ -60,3 +60,45 @@ CREATE TRIGGER update_youtube_trends_updated_at
     BEFORE UPDATE ON youtube_trends 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Create sentiment forecasts table for sentiment analysis data
+CREATE TABLE sentiment_forecasts (
+  id BIGSERIAL PRIMARY KEY,
+  
+  -- Topic and platform info
+  topic VARCHAR(200) NOT NULL,
+  platform VARCHAR(100) DEFAULT 'Reddit',
+  
+  -- Date of analysis
+  date DATE NOT NULL,
+  
+  -- Sentiment counts
+  sentiment_yes INTEGER DEFAULT 0,
+  sentiment_no INTEGER DEFAULT 0,
+  sentiment_unclear INTEGER DEFAULT 0,
+  
+  -- Calculated confidence percentage
+  confidence DECIMAL(5,2) DEFAULT 0.00,
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_sentiment_forecasts_topic ON sentiment_forecasts(topic);
+CREATE INDEX idx_sentiment_forecasts_date ON sentiment_forecasts(date DESC);
+CREATE INDEX idx_sentiment_forecasts_platform ON sentiment_forecasts(platform);
+CREATE INDEX idx_sentiment_forecasts_confidence ON sentiment_forecasts(confidence DESC);
+
+-- Enable Row Level Security
+ALTER TABLE sentiment_forecasts ENABLE ROW LEVEL SECURITY;
+
+-- Create policy to allow all operations
+CREATE POLICY "Allow all operations" ON sentiment_forecasts FOR ALL USING (true);
+
+-- Trigger to automatically update updated_at for sentiment_forecasts
+CREATE TRIGGER update_sentiment_forecasts_updated_at 
+    BEFORE UPDATE ON sentiment_forecasts 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
