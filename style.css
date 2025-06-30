@@ -523,10 +523,78 @@ h1, h2, h3, .logo, .header-title {
   border-bottom: none;
 }
 
-/* Add some visual enhancements */
-.trend-table td:first-child {
+/* Enhanced trending topics table styles */
+.topic-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topic-name {
   color: #8b5cf6;
   font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.topic-subtitle {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
+.platform-count {
+  color: #f59e0b;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.metric-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.primary-metric {
+  color: #f1f1f1;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.secondary-metric {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.score-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trend-direction {
+  font-size: 1.1rem;
+}
+
+.score-value {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.trending-up {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
+}
+
+.trending-stable {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+}
+
+.trending-down {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+}
+
+.trend-table td:first-child {
+  padding: 12px 16px;
 }
 
 .trend-table td:last-child {

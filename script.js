@@ -1131,7 +1131,7 @@ function processDataForChart(rawData) {
   return chartData;
 }
 
-// Create trend table with enhanced reach calculation
+// Create trending topics table with aggregated insights
 function createTrendTable(data) {
   const tableBody = document.getElementById('trendTableBody');
   if (!tableBody || !data || data.length === 0) {
@@ -1139,66 +1139,120 @@ function createTrendTable(data) {
     return;
   }
 
-  console.log('Creating table with data:', data);
+  console.log('Creating trending topics table with data:', data);
 
-  // Calculate total reach for percentage calculations
-  const totalReach = data.reduce((sum, item) => sum + (item.view_count || item.reach_count || 0), 0);
-
-  // Create table rows from data
-  const tableHTML = data.slice(0, 50).map((item, index) => {
-    // Handle both YouTube API data and fallback data
-    const trendName = item.title || item.trend_name || `Trend ${index + 1}`;
-    const platform = item.channel_title || item.platform || 'YouTube';
-    let reach = item.view_count || item.reach_count || 0;
-
-    // If reach is 0 or very low, calculate based on engagement
-    if (reach < 1000) {
-      const likeCount = item.like_count || 0;
-      const commentCount = item.comment_count || 0;
-      const engagementScore = likeCount + (commentCount * 10); // Comments weighted more
-
-      // Estimate reach based on engagement (typical engagement rate is 1-3%)
-      reach = Math.max(1000, Math.floor(engagementScore * 50)); // Assume 2% engagement rate
+  // Aggregate data by trending topics/categories
+  const topicAggregation = {};
+  
+  data.forEach(item => {
+    const category = item.trend_category || 'General';
+    const views = item.view_count || item.reach_count || 0;
+    const likes = item.like_count || 0;
+    const comments = item.comment_count || 0;
+    const score = item.trend_score || 0;
+    
+    if (!topicAggregation[category]) {
+      topicAggregation[category] = {
+        topic: category,
+        totalViews: 0,
+        totalLikes: 0,
+        totalComments: 0,
+        videoCount: 0,
+        avgScore: 0,
+        topVideos: [],
+        platforms: new Set(),
+        scoreSum: 0
+      };
     }
-
-    // Calculate trend score based on multiple factors
-    let score = item.trend_score || item.score;
-    if (!score) {
-      const likeCount = item.like_count || 0;
-      const commentCount = item.comment_count || 0;
-      const engagementRatio = reach > 0 ? ((likeCount + commentCount) / reach) * 100 : 0;
-
-      // Base score on engagement ratio and reach
-      const reachScore = Math.min(40, Math.floor(Math.log10(reach)) * 5); // Log scale for reach
-      const engagementScore = Math.min(40, Math.floor(engagementRatio * 20)); // Engagement contribution
-      const recencyScore = 20; // Base recency score
-
-      score = Math.min(99, Math.max(50, reachScore + engagementScore + recencyScore));
+    
+    const topic = topicAggregation[category];
+    topic.totalViews += views;
+    topic.totalLikes += likes;
+    topic.totalComments += comments;
+    topic.videoCount += 1;
+    topic.scoreSum += score;
+    topic.platforms.add(item.channel_title || 'YouTube');
+    
+    // Keep top 3 videos for this topic
+    if (topic.topVideos.length < 3) {
+      topic.topVideos.push({
+        title: item.title || item.trend_name,
+        views: views,
+        video_id: item.video_id,
+        channel: item.channel_title
+      });
     }
+  });
 
-    // Format reach with better display
-    const reachDisplay = formatNumber(reach);
-    const reachPercentage = totalReach > 0 ? ((reach / totalReach) * 100).toFixed(1) : '0.0';
+  // Calculate averages and format data
+  const trendingTopics = Object.values(topicAggregation)
+    .map(topic => ({
+      ...topic,
+      avgScore: Math.round(topic.scoreSum / topic.videoCount),
+      avgViews: Math.round(topic.totalViews / topic.videoCount),
+      engagement: topic.totalLikes + topic.totalComments,
+      platformCount: topic.platforms.size
+    }))
+    .sort((a, b) => {
+      // Sort by engagement rate and total views
+      const aEngagement = (a.engagement / a.totalViews) * 1000 + a.avgScore;
+      const bEngagement = (b.engagement / b.totalViews) * 1000 + b.avgScore;
+      return bEngagement - aEngagement;
+    })
+    .slice(0, 15);
 
-    // Create YouTube URL if video_id exists
-    const videoUrl = item.video_id ? `https://www.youtube.com/watch?v=${item.video_id}` : '#';
-    const titleElement = item.video_id ? 
-      `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="${trendName}">${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</a>` :
-      `<span title="${trendName}">${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</span>`;
+  // Calculate total reach for trending direction
+  const totalReach = trendingTopics.reduce((sum, topic) => sum + topic.totalViews, 0);
+
+  // Create enhanced table rows
+  const tableHTML = trendingTopics.map((topic, index) => {
+    const reachPercentage = totalReach > 0 ? ((topic.totalViews / totalReach) * 100).toFixed(1) : '0.0';
+    const engagementRate = topic.totalViews > 0 ? 
+      ((topic.engagement / topic.totalViews) * 100).toFixed(2) : '0.00';
+    
+    // Determine trend direction (mock for now, could be calculated from time series data)
+    const trendDirection = topic.avgScore >= 80 ? '📈' : topic.avgScore >= 60 ? '📊' : '📉';
+    const trendClass = topic.avgScore >= 80 ? 'trending-up' : topic.avgScore >= 60 ? 'trending-stable' : 'trending-down';
+    
+    // Get the top video for this topic to link to
+    const topVideo = topic.topVideos.sort((a, b) => b.views - a.views)[0];
+    const videoUrl = topVideo?.video_id ? `https://www.youtube.com/watch?v=${topVideo.video_id}` : '#';
+    
+    const topicElement = topVideo?.video_id ? 
+      `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="View top video: ${topVideo.title}">
+        <span class="topic-name">${topic.topic}</span>
+        <span class="topic-subtitle">${topic.videoCount} videos</span>
+      </a>` :
+      `<span class="topic-name">${topic.topic}</span>
+       <span class="topic-subtitle">${topic.videoCount} videos</span>`;
 
     return `
-      <tr>
-        <td>${titleElement}</td>
-        <td>${platform}</td>
-        <td title="${reach.toLocaleString()} views (${reachPercentage}% of total)">${reachDisplay}</td>
-        <td><span style="color: ${score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : '#EF4444'}">${score}</span></td>
+      <tr class="${trendClass}">
+        <td class="topic-cell">
+          ${topicElement}
+        </td>
+        <td>
+          <span class="platform-count">${topic.platformCount} source${topic.platformCount > 1 ? 's' : ''}</span>
+        </td>
+        <td title="${topic.totalViews.toLocaleString()} total views (${reachPercentage}% of all topics)">
+          <div class="metric-stack">
+            <span class="primary-metric">${formatNumber(topic.totalViews)}</span>
+            <span class="secondary-metric">${engagementRate}% engagement</span>
+          </div>
+        </td>
+        <td>
+          <div class="score-display">
+            <span class="trend-direction">${trendDirection}</span>
+            <span class="score-value" style="color: ${topic.avgScore >= 80 ? '#10B981' : topic.avgScore >= 60 ? '#F59E0B' : '#EF4444'}">${topic.avgScore}</span>
+          </div>
+        </td>
       </tr>
     `;
   }).join('');
 
   tableBody.innerHTML = tableHTML;
-  console.log(`Table populated with ${data.slice(0, 50).length} rows`);
-  console.log(`Total reach across all items: ${formatNumber(totalReach)}`);
+  console.log(`Trending topics table populated with ${trendingTopics.length} categories`);
+  console.log(`Total reach across all topics: ${formatNumber(totalReach)}`);
 }
 
 // Enhanced filter chart function that works with search and dates
