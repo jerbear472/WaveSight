@@ -683,6 +683,45 @@ function showTrendDetailModal(trendName, trendColor) {
   getTrendDetailData(trendName).then(detailData => {
     if (!detailData || detailData.length === 0) {
       console.log('No detail data found for trend:', trendName);
+      
+      // Show modal with no data message
+      const modalHTML = `
+        <div id="trendDetailModal" class="trend-modal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h2 style="color: ${trendColor}; margin: 0; display: flex; align-items: center;">
+                <span style="width: 12px; height: 12px; background: ${trendColor}; border-radius: 50%; margin-right: 10px;"></span>
+                ${trendName} Trend Details
+              </h2>
+              <button class="modal-close" onclick="closeTrendModal()">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="trend-summary">
+                <p>No detailed data available for this trend category.</p>
+                <p>This trend appears in the chart based on aggregated view counts, but individual video details are not currently available.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Remove existing modal if any
+      const existingModal = document.getElementById('trendDetailModal');
+      if (existingModal) {
+        existingModal.remove();
+      }
+
+      // Add modal to body
+      document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+      // Show modal with animation
+      setTimeout(() => {
+        const modal = document.getElementById('trendDetailModal');
+        if (modal) {
+          modal.classList.add('show');
+        }
+      }, 10);
+      
       return;
     }
 
@@ -788,62 +827,93 @@ async function getTrendDetailData(trendName) {
       return [];
     }
 
-    // Filter current data for this specific trend
+    // Get the keyword map that matches the chart categorization
+    const trendKeywordMap = {
+      'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai', 'gpt', 'claude', 'midjourney', 'stable diffusion'],
+      'Crypto': ['crypto', 'bitcoin', 'ethereum', 'dogecoin', 'trading', 'defi', 'nft', 'altcoin', 'binance'],
+      'Blockchain': ['blockchain', 'web3', 'smart contract', 'solana', 'polygon', 'cardano', 'chainlink'],
+      'Programming': ['coding', 'programming', 'developer', 'software', 'javascript', 'python', 'react', 'node'],
+      'Gaming': ['gaming', 'game', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'valorant'],
+      'Social Media': ['tiktok', 'instagram', 'youtube', 'twitter', 'facebook', 'influencer', 'viral', 'content'],
+      'Health & Fitness': ['health', 'fitness', 'workout', 'diet', 'nutrition', 'wellness', 'meditation', 'yoga'],
+      'Finance': ['finance', 'investing', 'stocks', 'money', 'business', 'entrepreneur', 'passive income', 'real estate'],
+      'Education': ['education', 'learning', 'course', 'tutorial', 'study', 'school', 'university', 'skill'],
+      'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine', 'minimalism', 'productivity', 'self improvement'],
+      'Food & Cooking': ['food', 'cooking', 'recipe', 'chef', 'restaurant', 'baking', 'kitchen', 'meal prep'],
+      'Travel': ['travel', 'vacation', 'trip', 'adventure', 'destination', 'backpacking', 'culture', 'explore'],
+      'Fashion': ['fashion', 'style', 'outfit', 'clothing', 'makeup', 'beauty', 'skincare', 'haul'],
+      'Music': ['music', 'song', 'artist', 'album', 'concert', 'band', 'guitar', 'piano', 'remix'],
+      'Sports': ['sports', 'football', 'basketball', 'soccer', 'baseball', 'tennis', 'olympics', 'athlete'],
+      'Movies & TV': ['movie', 'film', 'series', 'netflix', 'review', 'trailer', 'actor', 'cinema'],
+      'Science': ['science', 'physics', 'chemistry', 'biology', 'space', 'nasa', 'research', 'discovery'],
+      'Politics': ['politics', 'election', 'government', 'policy', 'news', 'debate', 'vote', 'democracy'],
+      'Environment': ['climate', 'environment', 'sustainability', 'green', 'renewable', 'eco', 'carbon', 'nature'],
+      'Psychology': ['psychology', 'mental health', 'therapy', 'mindset', 'behavior', 'motivation', 'anxiety'],
+      'Art & Design': ['art', 'design', 'creative', 'drawing', 'painting', 'graphic', 'artist', 'portfolio'],
+      'Automotive': ['car', 'automotive', 'vehicle', 'tesla', 'electric', 'racing', 'motorcycle', 'review'],
+      'Real Estate': ['real estate', 'property', 'house', 'apartment', 'rent', 'buy', 'investment', 'mortgage'],
+      'Parenting': ['parenting', 'kids', 'children', 'baby', 'family', 'mom', 'dad', 'pregnancy'],
+      'Pets': ['pets', 'dog', 'cat', 'animal', 'puppy', 'kitten', 'training', 'care'],
+      'Entertainment': ['entertainment', 'celebrity', 'news', 'gossip', 'viral', 'trending', 'funny', 'meme'],
+      'Technology': ['tech', 'technology', 'gadget', 'smartphone', 'laptop', 'computer', 'review', 'innovation'],
+      'General': [] // Catch-all category
+    };
+
+    // Get keywords for this trend
+    const trendKeywords = trendKeywordMap[trendName] || [trendName.toLowerCase()];
+    console.log(`🔍 Using keywords for ${trendName}:`, trendKeywords);
+
+    // Filter current data using the same logic as chart categorization
     const trendData = currentData.tableData.filter(item => {
-      const category = item.trend_category || 'General';
-      const title = (item.title || '').toLowerCase();
+      const title = (item.title || item.trend_name || '').toLowerCase();
       const description = (item.description || '').toLowerCase();
-      const channel = (item.channel_title || '').toLowerCase();
-      const trendLower = trendName.toLowerCase();
+      const category = item.trend_category || 'General';
 
-      console.log(`🔍 Checking item: category="${category}", title="${title.substring(0, 50)}..."`);
-
-      // Match by exact category name
-      if (category.toLowerCase() === trendLower) {
-        console.log(`✅ Matched by category: ${category}`);
+      // First check if the item's category matches exactly
+      if (category === trendName) {
+        console.log(`✅ Exact category match: ${category}`);
         return true;
       }
 
-      // Check if trend name keywords appear in title, description, or channel
-      const trendKeywords = getTrendKeywords(trendName);
-      const matchFound = trendKeywords.some(keyword => 
+      // Then check if any keywords match (same logic as chart processing)
+      const matchFound = trendKeywords.length === 0 || trendKeywords.some(keyword => 
         title.includes(keyword.toLowerCase()) || 
-        description.includes(keyword.toLowerCase()) ||
-        channel.includes(keyword.toLowerCase())
+        description.includes(keyword.toLowerCase())
       );
 
-      if (matchFound) {
-        console.log(`✅ Matched by keywords in ${trendName}`);
+      if (matchFound && trendKeywords.length > 0) {
+        console.log(`✅ Keyword match for ${trendName}: "${title.substring(0, 50)}..."`);
       }
 
       return matchFound;
     });
 
-    console.log(`📊 Filtered ${trendData.length} items for trend: ${trendName}`);
+    console.log(`📊 Found ${trendData.length} items for trend: ${trendName}`);
 
-    // If we have limited data, try to fetch more from Supabase
-    if (trendData.length < 5 && supabase) {
-      console.log(`🔍 Limited data found (${trendData.length}), fetching more from Supabase...`);
+    // If still no data and we have Supabase, try a broader search
+    if (trendData.length === 0 && supabase && trendKeywords.length > 0) {
+      console.log(`🔍 No local data found, searching Supabase for ${trendName}...`);
 
       try {
+        // Search by keywords in title
         const { data, error } = await supabase
           .from('youtube_trends')
           .select('*')
-          .eq('trend_category', trendName)
+          .or(trendKeywords.map(keyword => `title.ilike.%${keyword}%`).join(','))
           .order('view_count', { ascending: false })
           .limit(20);
 
         if (!error && data && data.length > 0) {
-          console.log(`✅ Found ${data.length} additional videos for ${trendName}`);
+          console.log(`✅ Found ${data.length} videos in Supabase for ${trendName}`);
           return data;
         }
       } catch (supabaseError) {
-        console.log('Could not fetch additional data from Supabase:', supabaseError);
+        console.log('Could not fetch from Supabase:', supabaseError);
       }
     }
 
     console.log(`📊 Returning ${trendData.length} videos for ${trendName}`);
-    return trendData.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
+    return trendData.sort((a, b) => (b.view_count || b.reach_count || 0) - (a.view_count || a.reach_count || 0));
 
   } catch (error) {
     console.error('Error fetching trend detail data:', error);
