@@ -765,6 +765,7 @@ function showTrendDetailModal(trendName, trendColor) {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
     // Show modal with animation
+```tool_code
     setTimeout(() => {
       const modal = document.getElementById('trendDetailModal');
       if (modal) {
@@ -1270,7 +1271,7 @@ function createSearchCategories(searchData, searchTerm) {
   // For 'all' or 'trending', get categories from existing data but limit to top 8
   if (searchTermLower === 'trending' || searchTermLower === 'all') {
     console.log(`🎯 Creating multiple categories for "${searchTerm}"`);
-    
+
     const categoryCount = new Map();
 
     searchData.forEach(item => {
@@ -1944,35 +1945,38 @@ async function searchTrends() {
         let trendsToShow;
 
         if (showMode === 'multiple') {
-          // Show all default trends
-          chartData = processSupabaseDataForChart(dataToProcess);
-          trendsToShow = 'all';
-          selectedTrends = 'all';
-          
-          // Update filter dropdown with all available trends
-          updateTrendFilter(chartData);
-          if (filterSelect) filterSelect.value = 'all';
-          
-          console.log(`📊 Showing all default trends`);
-        } else {
-          // Show only the specific searched trend
-          chartData = createSearchBasedChartData(dataToProcess, finalSearchTerm, startDate, endDate);
-          const searchTermCapitalized = finalSearchTerm.charAt(0).toUpperCase() + finalSearchTerm.slice(1);
-          trendsToShow = searchTermCapitalized;
-          selectedTrends = searchTermCapitalized;
+        // Show all default trends
+        chartData = processSupabaseDataForChart(dataToProcess);
+        trendsToShow = 'all';
+        selectedTrends = 'all';
 
-          // Update filter dropdown to show the search term
-          if (filterSelect) {
-            filterSelect.innerHTML = '<option value="all">All Trends</option>';
-            const searchOption = document.createElement('option');
-            searchOption.value = searchTermCapitalized;
-            searchOption.textContent = searchTermCapitalized;
-            searchOption.selected = true;
-            filterSelect.appendChild(searchOption);
-          }
-          
-          console.log(`🎯 Showing single trend: "${searchTermCapitalized}"`);
+        // Update filter dropdown with all available trends
+        updateTrendFilter(chartData);
+        if (filterSelect) filterSelect.value = 'all';
+
+        // Clear search input to show we're in default mode
+        if (searchInput) searchInput.value = '';
+
+        console.log(`📊 Showing all default trends`);
+      } else {
+        // Show only the specific searched trend
+        chartData = createSearchBasedChartData(dataToProcess, finalSearchTerm, startDate, endDate);
+        const searchTermCapitalized = finalSearchTerm.charAt(0).toUpperCase() + finalSearchTerm.slice(1);
+        trendsToShow = searchTermCapitalized;
+        selectedTrends = searchTermCapitalized;
+
+        // Update filter dropdown to show the search term
+        if (filterSelect) {
+          filterSelect.innerHTML = '<option value="all">All Trends</option>';
+          const searchOption = document.createElement('option');
+          searchOption.value = searchTermCapitalized;
+          searchOption.textContent = searchTermCapitalized;
+          searchOption.selected = true;
+          filterSelect.appendChild(searchOption);
         }
+
+        console.log(`🎯 Showing single trend: "${searchTermCapitalized}"`);
+      }
 
         // Update the display
         currentData = { chartData, tableData: dataToProcess };
@@ -2315,7 +2319,8 @@ window.performComprehensiveSearch = performComprehensiveSearch;
 // Offline search function for when quota is exceeded
 async function searchExistingDataOnly() {
   const searchInput = document.getElementById('searchInput');
-  const filterSelect = document.getElementById('trendFilter');
+  ```tool_code
+const filterSelect = document.getElementById('trendFilter');
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
 
