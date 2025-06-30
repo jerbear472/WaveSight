@@ -34,15 +34,20 @@
                 <p class="hero-description">Transforming Data Waves into Strategic Insights</p>
             </div>
             <div class="submit-bar">
-                <select id="trendFilter" onchange="filterChart()">
-                    <option value="all">All Trends</option>
-                </select>
-                <input type="date" id="startDate" onchange="filterByDateRange()">
-                <input type="date" id="endDate" onchange="filterByDateRange()">
-                <input type="text" placeholder="Search trends..." id="searchInput">
-                <button class="submit-btn" onclick="searchTrends()">Search</button>
-                <button class="submit-btn" onclick="resetDateFilter()" style="background: #374151;">Reset</button>
-                <button class="submit-btn" onclick="fetchFreshYouTubeData()" style="background: #10B981;">Fetch Data</button>
+                <div class="filter-group-title">Filters & Controls</div>
+                <div class="filter-group">
+                    <select id="trendFilter" onchange="filterChart()">
+                        <option value="all">All Trends</option>
+                    </select>
+                    <input type="date" id="startDate" onchange="filterByDateRange()">
+                    <input type="date" id="endDate" onchange="filterByDateRange()">
+                    <input type="text" placeholder="Search trends..." id="searchInput">
+                </div>
+                <div class="button-group">
+                    <button class="submit-btn" onclick="searchTrends()">Search</button>
+                    <button class="submit-btn" onclick="resetDateFilter()" style="background: #374151;">Reset</button>
+                    <button class="submit-btn" onclick="fetchFreshYouTubeData()" style="background: #10B981;">Fetch Data</button>
+                </div>
             </div>
         </div>
 
