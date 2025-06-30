@@ -1854,19 +1854,28 @@ async function searchTrends() {
     submitBtn.textContent = 'Searching...';
     submitBtn.disabled = true;
 
-    // ALWAYS fetch fresh YouTube data for the search term
-    console.log(`🎯 Fetching fresh YouTube data for "${searchTerm}"...`);
+    // Try to fetch fresh YouTube data, but handle quota exceeded gracefully
+    console.log(`🎯 Attempting to fetch fresh YouTube data for "${searchTerm}"...`);
+    let quotaExceeded = false;
     try {
       const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
         console.log(`✅ Fetched ${result.count} new videos for "${searchTerm}"`);
+      } else if (result.error && result.error.includes('quota')) {
+        quotaExceeded = true;
+        console.log(`⚠️ YouTube API quota exceeded - using existing data only`);
       } else {
         console.log(`⚠️ No new data found for "${searchTerm}", will use existing data`);
       }
     } catch (fetchError) {
-      console.log(`⚠️ Could not fetch new data for "${searchTerm}":`, fetchError.message);
+      if (fetchError.message.includes('quota') || fetchError.message.includes('403')) {
+        quotaExceeded = true;
+        console.log(`⚠️ YouTube API quota exceeded - using existing data only`);
+      } else {
+        console.log(`⚠️ Could not fetch new data for "${searchTerm}":`, fetchError.message);
+      }
     }
 
     // Fetch all available data (existing + any new data)
@@ -1960,13 +1969,36 @@ async function searchTrends() {
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
         console.log(`📊 Chart updated with search-based categorization`);
 
+        // Show quota status if relevant
+        if (quotaExceeded) {
+          const statusMessage = document.createElement('div');
+          statusMessage.className = 'quota-warning';
+          statusMessage.innerHTML = `
+            <p>⚠️ YouTube API quota exceeded. Showing existing data for "${searchTerm}". 
+            Quota resets daily at midnight PT.</p>
+          `;
+          statusMessage.style.cssText = `
+            background: #fbbf24; color: #000; padding: 10px; border-radius: 8px; 
+            margin: 10px 0; text-align: center; font-weight: bold;
+          `;
+          
+          const chartContainer = document.getElementById('trendChart');
+          if (chartContainer && chartContainer.parentNode) {
+            chartContainer.parentNode.insertBefore(statusMessage, chartContainer);
+            setTimeout(() => statusMessage.remove(), 5000);
+          }
+        }
+
       } else {
         console.log(`⚠️ No videos found matching "${searchTerm}"`);
 
-        // Show empty results
+        // Show empty results or quota message
         const tableBody = document.getElementById('trendTableBody');
         if (tableBody) {
-          tableBody.innerHTML = `<tr><td colspan="4">No videos found for "${searchTerm}"</td></tr>`;
+          const message = quotaExceeded ? 
+            `YouTube API quota exceeded. No existing data for "${searchTerm}". Try again after midnight PT.` :
+            `No videos found for "${searchTerm}"`;
+          tableBody.innerHTML = `<tr><td colspan="4">${message}</td></tr>`;
         }
 
         // Create empty chart
@@ -2303,6 +2335,83 @@ async function performComprehensiveSearch() {
 
 // Make comprehensive search available globally
 window.performComprehensiveSearch = performComprehensiveSearch;
+
+// Offline search function for when quota is exceeded
+async function searchExistingDataOnly() {
+  const searchInput = document.getElementById('searchInput');
+  const filterSelect = document.getElementById('trendFilter');
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+
+  let searchTerm = searchInput.value.toLowerCase().trim();
+  const selectedTrend = filterSelect.value;
+  const startDate = startDateInput.value;
+  const endDate = endDateInput.value;
+
+  // Use selected trend if no search term provided
+  if (!searchTerm && selectedTrend !== 'all') {
+    searchTerm = selectedTrend;
+  }
+
+  console.log(`🔍 Searching existing data for: "${searchTerm}"`);
+
+  try {
+    // Get all existing data from Supabase
+    const allData = await fetchYouTubeDataFromSupabase();
+
+    if (allData && allData.length > 0) {
+      let dataToProcess = allData;
+
+      // Filter by search term
+      if (searchTerm && searchTerm !== 'all') {
+        dataToProcess = allData.filter(item => {
+          const title = (item.title || '').toLowerCase();
+          const category = (item.trend_category || '').toLowerCase();
+          const channel = (item.channel_title || '').toLowerCase();
+          const description = (item.description || '').toLowerCase();
+
+          return title.includes(searchTerm) || 
+                 category.includes(searchTerm) || 
+                 channel.includes(searchTerm) ||
+                 description.includes(searchTerm);
+        });
+      }
+
+      // Filter by date range
+      if (startDate || endDate) {
+        dataToProcess = dataToProcess.filter(item => {
+          const itemDate = new Date(item.published_at);
+          const start = startDate ? new Date(startDate) : new Date('1900-01-01');
+          const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
+          return itemDate >= start && itemDate <= end;
+        });
+      }
+
+      if (dataToProcess.length > 0) {
+        const chartData = createSearchBasedChartData(dataToProcess, searchTerm, startDate, endDate);
+        currentData = { chartData, tableData: dataToProcess };
+        filteredData = chartData;
+
+        updateTrendFilter(chartData);
+        createChart(chartData, searchTerm);
+        createTrendTable(dataToProcess.slice(0, 25));
+
+        console.log(`✅ Found ${dataToProcess.length} existing videos for "${searchTerm}"`);
+      } else {
+        console.log(`⚠️ No existing videos found for "${searchTerm}"`);
+        const tableBody = document.getElementById('trendTableBody');
+        if (tableBody) {
+          tableBody.innerHTML = `<tr><td colspan="4">No existing data found for "${searchTerm}"</td></tr>`;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error searching existing data:', error);
+  }
+}
+
+// Make offline search available globally
+window.searchExistingDataOnly = searchExistingDataOnly;
 
 // Authentication functions
 async function handleAuthSuccess(user) {
