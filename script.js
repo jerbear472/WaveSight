@@ -787,8 +787,7 @@ async function getTrendDetailData(trendName) {
       return [];
     }
 
-    // Filter current data for this specific trend```text
- category
+    // Filter current data for this specific trend
     const trendData = currentData.tableData.filter(item => {
       const category = item.trend_category || 'General';
       const title = (item.title || '').toLowerCase();
@@ -1306,17 +1305,18 @@ function createSearchCategories(searchData, searchTerm) {
     }
 
     if (dateMap.has(dateKey)) {
-      const category = categorizeSearchResult(item, searchTerm, searchCategories);
       const dataPoint = dateMap.get(dateKey);
-      
-      // For specific search terms, aggregate ALL matching data under the search term category
+
+      // For specific search terms, ALWAYS aggregate ALL data under the search term category
       if (searchTerm.toLowerCase() !== 'trending' && searchTerm.toLowerCase() !== 'all') {
         const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
         dataPoint[searchTermCategory] = (dataPoint[searchTermCategory] || 0) + (item.view_count || 0);
+        console.log(`📊 Adding ${item.view_count || 0} views to ${searchTermCategory} for date ${dateKey}`);
       } else {
+        const category = categorizeSearchResult(item, searchTerm, searchCategories);
         dataPoint[category] = (dataPoint[category] || 0) + (item.view_count || 0);
       }
-      
+
       dateMap.set(dateKey, dataPoint);
     }
   });
