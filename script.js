@@ -1180,9 +1180,15 @@ function createTrendTable(data) {
     const reachDisplay = formatNumber(reach);
     const reachPercentage = totalReach > 0 ? ((reach / totalReach) * 100).toFixed(1) : '0.0';
 
+    // Create YouTube URL if video_id exists
+    const videoUrl = item.video_id ? `https://www.youtube.com/watch?v=${item.video_id}` : '#';
+    const titleElement = item.video_id ? 
+      `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="${trendName}">${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</a>` :
+      `<span title="${trendName}">${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</span>`;
+
     return `
       <tr>
-        <td title="${trendName}">${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</td>
+        <td>${titleElement}</td>
         <td>${platform}</td>
         <td title="${reach.toLocaleString()} views (${reachPercentage}% of total)">${reachDisplay}</td>
         <td><span style="color: ${score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : '#EF4444'}">${score}</span></td>

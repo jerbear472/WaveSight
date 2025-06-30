@@ -500,11 +500,15 @@ h1, h2, h3, .logo, .header-title {
   transition: all 0.3s ease;
 }
 
-.trend-table tr:hover td {
-  background: rgba(19, 19, 31, 0.9);
-  color: #f4f4f5;
-  transform: scale(1.01);
-  box-shadow: 0 4px 12px rgba(94, 227, 255, 0.1);
+.trend-table td a:hover {
+  color: #8b5cf6 !important;
+  text-decoration: underline !important;
+  transition: color 0.2s ease;
+}
+
+.trend-table tr:hover {
+  background-color: rgba(19, 19, 31, 0.9);
+  transition: background-color 0.2s ease;
 }
 
 .trend-table tbody tr {
