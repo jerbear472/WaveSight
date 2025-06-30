@@ -1229,60 +1229,8 @@ function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) 
     }
   }
 
-  // Create search-optimized categories
-function createSearchCategories(searchData, searchTerm) {
-  console.log(`🏷️ Creating categories for search term: "${searchTerm}"`);
-
-  // For specific search terms, create a focused category structure
-  const searchTermLower = searchTerm.toLowerCase();
-  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
-
-  // If searching for a specific term, make that the primary category
-  if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
-    console.log(`🎯 Creating focused categories for "${searchTerm}"`);
-
-    // Group videos by relevance to search term
-    const relevantVideos = [];
-    const otherVideos = [];
-
-    searchData.forEach(item => {
-      const title = (item.title || '').toLowerCase();
-      const description = (item.description || '').toLowerCase();
-      const category = (item.trend_category || '').toLowerCase();
-
-      if (title.includes(searchTermLower) || 
-          description.includes(searchTermLower) || 
-          category.includes(searchTermLower)) {
-        relevantVideos.push(item);
-      } else {
-        otherVideos.push(item);
-      }
-    });
-
-    console.log(`📊 Found ${relevantVideos.length} videos directly related to "${searchTerm}"`);
-    console.log(`📊 Found ${otherVideos.length} videos in other categories`);
-
-    // If we have enough relevant videos, make search term the primary category
-    if (relevantVideos.length > 0) {
-      return [searchTermCategory];
-    }
-  }
-
-  // Fallback to existing category logic for broad searches
-  const categoryCount = new Map();
-
-  searchData.forEach(item => {
-    const category = item.trend_category || 'General';
-    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
-  });
-
-  const sortedCategories = Array.from(categoryCount.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5) // Limit to fewer categories for cleaner display
-    .map(([category]) => category);
-
-  return sortedCategories;
-}
+  // Create focused categories for search results
+  const searchCategories = createSearchCategories(searchData, searchTerm);
 
   // Initialize all categories in dateMap
   dates.forEach(date => {
@@ -1292,6 +1240,52 @@ function createSearchCategories(searchData, searchTerm) {
     });
     dateMap.set(date, dataPoint);
   });
+
+// Create search-optimized categories function
+function createSearchCategories(searchData, searchTerm) {
+  console.log(`🏷️ Creating categories for search term: "${searchTerm}"`);
+
+  const searchTermLower = searchTerm.toLowerCase();
+  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+
+  // For specific search terms, create a focused category structure
+  if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
+    console.log(`🎯 Creating focused categories for "${searchTerm}"`);
+
+    // Check how many videos are directly related to the search term
+    const relevantVideos = searchData.filter(item => {
+      const title = (item.title || '').toLowerCase();
+      const description = (item.description || '').toLowerCase();
+      const category = (item.trend_category || '').toLowerCase();
+
+      return title.includes(searchTermLower) || 
+             description.includes(searchTermLower) || 
+             category.includes(searchTermLower);
+    });
+
+    console.log(`📊 Found ${relevantVideos.length} videos directly related to "${searchTerm}"`);
+
+    // If we have enough relevant videos, use search term as the only category
+    if (relevantVideos.length > 0) {
+      return [searchTermCategory];
+    }
+  }
+
+  // Fallback: get categories from existing data but limit to top 3 for cleaner display
+  const categoryCount = new Map();
+
+  searchData.forEach(item => {
+    const category = item.trend_category || 'General';
+    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
+  });
+
+  const sortedCategories = Array.from(categoryCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3) // Limit to top 3 categories for search results
+    .map(([category]) => category);
+
+  return sortedCategories.length > 0 ? sortedCategories : ['General'];
+}
 
   // Aggregate data into the date map
   searchData.forEach(item => {
@@ -1327,21 +1321,26 @@ function createSearchCategories(searchData, searchTerm) {
 function categorizeSearchResult(item, searchTerm, availableCategories) {
   const title = (item.title || '').toLowerCase();
   const description = (item.description || '').toLowerCase();
-  const existingCategory = item.trend_category || 'General';
+  const searchTermLower = searchTerm.toLowerCase();
 
-  // First check if existing category is in our available categories
+  // If searching for a specific term, prioritize matching content
+  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+  if (availableCategories.includes(searchTermCategory)) {
+    // Check if content matches the search term
+    if (title.includes(searchTermLower) || 
+        description.includes(searchTermLower) ||
+        (item.trend_category || '').toLowerCase().includes(searchTermLower)) {
+      return searchTermCategory;
+    }
+  }
+
+  // For broad searches, use existing category logic
+  const existingCategory = item.trend_category || 'General';
   if (availableCategories.includes(existingCategory)) {
     return existingCategory;
   }
 
-  // Check if content strongly matches search term
-  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
-  if (availableCategories.includes(searchTermCategory) && 
-      (title.includes(searchTerm.toLowerCase()) || description.includes(searchTerm.toLowerCase()))) {
-    return searchTermCategory;
-  }
-
-  // Find best matching category
+  // Find best matching category from keywords
   for (const category of availableCategories) {
     const categoryKeywords = getCategoryKeywords(category);
     if (categoryKeywords.some(keyword => title.includes(keyword) || description.includes(keyword))) {
@@ -1349,8 +1348,8 @@ function categorizeSearchResult(item, searchTerm, availableCategories) {
     }
   }
 
-  // Default to first available category or General
-  return availableCategories.includes('General') ? 'General' : availableCategories[0];
+  // Default to first available category
+  return availableCategories[0] || 'General';
 }
 
 // Get keywords for a category
