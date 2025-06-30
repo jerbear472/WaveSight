@@ -486,10 +486,14 @@ function createChart(data, filteredTrends = 'all') {
   }
 
   function drawAnimatedLines() {
+    // Store clickable areas for interaction
+    window.chartClickableAreas = [];
+
     // Draw trend lines with animation
     finalPositions.forEach((positions, trendIndex) => {
       if (positions.length === 0) return;
 
+      const trendName = trendNames[trendIndex];
       const color = colors[trendIndex % colors.length];
       const baseY = padding + legendHeight + chartHeight; // Bottom of chart
 
@@ -539,17 +543,26 @@ function createChart(data, filteredTrends = 'all') {
         ctx.fill();
       }
 
-      // Draw the line on top
+      // Draw the line on top with click detection areas
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
       ctx.beginPath();
+      const clickablePoints = [];
 
       // Create smooth curves using cubic Bézier curves
       positions.forEach((finalPos, pointIndex) => {
         const animatedY = baseY - (baseY - finalPos.y) * easeOutCubic(animationProgress);
+
+        clickablePoints.push({
+          x: finalPos.x,
+          y: animatedY,
+          value: finalPos.value,
+          dataPoint: data[pointIndex],
+          trendName: trendName
+        });
 
         if (pointIndex === 0) {
           ctx.moveTo(finalPos.x, animatedY);
@@ -572,6 +585,14 @@ function createChart(data, filteredTrends = 'all') {
       });
 
       ctx.stroke();
+
+      // Store clickable area for this trend line
+      window.chartClickableAreas.push({
+        trendName: trendName,
+        color: color,
+        points: clickablePoints,
+        trendIndex: trendIndex
+      });
     });
   }
 
@@ -588,9 +609,247 @@ function createChart(data, filteredTrends = 'all') {
     }
   }
 
+  // Add click event listener to canvas
+  canvas.addEventListener('click', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width * dpr);
+    const scaleY = canvas.height / (rect.height * dpr);
+    
+    const clickX = (event.clientX - rect.left) * scaleX / dpr;
+    const clickY = (event.clientY - rect.top) * scaleY / dpr;
+
+    // Check if click is near any trend line
+    if (window.chartClickableAreas) {
+      window.chartClickableAreas.forEach(area => {
+        // Check if click is near any point in this trend line
+        const clickRadius = 15; // Increased click tolerance
+        
+        area.points.forEach(point => {
+          const distance = Math.sqrt(
+            Math.pow(clickX - point.x, 2) + Math.pow(clickY - point.y, 2)
+          );
+          
+          if (distance <= clickRadius) {
+            showTrendDetailModal(area.trendName, area.color);
+          }
+        });
+      });
+    }
+  });
+
   // Start animation
   animate();
 }
+
+// Function to show trend detail modal
+function showTrendDetailModal(trendName, trendColor) {
+  console.log(`🔍 Showing details for trend: ${trendName}`);
+
+  // Get detailed data for this trend
+  getTrendDetailData(trendName).then(detailData => {
+    if (!detailData || detailData.length === 0) {
+      console.log('No detail data found for trend:', trendName);
+      return;
+    }
+
+    // Create modal HTML
+    const modalHTML = `
+      <div id="trendDetailModal" class="trend-modal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2 style="color: ${trendColor}; margin: 0; display: flex; align-items: center;">
+              <span style="width: 12px; height: 12px; background: ${trendColor}; border-radius: 50%; margin-right: 10px;"></span>
+              ${trendName} Trend Details
+            </h2>
+            <button class="modal-close" onclick="closeTrendModal()">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="trend-summary">
+              <div class="summary-stat">
+                <span class="stat-label">Total Videos:</span>
+                <span class="stat-value">${detailData.length}</span>
+              </div>
+              <div class="summary-stat">
+                <span class="stat-label">Total Views:</span>
+                <span class="stat-value">${formatNumber(detailData.reduce((sum, item) => sum + (item.view_count || 0), 0))}</span>
+              </div>
+              <div class="summary-stat">
+                <span class="stat-label">Avg Trend Score:</span>
+                <span class="stat-value">${Math.round(detailData.reduce((sum, item) => sum + (item.trend_score || 0), 0) / detailData.length)}</span>
+              </div>
+              <div class="summary-stat">
+                <span class="stat-label">Date Range:</span>
+                <span class="stat-value">${getDateRange(detailData)}</span>
+              </div>
+            </div>
+            <div class="trend-videos">
+              <h3>Contributing Videos</h3>
+              <div class="video-list">
+                ${detailData.slice(0, 10).map(video => `
+                  <div class="video-item">
+                    <div class="video-thumbnail">
+                      ${video.thumbnail_medium ? 
+                        `<img src="${video.thumbnail_medium}" alt="Thumbnail" onerror="this.style.display='none'">` : 
+                        '<div class="no-thumbnail">📹</div>'
+                      }
+                    </div>
+                    <div class="video-details">
+                      <div class="video-title">
+                        ${video.video_id ? 
+                          `<a href="https://www.youtube.com/watch?v=${video.video_id}" target="_blank" rel="noopener noreferrer">${video.title}</a>` :
+                          video.title
+                        }
+                      </div>
+                      <div class="video-meta">
+                        <span class="channel">${video.channel_title || 'Unknown Channel'}</span>
+                        <span class="views">${formatNumber(video.view_count || 0)} views</span>
+                        <span class="date">${new Date(video.published_at).toLocaleDateString()}</span>
+                      </div>
+                      <div class="video-stats">
+                        <span class="likes">👍 ${formatNumber(video.like_count || 0)}</span>
+                        <span class="comments">💬 ${formatNumber(video.comment_count || 0)}</span>
+                        <span class="score">📊 ${video.trend_score || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+              ${detailData.length > 10 ? `<p class="more-videos">... and ${detailData.length - 10} more videos</p>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Remove existing modal if any
+    const existingModal = document.getElementById('trendDetailModal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Show modal with animation
+    setTimeout(() => {
+      const modal = document.getElementById('trendDetailModal');
+      if (modal) {
+        modal.classList.add('show');
+      }
+    }, 10);
+  });
+}
+
+// Function to get detailed data for a specific trend
+async function getTrendDetailData(trendName) {
+  try {
+    console.log(`📊 Fetching detail data for trend: ${trendName}`);
+
+    if (!currentData || !currentData.tableData) {
+      console.log('No current data available');
+      return [];
+    }
+
+    // Filter current data for this specific trend category
+    const trendData = currentData.tableData.filter(item => {
+      const category = item.trend_category || 'General';
+      const title = (item.title || '').toLowerCase();
+      const trendLower = trendName.toLowerCase();
+
+      // Match by category or title keywords
+      if (category.toLowerCase() === trendLower) {
+        return true;
+      }
+
+      // Check if trend name keywords appear in title
+      const trendKeywords = getTrendKeywords(trendName);
+      return trendKeywords.some(keyword => title.includes(keyword.toLowerCase()));
+    });
+
+    // If we have limited data, try to fetch more from Supabase
+    if (trendData.length < 5 && supabase) {
+      console.log(`🔍 Limited data found (${trendData.length}), fetching more from Supabase...`);
+
+      try {
+        const { data, error } = await supabase
+          .from('youtube_trends')
+          .select('*')
+          .eq('trend_category', trendName)
+          .order('view_count', { ascending: false })
+          .limit(20);
+
+        if (!error && data && data.length > 0) {
+          console.log(`✅ Found ${data.length} additional videos for ${trendName}`);
+          return data;
+        }
+      } catch (supabaseError) {
+        console.log('Could not fetch additional data from Supabase:', supabaseError);
+      }
+    }
+
+    console.log(`📊 Returning ${trendData.length} videos for ${trendName}`);
+    return trendData.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
+
+  } catch (error) {
+    console.error('Error fetching trend detail data:', error);
+    return [];
+  }
+}
+
+// Helper function to get keywords for a trend
+function getTrendKeywords(trendName) {
+  const keywordMap = {
+    'AI Tools': ['ai', 'artificial intelligence', 'chatgpt', 'machine learning'],
+    'Crypto': ['crypto', 'bitcoin', 'ethereum', 'cryptocurrency'],
+    'Gaming': ['gaming', 'game', 'esports', 'streamer'],
+    'Music': ['music', 'song', 'artist', 'album'],
+    'Sports': ['sports', 'football', 'basketball', 'soccer'],
+    'Health & Fitness': ['health', 'fitness', 'workout', 'nutrition'],
+    'Movies & TV': ['movie', 'film', 'series', 'netflix'],
+    'Technology': ['tech', 'technology', 'gadget', 'review'],
+    'Programming': ['programming', 'coding', 'developer', 'software'],
+    'Art & Design': ['art', 'design', 'creative', 'drawing'],
+    'Automotive': ['car', 'automotive', 'tesla', 'vehicle'],
+    'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine']
+  };
+
+  return keywordMap[trendName] || [trendName.toLowerCase()];
+}
+
+// Helper function to get date range from data
+function getDateRange(data) {
+  if (!data || data.length === 0) return 'No data';
+
+  const dates = data.map(item => new Date(item.published_at)).sort((a, b) => a - b);
+  const earliest = dates[0];
+  const latest = dates[dates.length - 1];
+
+  const formatDate = (date) => date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  });
+
+  if (earliest.getTime() === latest.getTime()) {
+    return formatDate(earliest);
+  }
+
+  return `${formatDate(earliest)} - ${formatDate(latest)}`;
+}
+
+// Function to close the modal
+function closeTrendModal() {
+  const modal = document.getElementById('trendDetailModal');
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => {
+      modal.remove();
+    }, 300);
+  }
+}
+
+// Make close function globally available
+window.closeTrendModal = closeTrendModal;
 
 // Fetch data with YouTube integration
 async function fetchData() {
