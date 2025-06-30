@@ -365,67 +365,67 @@ function createChart(data, filteredTrends = 'all') {
       ctx.fillText(formatNumber(value), padding - 10, y + 4);
     }
 
-    // Draw x-axis labels (months only)
+    // Draw x-axis labels dynamically based on date range
     ctx.fillStyle = '#9ca3af';
     ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
 
-    // Track months for axis
-    let currentMonth = '';
-    let monthRanges = [];
-    let monthStart = 0;
-
-    // Collect month data
-    data.forEach((item, index) => {
-      // Parse date to get month
-      const dateParts = item.date.split('/');
-      const month = dateParts[0];
-
-      // Track month changes
-      if (currentMonth !== month) {
-        if (currentMonth !== '') {
-          monthRanges.push({
-            month: currentMonth,
-            start: monthStart,
-            end: index - 1
-          });
-        }
-        currentMonth = month;
-        monthStart = index;
-      }
-
-      // Handle last month
-      if (index === data.length - 1) {
-        monthRanges.push({
-          month: currentMonth,
-          start: monthStart,
-          end: index
+    // Determine date format and range
+    const dateLabels = [];
+    const isMonthYear = data[0]?.date.includes('/') && data[0]?.date.split('/').length === 2;
+    
+    if (isMonthYear) {
+      // Handle MM/YYYY format
+      const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      data.forEach((item, index) => {
+        const dateParts = item.date.split('/');
+        const month = parseInt(dateParts[0]);
+        const year = dateParts[1];
+        
+        // Show year if it's the first data point, January, or year changes
+        const prevYear = index > 0 ? data[index - 1].date.split('/')[1] : null;
+        const showYear = index === 0 || month === 1 || year !== prevYear;
+        
+        dateLabels.push({
+          x: padding + (chartWidth * index) / (data.length - 1),
+          label: showYear ? `${monthNames[month]} ${year}` : monthNames[month],
+          isYearLabel: showYear
         });
+      });
+    } else {
+      // Handle other date formats (fallback to original date string)
+      data.forEach((item, index) => {
+        dateLabels.push({
+          x: padding + (chartWidth * index) / (data.length - 1),
+          label: item.date,
+          isYearLabel: false
+        });
+      });
+    }
+
+    // Calculate optimal label spacing to prevent overlap
+    const maxLabelWidth = 60; // Approximate max width of a label
+    const minSpacing = data.length > 12 ? Math.ceil(data.length / 8) : 1;
+    
+    dateLabels.forEach((labelData, index) => {
+      // Only show labels with proper spacing to avoid crowding
+      if (index % minSpacing === 0 || index === data.length - 1) {
+        // Draw separator line for major labels
+        if (index > 0 && labelData.isYearLabel) {
+          ctx.strokeStyle = '#374151';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(labelData.x, padding + legendHeight);
+          ctx.lineTo(labelData.x, padding + legendHeight + chartHeight);
+          ctx.stroke();
+        }
+
+        // Draw the label
+        ctx.fillStyle = labelData.isYearLabel ? '#f1f1f1' : '#9ca3af';
+        ctx.font = labelData.isYearLabel ? 'bold 12px Satoshi' : '11px Satoshi';
+        ctx.fillText(labelData.label, labelData.x, padding + legendHeight + chartHeight + 20);
       }
-    });
-
-    // Draw months
-    const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-    monthRanges.forEach(range => {
-      const startX = padding + (chartWidth * range.start) / (data.length - 1);
-      const endX = padding + (chartWidth * range.end) / (data.length - 1);
-      const centerX = (startX + endX) / 2;
-
-      // Draw month separator line
-      if (range.start > 0) {
-        ctx.strokeStyle = '#374151';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(startX, padding + legendHeight);
-        ctx.lineTo(startX, padding + legendHeight + chartHeight);
-        ctx.stroke();
-      }
-
-      // Draw month label much closer to x-axis
-      const monthIndex = parseInt(range.month);
-      const monthName = monthNames[monthIndex] || range.month;
-      ctx.fillText(monthName, centerX, padding + legendHeight + chartHeight + 20);
     });
 
     // Draw horizontal legend at the top
