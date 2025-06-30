@@ -1219,6 +1219,28 @@ function updateTrendFilter(chartData) {
   });
 }
 
+// Show loading spinner
+function showLoadingSpinner() {
+  // Create loading overlay
+  const loadingOverlay = document.createElement('div');
+  loadingOverlay.id = 'loadingOverlay';
+  loadingOverlay.innerHTML = `
+    <div class="loading-container">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Fetching YouTube data...</div>
+    </div>
+  `;
+  document.body.appendChild(loadingOverlay);
+}
+
+// Hide loading spinner
+function hideLoadingSpinner() {
+  const loadingOverlay = document.getElementById('loadingOverlay');
+  if (loadingOverlay) {
+    loadingOverlay.remove();
+  }
+}
+
 // Enhanced search function that fetches YouTube data and searches existing data
 async function searchTrends() {
   const searchInput = document.getElementById('searchInput');
@@ -1244,7 +1266,10 @@ async function searchTrends() {
   console.log(`🔍 Searching for: "${searchTerm}" with date range: ${startDate || 'any'} to ${endDate || 'any'}`);
 
   try {
-    // Show loading state
+    // Show loading spinner
+    showLoadingSpinner();
+
+    // Show loading state on button
     const submitBtn = document.querySelector('button[onclick="performComprehensiveSearch()"]');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Searching...';
@@ -1351,19 +1376,21 @@ async function searchTrends() {
       }
     }
 
-    // Restore button state
+    // Restore button state and hide spinner
     submitBtn.textContent = originalText;
     submitBtn.disabled = false;
+    hideLoadingSpinner();
 
   } catch (error) {
     console.error('❌ Error in search:', error);
 
-    // Restore button state
+    // Restore button state and hide spinner
     const submitBtn = document.querySelector('button[onclick="performComprehensiveSearch()"]');
     if (submitBtn) {
       submitBtn.textContent = 'Search';
       submitBtn.disabled = false;
     }
+    hideLoadingSpinner();
   }
 }
 
@@ -1565,6 +1592,7 @@ window.fetchYouTubeDataNow = fetchYouTubeDataNow;
 // Function to fetch fresh YouTube data
 async function fetchFreshYouTubeData() {
   try {
+    showLoadingSpinner();
     console.log('🔄 Fetching fresh YouTube data...');
 
     const response = await fetch('/api/fetch-youtube?q=trending&maxResults=50');
@@ -1572,19 +1600,23 @@ async function fetchFreshYouTubeData() {
 
     if (result.success) {
       console.log(`✅ Fetched ${result.count} new videos`);
+      hideLoadingSpinner();
       // Refresh the display
       location.reload();
     } else {
       console.error('❌ Failed to fetch data:', result.message);
+      hideLoadingSpinner();
     }
   } catch (error) {
     console.error('❌ Error fetching fresh data:', error);
+    hideLoadingSpinner();
   }
 }
 
 // Function for bulk data fetching
 async function fetchBulkData(categories = 'all', totalResults = 1000) {
   try {
+    showLoadingSpinner();
     console.log(`🔄 Starting bulk fetch: ${totalResults} videos across ${categories} categories...`);
 
     const response = await fetch(`/api/bulk-fetch?categories=${categories}&totalResults=${totalResults}`);
@@ -1594,15 +1626,18 @@ async function fetchBulkData(categories = 'all', totalResults = 1000) {
       console.log(`✅ Bulk fetch completed: ${result.count} videos fetched`);
       console.log(`📊 Used ${result.queries_used} different search queries`);
 
+      hideLoadingSpinner();
       // Refresh the display
       location.reload();
       return result;
     } else {
       console.error('❌ Bulk fetch failed:', result.message);
+      hideLoadingSpinner();
       return null;
     }
   } catch (error) {
     console.error('❌ Error in bulk fetch:', error);
+    hideLoadingSpinner();
     return null;
   }
 }
@@ -1634,6 +1669,8 @@ async function performComprehensiveSearch() {
   console.log(`🔍 Comprehensive search for: "${queryTerm}", dates: ${startDate || 'any'} to ${endDate || 'any'}`);
 
   try {
+    // Show loading spinner
+    showLoadingSpinner();
     // First, try to fetch fresh data for this search term
     if (queryTerm !== 'all') {
       const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(queryTerm)}&maxResults=50`);
@@ -1647,8 +1684,12 @@ async function performComprehensiveSearch() {
     // Then filter existing data
     await filterByDateRange();
 
+    // Hide loading spinner
+    hideLoadingSpinner();
+
   } catch (error) {
     console.error('❌ Error in comprehensive search:', error);
+    hideLoadingSpinner();
   }
 }
 
