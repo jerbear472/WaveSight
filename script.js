@@ -335,9 +335,20 @@ function createChart(data, filteredTrends = 'all') {
     console.log(`🔍 Filtering chart for: "${filteredTrends}"`);
     console.log(`📊 Available trends:`, sortedAllTrends);
 
-    // For specific searches, always create a single focused category
-    trendNames = [searchTermCapitalized];
-    console.log(`🎯 Creating single focused trend: [${searchTermCapitalized}]`);
+    // Check if the search term exists in the data, if not create it
+    const matchingTrend = sortedAllTrends.find(trend => 
+      trend.toLowerCase().includes(filteredTrends.toLowerCase()) || 
+      filteredTrends.toLowerCase().includes(trend.toLowerCase())
+    );
+
+    if (matchingTrend) {
+      trendNames = [matchingTrend];
+      console.log(`🎯 Found matching existing trend: [${matchingTrend}]`);
+    } else {
+      // Create a single focused category for the search term
+      trendNames = [searchTermCapitalized];
+      console.log(`🎯 Creating new focused trend: [${searchTermCapitalized}]`);
+    }
 
     console.log(`📈 Final trend names for chart:`, trendNames);
   }
@@ -1297,7 +1308,15 @@ function createSearchCategories(searchData, searchTerm) {
     if (dateMap.has(dateKey)) {
       const category = categorizeSearchResult(item, searchTerm, searchCategories);
       const dataPoint = dateMap.get(dateKey);
-      dataPoint[category] = (dataPoint[category] || 0) + (item.view_count || 0);
+      
+      // For specific search terms, aggregate ALL matching data under the search term category
+      if (searchTerm.toLowerCase() !== 'trending' && searchTerm.toLowerCase() !== 'all') {
+        const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+        dataPoint[searchTermCategory] = (dataPoint[searchTermCategory] || 0) + (item.view_count || 0);
+      } else {
+        dataPoint[category] = (dataPoint[category] || 0) + (item.view_count || 0);
+      }
+      
       dateMap.set(dateKey, dataPoint);
     }
   });
@@ -1929,6 +1948,7 @@ async function searchTrends() {
 
         console.log(`🎯 Setting selectedTrends to: "${selectedTrends}"`);
         console.log(`📈 Creating chart with selectedTrends: "${selectedTrends}"`);
+        console.log(`📊 Chart data being used:`, chartData);
 
         // Create chart with the search term as the only trend
         createChart(chartData, selectedTrends);
