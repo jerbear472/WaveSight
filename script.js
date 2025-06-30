@@ -1172,6 +1172,178 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
   return chartData;
 }
 
+// Create chart data optimized for search results
+function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) {
+  if (!searchData || searchData.length === 0) {
+    return createEmptyChartDataForDateRange(startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]);
+  }
+
+  console.log(`📊 Creating search-based chart for "${searchTerm}" with ${searchData.length} videos`);
+
+  // Determine date range strategy
+  const start = startDate ? new Date(startDate) : new Date();
+  const end = endDate ? new Date(endDate) : new Date();
+  
+  if (!startDate && !endDate) {
+    // Default to last 6 months if no dates specified
+    start.setMonth(start.getMonth() - 6);
+  }
+
+  const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  
+  // Create date intervals
+  const dates = [];
+  const dateMap = new Map();
+
+  if (daysDiff <= 30) {
+    // Daily intervals for month or less
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
+      dates.push(dateStr);
+      dateMap.set(dateStr, { date: dateStr });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  } else if (daysDiff <= 180) {
+    // Weekly intervals for 6 months or less
+    const currentDate = new Date(start);
+    let weekCount = 1;
+    while (currentDate <= end) {
+      const dateStr = `Week ${weekCount}`;
+      dates.push(dateStr);
+      dateMap.set(dateStr, { date: dateStr });
+      currentDate.setDate(currentDate.getDate() + 7);
+      weekCount++;
+    }
+  } else {
+    // Monthly intervals for longer ranges
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
+      if (!dates.includes(dateStr)) {
+        dates.push(dateStr);
+        dateMap.set(dateStr, { date: dateStr });
+      }
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+  }
+
+  // Create search-optimized categories
+  const searchCategories = createSearchCategories(searchData, searchTerm);
+  
+  // Initialize all categories in dateMap
+  dates.forEach(date => {
+    const dataPoint = dateMap.get(date);
+    searchCategories.forEach(category => {
+      dataPoint[category] = 0;
+    });
+    dateMap.set(date, dataPoint);
+  });
+
+  // Aggregate data into the date map
+  searchData.forEach(item => {
+    const pubDate = new Date(item.published_at);
+    let dateKey;
+
+    if (daysDiff <= 30) {
+      dateKey = `${pubDate.getMonth() + 1}/${pubDate.getDate()}`;
+    } else if (daysDiff <= 180) {
+      const weeksDiff = Math.floor((pubDate - start) / (1000 * 60 * 60 * 24 * 7)) + 1;
+      dateKey = `Week ${Math.max(1, weeksDiff)}`;
+    } else {
+      dateKey = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+    }
+
+    if (dateMap.has(dateKey)) {
+      const category = categorizeSearchResult(item, searchTerm, searchCategories);
+      const dataPoint = dateMap.get(dateKey);
+      dataPoint[category] = (dataPoint[category] || 0) + (item.view_count || 0);
+      dateMap.set(dateKey, dataPoint);
+    }
+  });
+
+  const chartData = dates.map(date => dateMap.get(date));
+  
+  console.log(`📊 Search chart data created:`, chartData);
+  console.log(`📊 Categories for "${searchTerm}":`, searchCategories);
+  
+  return chartData;
+}
+
+// Create dynamic categories based on search results
+function createSearchCategories(searchData, searchTerm) {
+  const categoryCount = new Map();
+  
+  // Count existing categories
+  searchData.forEach(item => {
+    const category = item.trend_category || 'General';
+    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
+  });
+
+  // Get top categories, ensuring we have the search term as a category if relevant
+  const sortedCategories = Array.from(categoryCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([category]) => category);
+
+  // Add search term as a category if it's not already represented
+  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+  if (!sortedCategories.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase()))) {
+    sortedCategories.unshift(searchTermCategory);
+    sortedCategories.splice(-1, 1); // Remove last category to keep count at 8
+  }
+
+  return sortedCategories;
+}
+
+// Categorize individual search results
+function categorizeSearchResult(item, searchTerm, availableCategories) {
+  const title = (item.title || '').toLowerCase();
+  const description = (item.description || '').toLowerCase();
+  const existingCategory = item.trend_category || 'General';
+  
+  // First check if existing category is in our available categories
+  if (availableCategories.includes(existingCategory)) {
+    return existingCategory;
+  }
+  
+  // Check if content strongly matches search term
+  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+  if (availableCategories.includes(searchTermCategory) && 
+      (title.includes(searchTerm.toLowerCase()) || description.includes(searchTerm.toLowerCase()))) {
+    return searchTermCategory;
+  }
+  
+  // Find best matching category
+  for (const category of availableCategories) {
+    const categoryKeywords = getCategoryKeywords(category);
+    if (categoryKeywords.some(keyword => title.includes(keyword) || description.includes(keyword))) {
+      return category;
+    }
+  }
+  
+  // Default to first available category or General
+  return availableCategories.includes('General') ? 'General' : availableCategories[0];
+}
+
+// Get keywords for a category
+function getCategoryKeywords(category) {
+  const keywordMap = {
+    'AI Tools': ['ai', 'artificial intelligence', 'chatgpt', 'machine learning', 'gpt'],
+    'Crypto': ['crypto', 'bitcoin', 'ethereum', 'cryptocurrency', 'blockchain'],
+    'Gaming': ['gaming', 'game', 'esports', 'streamer', 'gameplay'],
+    'Music': ['music', 'song', 'artist', 'album', 'concert'],
+    'Sports': ['sports', 'football', 'basketball', 'soccer', 'baseball'],
+    'Health & Fitness': ['health', 'fitness', 'workout', 'nutrition', 'exercise'],
+    'Movies & TV': ['movie', 'film', 'series', 'netflix', 'trailer'],
+    'Technology': ['tech', 'technology', 'gadget', 'review', 'innovation'],
+    'Education': ['education', 'learning', 'tutorial', 'course', 'study'],
+    'Finance': ['finance', 'investing', 'stocks', 'money', 'business']
+  };
+  
+  return keywordMap[category] || [category.toLowerCase()];
+}
+
 // Convert Supabase YouTube data to chart format
 function processSupabaseDataForChart(supabaseData) {
   if (!supabaseData || supabaseData.length === 0) {
@@ -1620,7 +1792,7 @@ function hideLoadingSpinner() {
   }
 }
 
-// Enhanced search function that fetches YouTube data and searches existing data
+// Enhanced search function that fetches YouTube data and updates chart/legend
 async function searchTrends() {
   const searchInput = document.getElementById('searchInput');
   const filterSelect = document.getElementById('trendFilter');
@@ -1654,15 +1826,16 @@ async function searchTrends() {
     submitBtn.textContent = 'Searching...';
     submitBtn.disabled = true;
 
-    // First, try to fetch fresh YouTube data based on search criteria
-    let foundNewData = false;
+    // ALWAYS fetch fresh YouTube data for the search term
+    console.log(`🎯 Fetching fresh YouTube data for "${searchTerm}"...`);
     try {
       const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
-        console.log(`✅ Found ${result.count} new videos for "${searchTerm}"`);
-        foundNewData = true;
+        console.log(`✅ Fetched ${result.count} new videos for "${searchTerm}"`);
+      } else {
+        console.log(`⚠️ No new data found for "${searchTerm}", will use existing data`);
       }
     } catch (fetchError) {
       console.log(`⚠️ Could not fetch new data for "${searchTerm}":`, fetchError.message);
@@ -1674,18 +1847,26 @@ async function searchTrends() {
     if (allData && allData.length > 0) {
       let dataToProcess = allData;
 
-      // Filter by search term first
-      if (searchTerm !== 'trending' && searchTerm !== 'all') {
+      // Filter by search term - be more flexible with matching
+      if (searchTerm && searchTerm !== 'trending' && searchTerm !== 'all') {
         dataToProcess = allData.filter(item => {
           const title = (item.title || '').toLowerCase();
           const category = (item.trend_category || '').toLowerCase();
           const channel = (item.channel_title || '').toLowerCase();
           const description = (item.description || '').toLowerCase();
 
-          return title.includes(searchTerm) || 
-                 category.includes(searchTerm) || 
-                 channel.includes(searchTerm) ||
-                 description.includes(searchTerm);
+          // Split search term into keywords for better matching
+          const searchKeywords = searchTerm.split(' ').filter(word => word.length > 2);
+          
+          return searchKeywords.some(keyword => 
+            title.includes(keyword) || 
+            category.includes(keyword) || 
+            channel.includes(keyword) ||
+            description.includes(keyword)
+          ) || title.includes(searchTerm) || 
+            category.includes(searchTerm) || 
+            channel.includes(searchTerm) ||
+            description.includes(searchTerm);
         });
       }
 
@@ -1702,10 +1883,8 @@ async function searchTrends() {
       console.log(`📊 Filtered to ${dataToProcess.length} videos matching "${searchTerm}"`);
 
       if (dataToProcess.length > 0) {
-        // Process data for chart
-        const chartData = startDate || endDate ? 
-          processSupabaseDataForChartWithDateRange(dataToProcess, startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]) :
-          processSupabaseDataForChart(dataToProcess);
+        // Process data for chart with custom search-based categorization
+        const chartData = createSearchBasedChartData(dataToProcess, searchTerm, startDate, endDate);
 
         // Calculate reach metrics for search results
         const totalReach = dataToProcess.reduce((sum, item) => sum + (item.view_count || 0), 0);
@@ -1718,18 +1897,20 @@ async function searchTrends() {
         currentData = { chartData, tableData: dataToProcess };
         filteredData = chartData;
 
+        // Update filter dropdown with new trends
         updateTrendFilter(chartData);
-        createChart(chartData, selectedTrends);
+        
+        // Create chart with search-optimized legend
+        createChart(chartData, 'all'); // Show all trends for search results
         createTrendTable(dataToProcess.slice(0, 25));
 
-        // Update selected trends for chart filtering
-        selectedTrends = searchTerm === 'trending' || searchTerm === 'all' ? 'all' : searchTerm;
+        // Reset selected trends to show all for search results
+        selectedTrends = 'all';
+        filterSelect.value = 'all';
 
         // Show search results summary
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
-        if (foundNewData) {
-          console.log('📥 Includes newly fetched data from YouTube API');
-        }
+        console.log(`📊 Chart updated with search-based categorization`);
 
       } else {
         console.log(`⚠️ No videos found matching "${searchTerm}"`);
