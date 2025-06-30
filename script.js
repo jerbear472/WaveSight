@@ -1863,7 +1863,7 @@ async function searchTrends() {
     console.log(`🎯 Filter mode: "${finalSearchTerm}"`);
   } else {
     // No specific search - show all default trends
-    finalSearchTerm = 'all';
+    finalSearchTerm = 'trending';
     showMode = 'multiple';
     console.log(`📊 Default mode: showing all trends`);
   }
@@ -1945,38 +1945,38 @@ async function searchTrends() {
         let trendsToShow;
 
         if (showMode === 'multiple') {
-        // Show all default trends
-        chartData = processSupabaseDataForChart(dataToProcess);
-        trendsToShow = 'all';
-        selectedTrends = 'all';
+          // Show all default trends
+          chartData = processSupabaseDataForChart(dataToProcess);
+          trendsToShow = 'all';
+          selectedTrends = 'all';
 
-        // Update filter dropdown with all available trends
-        updateTrendFilter(chartData);
-        if (filterSelect) filterSelect.value = 'all';
+          // Update filter dropdown with all available trends
+          updateTrendFilter(chartData);
+          if (filterSelect) filterSelect.value = 'all';
 
-        // Clear search input to show we're in default mode
-        if (searchInput) searchInput.value = '';
+          // Clear search input to show we're in default mode
+          if (searchInput) searchInput.value = '';
 
-        console.log(`📊 Showing all default trends`);
-      } else {
-        // Show only the specific searched trend
-        chartData = createSearchBasedChartData(dataToProcess, finalSearchTerm, startDate, endDate);
-        const searchTermCapitalized = finalSearchTerm.charAt(0).toUpperCase() + finalSearchTerm.slice(1);
-        trendsToShow = searchTermCapitalized;
-        selectedTrends = searchTermCapitalized;
+          console.log(`📊 Showing all default trends`);
+        } else {
+          // Show only the specific searched trend
+          chartData = createSearchBasedChartData(dataToProcess, finalSearchTerm, startDate, endDate);
+          const searchTermCapitalized = finalSearchTerm.charAt(0).toUpperCase() + finalSearchTerm.slice(1);
+          trendsToShow = searchTermCapitalized;
+          selectedTrends = searchTermCapitalized;
 
-        // Update filter dropdown to show the search term
-        if (filterSelect) {
-          filterSelect.innerHTML = '<option value="all">All Trends</option>';
-          const searchOption = document.createElement('option');
-          searchOption.value = searchTermCapitalized;
-          searchOption.textContent = searchTermCapitalized;
-          searchOption.selected = true;
-          filterSelect.appendChild(searchOption);
+          // Update filter dropdown to show the search term
+          if (filterSelect) {
+            filterSelect.innerHTML = '<option value="all">All Trends</option>';
+            const searchOption = document.createElement('option');
+            searchOption.value = searchTermCapitalized;
+            searchOption.textContent = searchTermCapitalized;
+            searchOption.selected = true;
+            filterSelect.appendChild(searchOption);
+          }
+
+          console.log(`🎯 Showing single trend: "${searchTermCapitalized}"`);
         }
-
-        console.log(`🎯 Showing single trend: "${searchTermCapitalized}"`);
-      }
 
         // Update the display
         currentData = { chartData, tableData: dataToProcess };
@@ -2316,6 +2316,38 @@ async function performComprehensiveSearch() {
 // Make comprehensive search available globally
 window.performComprehensiveSearch = performComprehensiveSearch;
 
+// Function to reset to default view
+async function resetToDefaultView() {
+  console.log('🔄 Resetting to default view...');
+  
+  // Clear search input
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) searchInput.value = '';
+  
+  // Reset filter to 'all'
+  const filterSelect = document.getElementById('trendFilter');
+  if (filterSelect) filterSelect.value = 'all';
+  
+  // Reset selected trends
+  selectedTrends = 'all';
+  filteredData = null;
+  
+  // Fetch and display default data
+  try {
+    const data = await fetchData();
+    currentData = data;
+    updateTrendFilter(data.chartData);
+    createChart(data.chartData, 'all');
+    createTrendTable(data.tableData);
+    console.log('✅ Reset to default view completed');
+  } catch (error) {
+    console.error('❌ Error resetting to default view:', error);
+  }
+}
+
+// Make reset function globally available
+window.resetToDefaultView = resetToDefaultView;
+
 // Offline search function for when quota is exceeded
 async function searchExistingDataOnly() {
   const searchInput = document.getElementById('searchInput');
@@ -2589,33 +2621,54 @@ document.addEventListener('DOMContentLoaded', async function() {
   try {
     const data = await fetchData();
     currentData = data; // Store data globally
+    selectedTrends = 'all'; // Ensure we show all trends by default
 
     console.log('Loaded data:', data);
 
     // Update filter dropdown with chart data to get trend names
     updateTrendFilter(data.chartData);
 
-    // Create chart
-    createChart(data.chartData, selectedTrends);
+    // Set filter dropdown to 'all' to show default trends
+    const filterSelect = document.getElementById('trendFilter');
+    if (filterSelect) {
+      filterSelect.value = 'all';
+    }
+
+    // Create chart with all trends visible
+    createChart(data.chartData, 'all');
 
     // Create table
     createTrendTable(data.tableData);
 
-    console.log('Dashboard initialized successfully');
+    console.log('Dashboard initialized successfully with all default trends');
 
   } catch (error) {
     console.error('Error initializing dashboard:', error);
   }
 
-  // Set up refresh interval
+  // Set up refresh interval - but maintain current view mode
   setInterval(async () => {
     try {
       console.log('Refreshing data...');
       const data = await fetchData();
+      const currentFilter = document.getElementById('trendFilter')?.value || 'all';
+      const currentSearch = document.getElementById('searchInput')?.value || '';
+      
       currentData = data;
       updateTrendFilter(data.chartData);
-      createChart(data.chartData, selectedTrends);
-      createTrendTable(data.tableData);
+      
+      // Maintain current view state during refresh
+      if (currentSearch.trim() !== '') {
+        // If there's an active search, don't override it
+        console.log('Maintaining active search during refresh');
+        return;
+      }
+      
+      // Only refresh if showing all trends
+      if (currentFilter === 'all') {
+        createChart(data.chartData, 'all');
+        createTrendTable(data.tableData);
+      }
     } catch (error) {
       console.error('Error during refresh:', error);
     }
