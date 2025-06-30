@@ -332,26 +332,14 @@ function createChart(data, filteredTrends = 'all') {
   } else {
     // For specific search/filter, show ONLY the matching trend
     const searchTermCapitalized = filteredTrends.charAt(0).toUpperCase() + filteredTrends.slice(1);
-    
-    // First try exact match
-    trendNames = sortedAllTrends.filter(name => name === searchTermCapitalized);
-    
-    // If no exact match, try case-insensitive partial match
-    if (trendNames.length === 0) {
-      trendNames = sortedAllTrends.filter(name => 
-        name.toLowerCase().includes(filteredTrends.toLowerCase())
-      );
-    }
-    
-    // If still no match, show only the search term as a category
-    if (trendNames.length === 0) {
-      trendNames = [searchTermCapitalized];
-    }
-    
-    // For search results, limit to just the first matching trend to focus the chart
-    if (trendNames.length > 1 && filteredTrends !== 'all') {
-      trendNames = [trendNames[0]];
-    }
+    console.log(`🔍 Filtering chart for: "${filteredTrends}"`);
+    console.log(`📊 Available trends:`, sortedAllTrends);
+
+    // For specific searches, always create a single focused category
+    trendNames = [searchTermCapitalized];
+    console.log(`🎯 Creating single focused trend: [${searchTermCapitalized}]`);
+
+    console.log(`📈 Final trend names for chart:`, trendNames);
   }
 
   // Expanded color palette with unique colors
@@ -1272,7 +1260,7 @@ function createSearchCategories(searchData, searchTerm) {
   // For specific search terms, ALWAYS create a single focused category
   if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
     console.log(`🎯 Creating single focused category for "${searchTerm}"`);
-    
+
     // Always return the search term as the single category
     return [searchTermCategory];
   }
@@ -1330,6 +1318,7 @@ function categorizeSearchResult(item, searchTerm, availableCategories) {
 
   // For specific search terms, ALWAYS categorize everything under the search term
   if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
+    console.log(`🎯 Categorizing "${item.title || item.trend_name || 'Item'}" as "${searchTermCategory}"`);
     return searchTermCategory;
   }
 
@@ -1337,7 +1326,7 @@ function categorizeSearchResult(item, searchTerm, availableCategories) {
   const title = (item.title || '').toLowerCase();
   const description = (item.description || '').toLowerCase();
   const existingCategory = item.trend_category || 'General';
-  
+
   if (availableCategories.includes(existingCategory)) {
     return existingCategory;
   }
@@ -1488,6 +1477,8 @@ function processSupabaseDataForChart(supabaseData) {
   });
 
   console.log('Processed chart data:', limitedChartData);
+  console.log('Available trends:', topTrends.map(([name]) => name));
+
   return limitedChartData;
 }
 
@@ -1858,7 +1849,7 @@ async function searchTrends() {
     console.log(`🎯 Checking for fresh YouTube data for "${searchTerm}"...`);
     let quotaExceeded = false;
     let quotaError = null;
-    
+
     try {
       const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
       const result = await response.json();
@@ -1941,33 +1932,27 @@ async function searchTrends() {
         // Update filter dropdown with new trends
         updateTrendFilter(chartData);
 
-        // Create chart showing only the searched trend
-        createChart(chartData, searchTerm); // Show only the searched trend
+        // Set selected trends to the search term for proper filtering
+        const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+        selectedTrends = searchTermCapitalized;
+
+        console.log(`🎯 Setting selectedTrends to: "${selectedTrends}"`);
+        console.log(`📈 Creating chart with selectedTrends: "${selectedTrends}"`);
+
+        // Create chart with the search term as the only trend
+        createChart(chartData, selectedTrends);
         createTrendTable(dataToProcess.slice(0, 25));
 
-        // Set selected trends to the search term for proper filtering
-        selectedTrends = searchTerm;
-        
         // Update the filter dropdown to show the search term is selected
-        const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
-        
-        // Add the search term to filter dropdown if it doesn't exist
-        let optionExists = false;
-        for (let i = 0; i < filterSelect.options.length; i++) {
-          if (filterSelect.options[i].value.toLowerCase() === searchTerm.toLowerCase()) {
-            filterSelect.value = filterSelect.options[i].value;
-            optionExists = true;
-            break;
-          }
-        }
-        
-        if (!optionExists) {
-          const option = document.createElement('option');
-          option.value = searchTermCapitalized;
-          option.textContent = searchTermCapitalized;
-          option.selected = true;
-          filterSelect.appendChild(option);
-        }
+        // Clear existing options and rebuild with search-focused options
+        filterSelect.innerHTML = '<option value="all">All Trends</option>';
+
+        // Add the search term as the primary option
+        const searchOption = document.createElement('option');
+        searchOption.value = searchTermCapitalized;
+        searchOption.textContent = searchTermCapitalized;
+        searchOption.selected = true;
+        filterSelect.appendChild(searchOption);
 
         // Show search results summary
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
@@ -1988,7 +1973,7 @@ async function searchTrends() {
             margin: 15px 0; text-align: center; font-weight: bold;
             border: 2px solid #d97706; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
           `;
-          
+
           const chartContainer = document.getElementById('trendChart');
           if (chartContainer && chartContainer.parentNode) {
             chartContainer.parentNode.insertBefore(statusMessage, chartContainer);
@@ -2040,7 +2025,7 @@ async function searchTrends() {
             margin: 15px 0; text-align: center; font-weight: bold;
             border: 2px solid #d97706;
           `;
-          
+
           const chartContainer = document.getElementById('trendChart');
           if (chartContainer && chartContainer.parentNode) {
             chartContainer.parentNode.insertBefore(statusMessage, chartContainer);
