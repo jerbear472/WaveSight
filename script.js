@@ -1260,7 +1260,6 @@ function createSearchCategories(searchData, searchTerm) {
   // For specific search terms, ALWAYS create a single focused category
   if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
     console.log(`🎯 Creating single focused category for "${searchTerm}"`);
-
     // Always return the search term as the single category
     return [searchTermCategory];
   }
@@ -1318,7 +1317,6 @@ function categorizeSearchResult(item, searchTerm, availableCategories) {
 
   // For specific search terms, ALWAYS categorize everything under the search term
   if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
-    console.log(`🎯 Categorizing "${item.title || item.trend_name || 'Item'}" as "${searchTermCategory}"`);
     return searchTermCategory;
   }
 
@@ -1887,18 +1885,14 @@ async function searchTrends() {
           const channel = (item.channel_title || '').toLowerCase();
           const description = (item.description || '').toLowerCase();
 
-          // Split search term into keywords for better matching
-          const searchKeywords = searchTerm.split(' ').filter(word => word.length > 2);
-
-          return searchKeywords.some(keyword => 
-            title.includes(keyword) || 
-            category.includes(keyword) || 
-            channel.includes(keyword) ||
-            description.includes(keyword)
-          ) || title.includes(searchTerm) || 
-            category.includes(searchTerm) || 
-            channel.includes(searchTerm) ||
-            description.includes(searchTerm);
+          // Exact match first, then partial matches
+          return title.includes(searchTerm) || 
+                 category.includes(searchTerm) || 
+                 channel.includes(searchTerm) ||
+                 description.includes(searchTerm) ||
+                 // Check if search term is part of words in title/description
+                 title.split(' ').some(word => word.includes(searchTerm)) ||
+                 description.split(' ').some(word => word.includes(searchTerm));
         });
       }
 
@@ -1929,9 +1923,6 @@ async function searchTrends() {
         currentData = { chartData, tableData: dataToProcess };
         filteredData = chartData;
 
-        // Update filter dropdown with new trends
-        updateTrendFilter(chartData);
-
         // Set selected trends to the search term for proper filtering
         const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
         selectedTrends = searchTermCapitalized;
@@ -1943,11 +1934,8 @@ async function searchTrends() {
         createChart(chartData, selectedTrends);
         createTrendTable(dataToProcess.slice(0, 25));
 
-        // Update the filter dropdown to show the search term is selected
-        // Clear existing options and rebuild with search-focused options
+        // Update the filter dropdown to show ONLY the search term
         filterSelect.innerHTML = '<option value="all">All Trends</option>';
-
-        // Add the search term as the primary option
         const searchOption = document.createElement('option');
         searchOption.value = searchTermCapitalized;
         searchOption.textContent = searchTermCapitalized;
@@ -1956,7 +1944,7 @@ async function searchTrends() {
 
         // Show search results summary
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
-        console.log(`📊 Chart updated with search-based categorization`);
+        console.log(`📊 Chart updated with single trend: "${searchTermCapitalized}"`);
 
         // Show quota status if relevant
         if (quotaExceeded) {
@@ -1984,64 +1972,25 @@ async function searchTrends() {
       } else {
         console.log(`⚠️ No videos found matching "${searchTerm}"`);
 
-        // Show helpful message based on the situation
+        // Show helpful message
         const tableBody = document.getElementById('trendTableBody');
         if (tableBody) {
-          let message = '';
-          if (quotaExceeded) {
-            message = `
-              <div style="text-align: center; padding: 20px;">
-                <h3>🔍 No existing data found for "${searchTerm}"</h3>
-                <p>YouTube API quota exceeded for today. Try:</p>
-                <ul style="text-align: left; display: inline-block;">
-                  <li>🔄 Different search terms (ai, crypto, gaming, etc.)</li>
-                  <li>📅 Adjusting the date range</li>
-                  <li>⏰ Waiting for quota reset (midnight PT)</li>
-                  <li>🔍 Browse "All Trends" in the filter dropdown</li>
-                </ul>
-              </div>
-            `;
-          } else {
-            message = `
-              <div style="text-align: center; padding: 20px;">
-                <h3>🔍 No videos found for "${searchTerm}"</h3>
-                <p>Try different search terms or date ranges</p>
-              </div>
-            `;
-          }
+          let message = `
+            <div style="text-align: center; padding: 20px;">
+              <h3>🔍 No videos found for "${searchTerm}"</h3>
+              <p>Try different search terms. Available data includes: AI, crypto, gaming, tech, music, sports</p>
+            </div>
+          `;
           tableBody.innerHTML = `<tr><td colspan="4">${message}</td></tr>`;
-        }
-
-        // Show quota exceeded message if applicable
-        if (quotaExceeded) {
-          const statusMessage = document.createElement('div');
-          statusMessage.innerHTML = `
-            <p>⚠️ YouTube API quota exceeded. No existing data for "${searchTerm}".
-            <br>💡 Try searching for: "ai", "crypto", "gaming", "music", or "sports"</p>
-          `;
-          statusMessage.style.cssText = `
-            background: linear-gradient(135deg, #fbbf24, #f59e0b); 
-            color: #000; padding: 15px; border-radius: 12px; 
-            margin: 15px 0; text-align: center; font-weight: bold;
-            border: 2px solid #d97706;
-          `;
-
-          const chartContainer = document.getElementById('trendChart');
-          if (chartContainer && chartContainer.parentNode) {
-            chartContainer.parentNode.insertBefore(statusMessage, chartContainer);
-            setTimeout(() => statusMessage.remove(), 10000);
-          }
         }
 
         // Create empty chart
         filteredData = createEmptyChartDataForDateRange(startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]);
-        createChart(filteredData, selectedTrends);
+        createChart(filteredData, searchTerm);
       }
 
     } else {
       console.log('⚠️ No data available in database');
-
-      // Show no data message
       const tableBody = document.getElementById('trendTableBody');
       if (tableBody) {
         tableBody.innerHTML = '<tr><td colspan="4">No data available</td></tr>';
