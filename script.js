@@ -191,7 +191,7 @@ async function fetchYouTubeDataFromSupabase() {
 
     console.log(`✅ Retrieved ${result.count} records from Supabase via server`);
     console.log('📊 Sample fetched data:', result.data?.[0]);
-    
+
     // Validate data structure
     if (result.data && result.data.length > 0) {
       const sample = result.data[0];
@@ -200,7 +200,7 @@ async function fetchYouTubeDataFromSupabase() {
       console.log('📊 Title field:', sample.title);
       console.log('📊 Category field:', sample.trend_category);
     }
-    
+
     return result.data;
 
   } catch (error) {
@@ -688,7 +688,7 @@ function showTrendDetailModal(trendName, trendColor) {
   getTrendDetailData(trendName).then(detailData => {
     if (!detailData || detailData.length === 0) {
       console.log('No detail data found for trend:', trendName);
-      
+
       // Show modal with no data message
       const modalHTML = `
         <div id="trendDetailModal" class="trend-modal">
@@ -726,7 +726,7 @@ function showTrendDetailModal(trendName, trendColor) {
           modal.classList.add('show');
         }
       }, 10);
-      
+
       return;
     }
 
@@ -809,7 +809,6 @@ function showTrendDetailModal(trendName, trendColor) {
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
     // Show modal with animation
-```tool_code
     setTimeout(() => {
       const modal = document.getElementById('trendDetailModal');
       if (modal) {
@@ -1279,7 +1278,7 @@ function createSingleTrendChartData(searchData, searchTerm, startDate, endDate) 
   // Determine date range - use last 12 months if no dates specified
   const dates = [];
   const dateMap = new Map();
-  
+
   if (startDate && endDate) {
     // Use specified date range
     const start = new Date(startDate);
@@ -1357,11 +1356,11 @@ function createSingleTrendChartData(searchData, searchTerm, startDate, endDate) 
     if (dateMap.has(dateKey)) {
       const dataPoint = dateMap.get(dateKey);
       const viewCount = item.view_count || item.reach_count || 0;
-      
+
       // Add ALL views to the search term category
       dataPoint[searchTerm] = (dataPoint[searchTerm] || 0) + viewCount;
       dateMap.set(dateKey, dataPoint);
-      
+
       console.log(`📊 Added ${viewCount} views to "${searchTerm}" for ${dateKey}`);
     }
   });
@@ -1377,16 +1376,16 @@ function createSingleTrendChartData(searchData, searchTerm, startDate, endDate) 
 // Create chart data specifically for search results - simplified approach
 function createSearchChartData(searchResults, searchTerm, startDate, endDate) {
   console.log(`📊 Creating search chart for "${searchTerm}" with ${searchResults.length} results`);
-  
+
   // Create date range - use last 12 months if no dates specified
   const dates = [];
   const dateMap = new Map();
-  
+
   if (startDate && endDate) {
     // Use specified date range with monthly intervals
     const start = new Date(startDate);
     const end = new Date(endDate);
-    
+
     const currentDate = new Date(start);
     while (currentDate <= end) {
       const monthStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
@@ -1407,27 +1406,27 @@ function createSearchChartData(searchResults, searchTerm, startDate, endDate) {
       dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
     }
   }
-  
+
   // Aggregate all search results under the single search term
   searchResults.forEach(item => {
     const pubDate = new Date(item.published_at);
     const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
-    
+
     if (dateMap.has(monthStr)) {
       const dataPoint = dateMap.get(monthStr);
       const viewCount = item.view_count || item.reach_count || 0;
       dataPoint[searchTerm] = (dataPoint[searchTerm] || 0) + viewCount;
       dateMap.set(monthStr, dataPoint);
-      
+
       console.log(`📊 Added ${viewCount} views to ${searchTerm} for ${monthStr}`);
     }
   });
-  
+
   const chartData = dates.map(date => dateMap.get(date));
-  
+
   console.log(`📊 Search chart created with ${chartData.length} data points`);
   console.log(`📊 Chart contains ONLY: "${searchTerm}"`);
-  
+
   return chartData;
 }
 
@@ -1441,8 +1440,7 @@ function createEmptySearchChart(searchTerm) {
   for (let i = 11; i >= 0; i--) {
     const date = new Date(currentDate);
     date.setMonth(date.getMonth() - i);
-    const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
-    dates.push(monthStr);
+    const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;    dates.push(monthStr);
 
     dateMap.set(monthStr, {
       date: monthStr,
@@ -1511,7 +1509,7 @@ function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) 
 
   // For specific search terms, create a single category and aggregate all data under it
   const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
-  
+
   // Initialize all dates with the search term category
   dates.forEach(date => {
     const dataPoint = dateMap.get(date);
@@ -1536,11 +1534,11 @@ function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) 
     if (dateMap.has(dateKey)) {
       const dataPoint = dateMap.get(dateKey);
       const viewCount = item.view_count || 0;
-      
+
       // Aggregate ALL search results under the search term category
       dataPoint[searchTermCapitalized] = (dataPoint[searchTermCapitalized] || 0) + viewCount;
       dateMap.set(dateKey, dataPoint);
-      
+
       console.log(`📊 Added ${viewCount} views to ${searchTermCapitalized} for ${dateKey}`);
     }
   });
@@ -1867,7 +1865,7 @@ function createTrendTable(data) {
     console.log('❌ Table body element not found');
     return;
   }
-  
+
   if (!data || data.length === 0) {
     console.log('❌ No table data to display');
     tableBody.innerHTML = '<tr><td colspan="4">No data available</td></tr>';
@@ -1880,16 +1878,16 @@ function createTrendTable(data) {
   // Ensure we have valid data structure - be more flexible with field names
   const validData = data.filter(item => {
     if (!item) return false;
-    
+
     // Check for title/name field
     const hasTitle = item.title || item.trend_name || item.video_id;
-    
+
     // Check for view count field
     const hasViews = item.view_count !== undefined || 
                      item.reach_count !== undefined || 
                      item.view_count !== null || 
                      item.reach_count !== null;
-    
+
     return hasTitle && hasViews;
   });
 
@@ -1908,7 +1906,7 @@ function createTrendTable(data) {
   validData.forEach(item => {
     // More flexible category detection
     let category = item.trend_category || item.category || 'General';
-    
+
     // If category is null or empty, try to categorize from title
     if (!category || category === '' || category === 'null') {
       const title = (item.title || item.trend_name || '').toLowerCase();
@@ -1924,7 +1922,7 @@ function createTrendTable(data) {
         category = 'General';
       }
     }
-    
+
     // Parse numeric values more safely
     const views = Math.max(0, parseInt(item.view_count || item.reach_count || 0) || 0);
     const likes = Math.max(0, parseInt(item.like_count || 0) || 0);
@@ -2170,14 +2168,14 @@ async function searchTrends() {
       if (searchResults.length > 0) {
         console.log(`📊 Found ${searchResults.length} videos for "${searchTerm}"`);
         console.log(`📊 Creating single trend chart for "${searchTermDisplay}"`);
-        
+
         // Create chart data with ONLY the searched trend - use simple monthly aggregation
         const chartData = createSearchChartData(searchResults, searchTermDisplay, startDate, endDate);
-        
+
         // Update UI
         currentData = { chartData, tableData: searchResults };
         selectedTrends = searchTermDisplay;
-        
+
         // Update filter dropdown to show ONLY the search result
         if (filterSelect) {
           filterSelect.innerHTML = '<option value="all">All Trends</option>';
@@ -2187,11 +2185,11 @@ async function searchTrends() {
           option.selected = true;
           filterSelect.appendChild(option);
         }
-        
+
         // Create chart showing ONLY the searched trend
         createChart(chartData, searchTermDisplay);
         createTrendTable(searchResults.slice(0, 25));
-        
+
         console.log(`✅ Chart will show ONLY: "${searchTermDisplay}"`);
       } else {
         console.log(`⚠️ No results for "${searchTerm}"`);
@@ -2206,16 +2204,16 @@ async function searchTrends() {
     } else {
       // DEFAULT MODE: Show all trends
       const chartData = processSupabaseDataForChart(dataToProcess);
-      
+
       currentData = { chartData, tableData: dataToProcess };
       selectedTrends = 'all';
-      
+
       updateTrendFilter(chartData);
       if (filterSelect) filterSelect.value = 'all';
-      
+
       createChart(chartData, 'all');
       createTrendTable(dataToProcess.slice(0, 25));
-      
+
       console.log('📊 Showing all default trends');
     }
 
@@ -2490,19 +2488,19 @@ window.performComprehensiveSearch = performComprehensiveSearch;
 // Function to reset to default view
 async function resetToDefaultView() {
   console.log('🔄 Resetting to default view...');
-  
+
   // Clear search input
   const searchInput = document.getElementById('searchInput');
   if (searchInput) searchInput.value = '';
-  
+
   // Reset filter to 'all'
   const filterSelect = document.getElementById('trendFilter');
   if (filterSelect) filterSelect.value = 'all';
-  
+
   // Reset selected trends
   selectedTrends = 'all';
   filteredData = null;
-  
+
   // Fetch and display default data
   try {
     const data = await fetchData();
@@ -2522,8 +2520,7 @@ window.resetToDefaultView = resetToDefaultView;
 // Offline search function for when quota is exceeded
 async function searchExistingDataOnly() {
   const searchInput = document.getElementById('searchInput');
-  ```tool_code
-const filterSelect = document.getElementById('trendFilter');
+  const filterSelect = document.getElementById('trendFilter');
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
 
@@ -2783,75 +2780,71 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   // Initialize Supabase
-  initSupabase();
+  const supabaseInitialized = initSupabase();
+  console.log('📊 Supabase initialized:', supabaseInitialized);
 
   // Load initial data immediately - this should show DEFAULT TRENDS
   try {
     console.log('📊 Loading initial dashboard data with default trends...');
-    
+
     // Clear search/filter state to ensure we show defaults
     const searchInput = document.getElementById('searchInput');
     const filterSelect = document.getElementById('trendFilter');
-    
+
     if (searchInput) searchInput.value = '';
     selectedTrends = 'all';
     filteredData = null;
-    
+
     // Get data from Supabase
     const allData = await fetchYouTubeDataFromSupabase();
-    
+
     if (allData && allData.length > 0) {
-      console.log(`📊 Got ${allData.length} total videos from database`);
-      
-      // Use all available data (don't filter by date for initial load)
-      const dataToUse = allData;
-      console.log(`📊 Using ${dataToUse.length} videos for default display`);
-      console.log(`📊 Sample data structure:`, dataToUse[0]);
-      
-      // Create chart showing ALL default trends - this is key
-      const chartData = processSupabaseDataForChart(dataToUse);
-      
+      console.log(`✅ Got ${allData.length} total videos from database`);
+      console.log(`📊 Sample video data:`, allData[0]);
+
+      // Create chart showing ALL default trends
+      const chartData = processSupabaseDataForChart(allData);
+      console.log(`📊 Processed chart data:`, chartData);
+      console.log(`📊 Available trends:`, Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
+
       // Store data globally
-      currentData = { chartData, tableData: dataToUse };
+      currentData = { chartData, tableData: allData };
       selectedTrends = 'all';
-      
+
       // Update UI to show all trends
       updateTrendFilter(chartData);
       if (filterSelect) filterSelect.value = 'all';
-      
+
       // Display everything with 'all' filter to show multiple trend lines
       createChart(chartData, 'all');
-      
-      // Force table creation with detailed logging
-      console.log('📊 Creating table with data:', dataToUse.length, 'items');
-      createTrendTable(dataToUse);
-      
-      console.log('✅ Dashboard initialized with DEFAULT TRENDS successfully');
-      console.log('📊 Showing trends:', Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
+      createTrendTable(allData.slice(0, 25));
+
+      console.log('✅ Dashboard initialized with REAL DATA successfully');
+      console.log('📊 Chart shows multiple trends:', Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
 
     } else {
-      console.log('⚠️ No data available, using fallback with default trends');
-      
+      console.log('⚠️ No data from Supabase, using fallback trends');
+
       currentData = fallbackData;
       selectedTrends = 'all';
-      
+
       updateTrendFilter(fallbackData.chartData);
       createChart(fallbackData.chartData, 'all');
       createTrendTable(fallbackData.tableData);
-      
+
       console.log('📊 Showing fallback default trends');
     }
 
   } catch (error) {
     console.error('❌ Error initializing dashboard:', error);
-    
+
     // Use fallback on error - still show default trends
     currentData = fallbackData;
     selectedTrends = 'all';
     updateTrendFilter(fallbackData.chartData);
     createChart(fallbackData.chartData, 'all');
     createTrendTable(fallbackData.tableData);
-    
+
     console.log('📊 Showing fallback default trends after error');
   }
 });
