@@ -370,49 +370,47 @@ function createChart(data, filteredTrends = 'all') {
     ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
 
-    // Determine date format and range
+    // Generate date labels based on data length and range
     const dateLabels = [];
-    const isMonthYear = data[0]?.date.includes('/') && data[0]?.date.split('/').length === 2;
+    const dataLength = data.length;
     
-    if (isMonthYear) {
-      // Handle MM/YYYY format
-      const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    // For generated data, create monthly progression
+    const currentDate = new Date();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    data.forEach((item, index) => {
+      // Create date based on index going back in time
+      const monthsBack = dataLength - 1 - index;
+      const targetDate = new Date(currentDate);
+      targetDate.setMonth(targetDate.getMonth() - monthsBack);
       
-      data.forEach((item, index) => {
-        const dateParts = item.date.split('/');
-        const month = parseInt(dateParts[0]);
-        const year = dateParts[1];
-        
-        // Show year if it's the first data point, January, or year changes
-        const prevYear = index > 0 ? data[index - 1].date.split('/')[1] : null;
-        const showYear = index === 0 || month === 1 || year !== prevYear;
-        
-        dateLabels.push({
-          x: padding + (chartWidth * index) / (data.length - 1),
-          label: showYear ? `${monthNames[month]} ${year}` : monthNames[month],
-          isYearLabel: showYear
-        });
+      const month = targetDate.getMonth();
+      const year = targetDate.getFullYear();
+      
+      // Show year if it's January or the first/last data point
+      const showYear = month === 0 || index === 0 || index === dataLength - 1;
+      
+      dateLabels.push({
+        x: padding + (chartWidth * index) / (dataLength - 1),
+        label: showYear ? `${monthNames[month]} ${year}` : monthNames[month],
+        isYearLabel: showYear,
+        month: month,
+        year: year
       });
-    } else {
-      // Handle other date formats (fallback to original date string)
-      data.forEach((item, index) => {
-        dateLabels.push({
-          x: padding + (chartWidth * index) / (data.length - 1),
-          label: item.date,
-          isYearLabel: false
-        });
-      });
-    }
+    });
 
-    // Calculate optimal label spacing to prevent overlap
-    const maxLabelWidth = 60; // Approximate max width of a label
-    const minSpacing = data.length > 12 ? Math.ceil(data.length / 8) : 1;
+    // Calculate optimal spacing to prevent overlap
+    const minSpacing = dataLength > 12 ? Math.ceil(dataLength / 6) : dataLength > 6 ? 2 : 1;
     
     dateLabels.forEach((labelData, index) => {
-      // Only show labels with proper spacing to avoid crowding
-      if (index % minSpacing === 0 || index === data.length - 1) {
-        // Draw separator line for major labels
-        if (index > 0 && labelData.isYearLabel) {
+      // Show labels with proper spacing
+      const shouldShow = index % minSpacing === 0 || 
+                        index === dataLength - 1 || 
+                        labelData.isYearLabel;
+      
+      if (shouldShow) {
+        // Draw year separator line
+        if (labelData.isYearLabel && index > 0) {
           ctx.strokeStyle = '#374151';
           ctx.lineWidth = 1;
           ctx.beginPath();
