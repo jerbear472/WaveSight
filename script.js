@@ -1257,56 +1257,108 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
   return chartData;
 }
 
-// Create a search-only chart that shows ONLY the searched trend
-function createSearchOnlyChart(searchData, searchTerm, startDate, endDate) {
+// Create chart data for a single searched trend
+function createSingleTrendChartData(searchData, searchTerm, startDate, endDate) {
   if (!searchData || searchData.length === 0) {
     return createEmptyChartForSearch(searchTerm);
   }
 
-  console.log(`📊 Creating search-only chart for "${searchTerm}" with ${searchData.length} videos`);
+  console.log(`📊 Creating single trend chart for "${searchTerm}" with ${searchData.length} videos`);
 
-  // Use the last 12 months for consistency with default view
+  // Determine date range - use last 12 months if no dates specified
   const dates = [];
   const dateMap = new Map();
-  const currentDate = new Date();
+  
+  if (startDate && endDate) {
+    // Use specified date range
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
-  // Create monthly intervals for the last 12 months
-  for (let i = 11; i >= 0; i--) {
-    const date = new Date(currentDate);
-    date.setMonth(date.getMonth() - i);
-    const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
-    dates.push(monthStr);
-
-    // Initialize with ONLY the search term - this is key
-    dateMap.set(monthStr, {
-      date: monthStr,
-      [searchTerm]: 0
-    });
+    if (daysDiff <= 30) {
+      // Daily intervals
+      const currentDate = new Date(start);
+      while (currentDate <= end) {
+        const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
+        dates.push(dateStr);
+        dateMap.set(dateStr, { date: dateStr, [searchTerm]: 0 });
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    } else if (daysDiff <= 180) {
+      // Weekly intervals
+      const currentDate = new Date(start);
+      let weekCount = 1;
+      while (currentDate <= end) {
+        const dateStr = `Week ${weekCount}`;
+        dates.push(dateStr);
+        dateMap.set(dateStr, { date: dateStr, [searchTerm]: 0 });
+        currentDate.setDate(currentDate.getDate() + 7);
+        weekCount++;
+      }
+    } else {
+      // Monthly intervals
+      const currentDate = new Date(start);
+      while (currentDate <= end) {
+        const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
+        if (!dates.includes(dateStr)) {
+          dates.push(dateStr);
+          dateMap.set(dateStr, { date: dateStr, [searchTerm]: 0 });
+        }
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+    }
+  } else {
+    // Default to last 12 months
+    const currentDate = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate);
+      date.setMonth(date.getMonth() - i);
+      const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      dates.push(monthStr);
+      dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
+    }
   }
 
-  console.log(`📊 Created search-only date range for "${searchTerm}":`, dates);
+  console.log(`📊 Created date range for "${searchTerm}":`, dates);
 
   // Aggregate ALL search results under the single search term
   searchData.forEach(item => {
     const pubDate = new Date(item.published_at);
-    const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+    let dateKey;
 
-    if (dateMap.has(monthStr)) {
-      const dataPoint = dateMap.get(monthStr);
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff <= 30) {
+        dateKey = `${pubDate.getMonth() + 1}/${pubDate.getDate()}`;
+      } else if (daysDiff <= 180) {
+        const weeksDiff = Math.floor((pubDate - start) / (1000 * 60 * 60 * 24 * 7)) + 1;
+        dateKey = `Week ${Math.max(1, weeksDiff)}`;
+      } else {
+        dateKey = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+      }
+    } else {
+      dateKey = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+    }
+
+    if (dateMap.has(dateKey)) {
+      const dataPoint = dateMap.get(dateKey);
       const viewCount = item.view_count || item.reach_count || 0;
       
       // Add ALL views to the search term category
       dataPoint[searchTerm] = (dataPoint[searchTerm] || 0) + viewCount;
-      dateMap.set(monthStr, dataPoint);
+      dateMap.set(dateKey, dataPoint);
       
-      console.log(`📊 Added ${viewCount} views to "${searchTerm}" for ${monthStr}`);
+      console.log(`📊 Added ${viewCount} views to "${searchTerm}" for ${dateKey}`);
     }
   });
 
   const chartData = dates.map(date => dateMap.get(date));
 
-  console.log(`📊 Search-only chart created for "${searchTerm}":`, chartData);
-  console.log(`📊 Chart will show ONLY: ["${searchTerm}"]`);
+  console.log(`📊 Single trend chart created for "${searchTerm}":`, chartData);
+  console.log(`📊 Chart contains ONLY trend: "${searchTerm}"`);
 
   return chartData;
 }
@@ -1980,8 +2032,10 @@ async function searchTrends() {
       if (searchResults.length > 0) {
         const searchTermDisplay = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
         
-        // Create chart with ONLY the searched trend - this is the key fix
-        const chartData = createSearchOnlyChart(searchResults, searchTermDisplay, startDate, endDate);
+        console.log(`📊 Creating single trend chart for "${searchTermDisplay}" with ${searchResults.length} videos`);
+        
+        // Create chart data with ONLY the searched trend
+        const chartData = createSingleTrendChartData(searchResults, searchTermDisplay, startDate, endDate);
         
         // Update UI
         currentData = { chartData, tableData: searchResults };
@@ -2000,19 +2054,20 @@ async function searchTrends() {
         createTrendTable(searchResults.slice(0, 25));
         
         console.log(`✅ Found ${searchResults.length} videos for "${searchTerm}"`);
-        console.log(`📊 Showing ONLY trend: "${searchTermDisplay}"`);
+        console.log(`📊 Chart will show ONLY: "${searchTermDisplay}"`);
       } else {
         console.log(`⚠️ No results for "${searchTerm}"`);
+        const searchTermDisplay = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
         const tableBody = document.getElementById('trendTableBody');
         if (tableBody) {
           tableBody.innerHTML = `<tr><td colspan="4">No data found for "${searchTerm}"</td></tr>`;
         }
-        // Show empty chart
-        const emptyChart = createEmptyChartForSearch(searchTerm);
-        createChart(emptyChart, searchTerm);
+        // Show empty chart with search term
+        const emptyChart = createEmptyChartForSearch(searchTermDisplay);
+        createChart(emptyChart, searchTermDisplay);
       }
     } else {
-      // DEFAULT MODE: Show all trends (this is working correctly)
+      // DEFAULT MODE: Show all trends
       const chartData = processSupabaseDataForChart(dataToProcess);
       
       currentData = { chartData, tableData: dataToProcess };
