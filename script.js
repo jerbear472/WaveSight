@@ -488,6 +488,7 @@ function createChart(data, filteredTrends = 'all') {
   function drawAnimatedLines() {
     // Store clickable areas for interaction
     window.chartClickableAreas = [];
+    console.log('🔄 Initialized clickable areas array');
 
     // Draw trend lines with animation
     finalPositions.forEach((positions, trendIndex) => {
@@ -587,12 +588,18 @@ function createChart(data, filteredTrends = 'all') {
       ctx.stroke();
 
       // Store clickable area for this trend line
+      if (!window.chartClickableAreas) {
+        window.chartClickableAreas = [];
+      }
+      
       window.chartClickableAreas.push({
         trendName: trendName,
         color: color,
         points: clickablePoints,
         trendIndex: trendIndex
       });
+      
+      console.log(`📍 Added clickable area for ${trendName} with ${clickablePoints.length} points`);
     });
   }
 
@@ -612,28 +619,35 @@ function createChart(data, filteredTrends = 'all') {
   // Add click event listener to canvas
   canvas.addEventListener('click', (event) => {
     const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / (rect.width * dpr);
-    const scaleY = canvas.height / (rect.height * dpr);
-    
-    const clickX = (event.clientX - rect.left) * scaleX / dpr;
-    const clickY = (event.clientY - rect.top) * scaleY / dpr;
+    const clickX = (event.clientX - rect.left);
+    const clickY = (event.clientY - rect.top);
+
+    console.log(`🖱️ Canvas clicked at: ${clickX}, ${clickY}`);
 
     // Check if click is near any trend line
     if (window.chartClickableAreas) {
-      window.chartClickableAreas.forEach(area => {
+      console.log(`🔍 Checking ${window.chartClickableAreas.length} clickable areas`);
+      
+      window.chartClickableAreas.forEach((area, areaIndex) => {
         // Check if click is near any point in this trend line
-        const clickRadius = 15; // Increased click tolerance
+        const clickRadius = 25; // Increased click tolerance
         
-        area.points.forEach(point => {
+        area.points.forEach((point, pointIndex) => {
           const distance = Math.sqrt(
             Math.pow(clickX - point.x, 2) + Math.pow(clickY - point.y, 2)
           );
           
+          console.log(`📊 Point ${pointIndex} in ${area.trendName}: distance ${distance.toFixed(2)}`);
+          
           if (distance <= clickRadius) {
+            console.log(`✅ Clicked on ${area.trendName}!`);
             showTrendDetailModal(area.trendName, area.color);
+            return; // Exit after first match
           }
         });
       });
+    } else {
+      console.log('❌ No clickable areas found');
     }
   });
 
@@ -744,6 +758,9 @@ function showTrendDetailModal(trendName, trendColor) {
 async function getTrendDetailData(trendName) {
   try {
     console.log(`📊 Fetching detail data for trend: ${trendName}`);
+    console.log('📋 Current data available:', !!currentData);
+    console.log('📋 Table data available:', !!currentData?.tableData);
+    console.log('📋 Table data length:', currentData?.tableData?.length || 0);
 
     if (!currentData || !currentData.tableData) {
       console.log('No current data available');
@@ -754,17 +771,34 @@ async function getTrendDetailData(trendName) {
     const trendData = currentData.tableData.filter(item => {
       const category = item.trend_category || 'General';
       const title = (item.title || '').toLowerCase();
+      const description = (item.description || '').toLowerCase();
+      const channel = (item.channel_title || '').toLowerCase();
       const trendLower = trendName.toLowerCase();
 
-      // Match by category or title keywords
+      console.log(`🔍 Checking item: category="${category}", title="${title.substring(0, 50)}..."`);
+
+      // Match by exact category name
       if (category.toLowerCase() === trendLower) {
+        console.log(`✅ Matched by category: ${category}`);
         return true;
       }
 
-      // Check if trend name keywords appear in title
+      // Check if trend name keywords appear in title, description, or channel
       const trendKeywords = getTrendKeywords(trendName);
-      return trendKeywords.some(keyword => title.includes(keyword.toLowerCase()));
+      const matchFound = trendKeywords.some(keyword => 
+        title.includes(keyword.toLowerCase()) || 
+        description.includes(keyword.toLowerCase()) ||
+        channel.includes(keyword.toLowerCase())
+      );
+      
+      if (matchFound) {
+        console.log(`✅ Matched by keywords in ${trendName}`);
+      }
+      
+      return matchFound;
     });
+
+    console.log(`📊 Filtered ${trendData.length} items for trend: ${trendName}`);
 
     // If we have limited data, try to fetch more from Supabase
     if (trendData.length < 5 && supabase) {
