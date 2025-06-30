@@ -660,68 +660,33 @@ function processSupabaseDataForChart(supabaseData) {
     return fallbackData.chartData;
   }
 
-  // Group data by date and aggregate reach by trend
+  console.log('Processing Supabase data for chart:', supabaseData.length, 'items');
+
+  // Create fixed date range for the last 12 periods
+  const dates = [];
   const dateMap = new Map();
+  const currentDate = new Date();
 
-  // Find the actual date range in the data
-  const actualDates = supabaseData
-    .filter(item => item.published_at)
-    .map(item => new Date(item.published_at))
-    .sort((a, b) => a - b);
+  // Create monthly intervals for the last 12 months
+  for (let i = 11; i >= 0; i--) {
+    const date = new Date(currentDate);
+    date.setMonth(date.getMonth() - i);
+    const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
+    dates.push(monthStr);
 
-  if (actualDates.length === 0) {
-    // Fallback to recent monthly data if no dates found
-    const dates = [];
-    const currentDate = new Date();
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(currentDate);
-      date.setMonth(date.getMonth() - i);
-      const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
-      dates.push(monthStr);
-```text
-
-    }
-
-    dates.forEach(date => {
-      dateMap.set(date, {
-        date: date,
-        'AI Tools': 0,
-        'Crypto': 0,
-        'Gaming': 0,
-        'Technology': 0,
-        'Entertainment': 0,
-        'Movies & TV': 0,
-        'General': 0
-      });
+    dateMap.set(monthStr, {
+      date: monthStr,
+      'AI Tools': 0,
+      'Crypto': 0,
+      'Gaming': 0,
+      'Technology': 0,
+      'Entertainment': 0,
+      'Movies & TV': 0,
+      'General': 0
     });
-  } else {
-    // Use actual data range, but create weekly intervals for better distribution
-    const startDate = actualDates[0];
-    const endDate = actualDates[actualDates.length - 1];
-    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-
-    // Create weekly intervals (7-day periods) for better data distribution
-    const dates = [];
-    const intervalDays = Math.max(1, Math.ceil(totalDays / 12)); // Ensure we have ~12 data points
-
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + (i * intervalDays));
-      const monthStr = `${date.getMonth() + 1}/${date.getDate()}`;
-      dates.push(monthStr);
-
-      dateMap.set(monthStr, {
-        date: monthStr,
-        'AI Tools': 0,
-        'Crypto': 0,
-        'Gaming': 0,
-        'Technology': 0,
-        'Entertainment': 0,
-        'Movies & TV': 0,
-        'General': 0
-      });
-    }
   }
+
+  console.log('Created date range:', dates);
 
   // Group trends by keywords - Expanded to 25+ categories
   const trendGroups = {
@@ -752,56 +717,33 @@ function processSupabaseDataForChart(supabaseData) {
     'Pets': ['pets', 'dog', 'cat', 'animal', 'puppy', 'kitten', 'training', 'care']
   };
 
-  // Categorize and aggregate data based on actual published dates
-  supabaseData.forEach((item, index) => {
-    // Parse the actual published date and find the closest interval
-    let targetDate;
-    if (item.published_at && actualDates.length > 0) {
-      const pubDate = new Date(item.published_at);
-      const startDate = actualDates[0];
-      const daysSinceStart = Math.floor((pubDate - startDate) / (1000 * 60 * 60 * 24));
-      const intervalDays = Math.max(1, Math.ceil((actualDates[actualDates.length - 1] - startDate) / (1000 * 60 * 60 * 24) / 12));
-      const intervalIndex = Math.min(11, Math.floor(daysSinceStart / intervalDays));
+  // Aggregate data into the date map
+  supabaseData.forEach(item => {
+    // Find the correct date in the date range
+    const pubDate = new Date(item.published_at);
+    const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
 
-      // Get the corresponding date key
-      const dates = Array.from(dateMap.keys());
-      targetDate = dates[intervalIndex] || dates[0];
-    } else {
-      // Fallback to distributing across available dates
-      const dates = Array.from(dateMap.keys());
-      const dateIndex = index % dates.length;
-      targetDate = dates[dateIndex];
-    }
+    if (dateMap.has(monthStr)) {
+      let category = 'General';
+      const title = (item.title || item.trend_name || '').toLowerCase();
 
-    const title = (item.title || item.trend_name || '').toLowerCase();
-    let category = 'Other';
-
-    // Find matching category
-    for (const [groupName, keywords] of Object.entries(trendGroups)) {
-      if (keywords.some(keyword => title.includes(keyword))) {
-        category = groupName;
-        break;
+      for (const [groupName, keywords] of Object.entries(trendGroups)) {
+        if (keywords.some(keyword => title.includes(keyword))) {
+          category = groupName;
+          break;
+        }
       }
-    }
 
-    // Add to date map
-    if (!dateMap.get(targetDate)[category]) {
-      dateMap.get(targetDate)[category] = 0;
+      const dataPoint = dateMap.get(monthStr);
+      dataPoint[category] = (dataPoint[category] || 0) + (item.view_count || item.reach_count || 0);
+      dateMap.set(monthStr, dataPoint);
     }
-    dateMap.get(targetDate)[category] += item.view_count || item.reach_count || 100000;
   });
 
-  // Convert to chart format
-  const chartData = [];
-  dates.forEach(date => {
-    const dataPoint = { date };
-    const dayData = dateMap.get(date);
-
-    Object.keys(trendGroups).forEach(category => {
-      dataPoint[category] = dayData[category] || 0;
-    });
-
-    chartData.push(dataPoint);
+  // Convert dateMap to chart data array
+  const chartData = dates.map(date => {
+    const dataPoint = dateMap.get(date) || { date };
+    return dataPoint;
   });
 
   // Limit chart data to top 8 trends
@@ -827,6 +769,7 @@ function processSupabaseDataForChart(supabaseData) {
     return limitedDataPoint;
   });
 
+  console.log('Processed chart data:', limitedChartData);
   return limitedChartData;
 }
 
@@ -848,28 +791,28 @@ function processDataForChart(rawData) {
   // More flexible column detection
   const trendNameColumn = columns.find(col => {
     const lowerCol = col.toLowerCase();
-    return lowerCol.includes('trend') || lowerCol.includes('name') || 
-           lowerCol.includes('title') || lowerCol.includes('keyword') ||
-           lowerCol.includes('topic');
+    return lowerCol.includes('trend') || lowerCol.includes('name') ||
+      lowerCol.includes('title') || lowerCol.includes('keyword') ||
+      lowerCol.includes('topic');
   }) || columns.find(col => typeof sample[col] === 'string') || columns[0];
 
   // Find numeric columns for values
-  const numericColumns = columns.filter(col => 
+  const numericColumns = columns.filter(col =>
     typeof sample[col] === 'number' && col !== 'id'
   );
 
   const reachColumn = numericColumns.find(col => {
     const lowerCol = col.toLowerCase();
-    return lowerCol.includes('reach') || lowerCol.includes('count') || 
-           lowerCol.includes('value') || lowerCol.includes('views') || 
-           lowerCol.includes('engagement') || lowerCol.includes('mentions');
+    return lowerCol.includes('reach') || lowerCol.includes('count') ||
+      lowerCol.includes('value') || lowerCol.includes('views') ||
+      lowerCol.includes('engagement') || lowerCol.includes('mentions');
   }) || numericColumns[0] || columns[1];
 
   // Find date column
   const dateColumn = columns.find(col => {
     const lowerCol = col.toLowerCase();
-    return lowerCol.includes('date') || lowerCol.includes('time') || 
-           lowerCol.includes('created') || lowerCol.includes('updated');
+    return lowerCol.includes('date') || lowerCol.includes('time') ||
+      lowerCol.includes('created') || lowerCol.includes('updated');
   });
 
   console.log(`Detected columns - Trend: ${trendNameColumn}, Value: ${reachColumn}, Date: ${dateColumn}`);
@@ -890,8 +833,8 @@ function processDataForChart(rawData) {
     // Get numeric value
     let reach = 0;
     if (reachColumn && item[reachColumn] !== null && item[reachColumn] !== undefined) {
-      reach = typeof item[reachColumn] === 'number' ? item[reachColumn] : 
-              parseInt(item[reachColumn]) || 0;
+      reach = typeof item[reachColumn] === 'number' ? item[reachColumn] :
+        parseInt(item[reachColumn]) || 0;
     }
 
     // If reach is 0 or very small, generate a reasonable value
