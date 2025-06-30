@@ -61,6 +61,52 @@ CREATE TRIGGER update_youtube_trends_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
+-- Create users table for authentication
+CREATE TABLE users (
+  id BIGSERIAL PRIMARY KEY,
+  
+  -- Replit user info
+  replit_user_id VARCHAR(100) UNIQUE NOT NULL,
+  replit_username VARCHAR(100) NOT NULL,
+  replit_roles TEXT,
+  
+  -- User preferences
+  display_name VARCHAR(200),
+  email VARCHAR(300),
+  avatar_url VARCHAR(500),
+  
+  -- User settings
+  preferred_categories TEXT[], -- Array of preferred trend categories
+  notification_settings JSONB DEFAULT '{"email": false, "dashboard": true}',
+  dashboard_config JSONB DEFAULT '{"theme": "dark", "default_date_range": 180}',
+  
+  -- Activity tracking
+  last_login TIMESTAMPTZ DEFAULT NOW(),
+  login_count INTEGER DEFAULT 1,
+  
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create indexes for better performance
+CREATE INDEX idx_users_replit_user_id ON users(replit_user_id);
+CREATE INDEX idx_users_username ON users(replit_username);
+CREATE INDEX idx_users_last_login ON users(last_login DESC);
+
+-- Enable Row Level Security
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- Create policy to allow users to see only their own data
+CREATE POLICY "Users can view own data" ON users FOR SELECT USING (replit_user_id = current_setting('request.jwt.claims', true)::json->>'replit_user_id');
+CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (replit_user_id = current_setting('request.jwt.claims', true)::json->>'replit_user_id');
+
+-- Trigger to automatically update updated_at for users
+CREATE TRIGGER update_users_updated_at 
+    BEFORE UPDATE ON users 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Create sentiment forecasts table for sentiment analysis data
 CREATE TABLE sentiment_forecasts (
   id BIGSERIAL PRIMARY KEY,

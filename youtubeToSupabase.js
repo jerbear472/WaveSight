@@ -500,6 +500,149 @@ app.get('/api/bulk-fetch', async (req, res) => {
   }
 });
 
+// User authentication endpoints
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { replit_user_id, replit_username, replit_roles } = req.body;
+
+    if (!replit_user_id || !replit_username) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required user data'
+      });
+    }
+
+    // Check if user exists
+    const { data: existingUser, error: selectError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('replit_user_id', replit_user_id)
+      .single();
+
+    if (selectError && selectError.code !== 'PGRST116') {
+      throw selectError;
+    }
+
+    let userData;
+
+    if (existingUser) {
+      // Update existing user
+      const { data, error } = await supabase
+        .from('users')
+        .update({
+          replit_username,
+          replit_roles,
+          last_login: new Date().toISOString(),
+          login_count: existingUser.login_count + 1
+        })
+        .eq('replit_user_id', replit_user_id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      userData = data;
+      console.log(`✅ User ${replit_username} logged in (${userData.login_count} times)`);
+    } else {
+      // Create new user
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          replit_user_id,
+          replit_username,
+          replit_roles,
+          display_name: replit_username
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      userData = data;
+      console.log(`✅ New user ${replit_username} registered`);
+    }
+
+    res.json({
+      success: true,
+      user: userData,
+      message: existingUser ? 'Login successful' : 'User registered successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Auth error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/auth/user/:replit_user_id', async (req, res) => {
+  try {
+    const { replit_user_id } = req.params;
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('replit_user_id', replit_user_id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      user: data
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching user:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+app.put('/api/auth/user/:replit_user_id', async (req, res) => {
+  try {
+    const { replit_user_id } = req.params;
+    const updateData = req.body;
+
+    // Remove sensitive fields that shouldn't be updated via this endpoint
+    delete updateData.replit_user_id;
+    delete updateData.created_at;
+    delete updateData.login_count;
+
+    const { data, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('replit_user_id', replit_user_id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      user: data,
+      message: 'User updated successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating user:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 

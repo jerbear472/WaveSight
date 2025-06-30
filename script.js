@@ -11,6 +11,10 @@ let filteredData = null;
 let startDate = null;
 let endDate = null;
 
+// User authentication state
+let currentUser = null;
+let isAuthenticated = false;
+
 // Initialize Supabase
 function initSupabase() {
   if (SUPABASE_URL && SUPABASE_ANON_KEY && SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
@@ -1778,6 +1782,155 @@ async function performComprehensiveSearch() {
 // Make comprehensive search available globally
 window.performComprehensiveSearch = performComprehensiveSearch;
 
+// Authentication functions
+async function handleAuthSuccess(user) {
+  try {
+    console.log('🔐 User authenticated:', user);
+
+    // Send user data to backend
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        replit_user_id: user.id,
+        replit_username: user.name,
+        replit_roles: user.roles ? user.roles.join(',') : ''
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      currentUser = result.user;
+      isAuthenticated = true;
+      
+      console.log('✅ User session created:', currentUser);
+      updateUserInterface();
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('wavesight_user', JSON.stringify(currentUser));
+      localStorage.setItem('wavesight_auth', 'true');
+      
+    } else {
+      console.error('❌ Authentication failed:', result.message);
+    }
+
+  } catch (error) {
+    console.error('❌ Auth error:', error);
+  }
+}
+
+function updateUserInterface() {
+  const userSection = document.getElementById('userSection');
+  const loginSection = document.getElementById('loginSection');
+
+  if (isAuthenticated && currentUser) {
+    // Show user info
+    if (userSection) {
+      userSection.innerHTML = `
+        <div class="user-info">
+          <span class="user-welcome">Welcome, ${currentUser.display_name || currentUser.replit_username}!</span>
+          <span class="user-stats">${currentUser.login_count} sessions</span>
+          <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+      `;
+      userSection.style.display = 'flex';
+    }
+    
+    // Hide login
+    if (loginSection) {
+      loginSection.style.display = 'none';
+    }
+
+    // Apply user preferences if available
+    if (currentUser.dashboard_config) {
+      applyUserPreferences(currentUser.dashboard_config);
+    }
+
+  } else {
+    // Show login
+    if (loginSection) {
+      loginSection.style.display = 'block';
+    }
+    
+    // Hide user info
+    if (userSection) {
+      userSection.style.display = 'none';
+    }
+  }
+}
+
+function applyUserPreferences(config) {
+  try {
+    // Apply theme
+    if (config.theme === 'light') {
+      document.body.classList.add('light-theme');
+    }
+
+    // Apply default date range
+    if (config.default_date_range) {
+      const days = config.default_date_range;
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      const startInput = document.getElementById('startDate');
+      const endInput = document.getElementById('endDate');
+      
+      if (startInput && endInput) {
+        startInput.value = startDate.toISOString().split('T')[0];
+        endInput.value = endDate.toISOString().split('T')[0];
+      }
+    }
+  } catch (error) {
+    console.log('⚠️ Could not apply user preferences:', error);
+  }
+}
+
+async function logout() {
+  currentUser = null;
+  isAuthenticated = false;
+  
+  // Clear localStorage
+  localStorage.removeItem('wavesight_user');
+  localStorage.removeItem('wavesight_auth');
+  
+  // Update UI
+  updateUserInterface();
+  
+  console.log('👋 User logged out');
+  
+  // Reload page to reset state
+  location.reload();
+}
+
+function checkStoredAuth() {
+  try {
+    const storedAuth = localStorage.getItem('wavesight_auth');
+    const storedUser = localStorage.getItem('wavesight_user');
+
+    if (storedAuth === 'true' && storedUser) {
+      currentUser = JSON.parse(storedUser);
+      isAuthenticated = true;
+      console.log('✅ Restored user session:', currentUser.replit_username);
+      updateUserInterface();
+      return true;
+    }
+  } catch (error) {
+    console.log('⚠️ Could not restore user session:', error);
+    localStorage.removeItem('wavesight_user');
+    localStorage.removeItem('wavesight_auth');
+  }
+  
+  return false;
+}
+
+// Make auth functions globally available
+window.handleAuthSuccess = handleAuthSuccess;
+window.logout = logout;
+
 // Helper functions for updating display
 function updateChart(chartData) {
   if (chartData) {
@@ -1797,7 +1950,10 @@ function updateTable(tableData) {
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('🚀 Initializing WAVESIGHT dashboard...');
 
-  // Set default 6-month date range
+  // Check for stored authentication first
+  checkStoredAuth();
+
+  // Set default 6-month date range (only if not overridden by user preferences)
   const today = new Date();
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(today.getMonth() - 6);
@@ -1805,7 +1961,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
 
-  if (startDateInput && endDateInput) {
+  if (startDateInput && endDateInput && !startDateInput.value) {
     startDateInput.value = sixMonthsAgo.toISOString().split('T')[0];
     endDateInput.value = today.toISOString().split('T')[0];
     console.log(`📅 Default date range set: ${startDateInput.value} to ${endDateInput.value}`);
