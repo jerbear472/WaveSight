@@ -330,7 +330,21 @@ function createChart(data, filteredTrends = 'all') {
   if (filteredTrends === 'all') {
     trendNames = sortedAllTrends;
   } else {
-    trendNames = sortedAllTrends.filter(name => name.toLowerCase().includes(filteredTrends.toLowerCase()));
+    // For search results, show only trends that match the search term
+    trendNames = sortedAllTrends.filter(name => {
+      // Check if the trend name contains the search term or if it's a direct match
+      const nameMatch = name.toLowerCase().includes(filteredTrends.toLowerCase());
+      const searchTermCapitalized = filteredTrends.charAt(0).toUpperCase() + filteredTrends.slice(1);
+      const exactMatch = name === searchTermCapitalized;
+      return nameMatch || exactMatch;
+    });
+    
+    // If no direct matches, try to find the closest matching trend
+    if (trendNames.length === 0) {
+      const searchTermCapitalized = filteredTrends.charAt(0).toUpperCase() + filteredTrends.slice(1);
+      // Look for the trend category that was created for this search
+      trendNames = sortedAllTrends.filter(name => name === searchTermCapitalized);
+    }
   }
 
   // Expanded color palette with unique colors
@@ -1248,30 +1262,15 @@ function createSearchCategories(searchData, searchTerm) {
   const searchTermLower = searchTerm.toLowerCase();
   const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
 
-  // For specific search terms, create a focused category structure
+  // For specific search terms, ALWAYS create a single focused category
   if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
-    console.log(`🎯 Creating focused categories for "${searchTerm}"`);
-
-    // Check how many videos are directly related to the search term
-    const relevantVideos = searchData.filter(item => {
-      const title = (item.title || '').toLowerCase();
-      const description = (item.description || '').toLowerCase();
-      const category = (item.trend_category || '').toLowerCase();
-
-      return title.includes(searchTermLower) || 
-             description.includes(searchTermLower) || 
-             category.includes(searchTermLower);
-    });
-
-    console.log(`📊 Found ${relevantVideos.length} videos directly related to "${searchTerm}"`);
-
-    // If we have enough relevant videos, use search term as the only category
-    if (relevantVideos.length > 0) {
-      return [searchTermCategory];
-    }
+    console.log(`🎯 Creating single focused category for "${searchTerm}"`);
+    
+    // Always return the search term as the single category
+    return [searchTermCategory];
   }
 
-  // Fallback: get categories from existing data but limit to top 3 for cleaner display
+  // For 'trending' or 'all', get categories from existing data but limit to top 3
   const categoryCount = new Map();
 
   searchData.forEach(item => {
@@ -1281,7 +1280,7 @@ function createSearchCategories(searchData, searchTerm) {
 
   const sortedCategories = Array.from(categoryCount.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3) // Limit to top 3 categories for search results
+    .slice(0, 3) // Limit to top 3 categories for general searches
     .map(([category]) => category);
 
   return sortedCategories.length > 0 ? sortedCategories : ['General'];
@@ -1319,23 +1318,19 @@ function createSearchCategories(searchData, searchTerm) {
 
 // Create dynamic categories based on search results
 function categorizeSearchResult(item, searchTerm, availableCategories) {
-  const title = (item.title || '').toLowerCase();
-  const description = (item.description || '').toLowerCase();
   const searchTermLower = searchTerm.toLowerCase();
-
-  // If searching for a specific term, prioritize matching content
   const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
-  if (availableCategories.includes(searchTermCategory)) {
-    // Check if content matches the search term
-    if (title.includes(searchTermLower) || 
-        description.includes(searchTermLower) ||
-        (item.trend_category || '').toLowerCase().includes(searchTermLower)) {
-      return searchTermCategory;
-    }
+
+  // For specific search terms, ALWAYS categorize everything under the search term
+  if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
+    return searchTermCategory;
   }
 
   // For broad searches, use existing category logic
+  const title = (item.title || '').toLowerCase();
+  const description = (item.description || '').toLowerCase();
   const existingCategory = item.trend_category || 'General';
+  
   if (availableCategories.includes(existingCategory)) {
     return existingCategory;
   }
@@ -1926,13 +1921,13 @@ async function searchTrends() {
         // Update filter dropdown with new trends
         updateTrendFilter(chartData);
 
-        // Create chart with search-optimized legend
-        createChart(chartData, 'all'); // Show all trends for search results
+        // Create chart showing only the searched trend
+        createChart(chartData, searchTerm); // Show only the searched trend
         createTrendTable(dataToProcess.slice(0, 25));
 
-        // Reset selected trends to show all for search results
-        selectedTrends = 'all';
-        filterSelect.value = 'all';
+        // Set selected trends to the search term
+        selectedTrends = searchTerm;
+        filterSelect.value = 'all'; // Keep filter dropdown at 'all' but chart will show only searched trend
 
         // Show search results summary
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
