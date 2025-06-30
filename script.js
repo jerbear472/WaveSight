@@ -401,7 +401,7 @@ function createChart(data, filteredTrends = 'all') {
         // Format different types of date labels
         if (item.date && item.date.includes('/')) {
           const parts = item.date.split('/');
-          
+
           if (parts.length === 2) {
             // Monthly format: "MM/YYYY"
             const month = parseInt(parts[0]) - 1;
@@ -689,7 +689,7 @@ function createEmptyChartDataForDateRange(startDate, endDate) {
   while (currentDate <= end) {
     const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
     dates.push(dateStr);
-    
+
     dateMap.set(dateStr, {
       date: dateStr,
       'AI Tools': 0,
@@ -700,7 +700,7 @@ function createEmptyChartDataForDateRange(startDate, endDate) {
       'Movies & TV': 0,
       'General': 0
     });
-    
+
     currentDate.setDate(currentDate.getDate() + 1);
   }
 
@@ -722,14 +722,14 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
 
   // Create date intervals based on the range
   const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  
+
   if (daysDiff <= 7) {
     // Daily intervals for week or less
     const currentDate = new Date(start);
     while (currentDate <= end) {
       const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
       dates.push(dateStr);
-      
+
       dateMap.set(dateStr, {
         date: dateStr,
         'AI Tools': 0,
@@ -740,7 +740,7 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
         'Movies & TV': 0,
         'General': 0
       });
-      
+
       currentDate.setDate(currentDate.getDate() + 1);
     }
   } else if (daysDiff <= 31) {
@@ -750,7 +750,7 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
     while (currentDate <= end) {
       const dateStr = `Week ${weekCount}`;
       dates.push(dateStr);
-      
+
       dateMap.set(dateStr, {
         date: dateStr,
         'AI Tools': 0,
@@ -761,7 +761,7 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
         'Movies & TV': 0,
         'General': 0
       });
-      
+
       currentDate.setDate(currentDate.getDate() + 7);
       weekCount++;
     }
@@ -772,7 +772,7 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
       const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
       if (!dates.includes(dateStr)) {
         dates.push(dateStr);
-        
+
         dateMap.set(dateStr, {
           date: dateStr,
           'AI Tools': 0,
@@ -784,7 +784,7 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
           'General': 0
         });
       }
-      
+
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
   }
@@ -1128,29 +1128,29 @@ function createTrendTable(data) {
     const trendName = item.title || item.trend_name || `Trend ${index + 1}`;
     const platform = item.channel_title || item.platform || 'YouTube';
     let reach = item.view_count || item.reach_count || 0;
-    
+
     // If reach is 0 or very low, calculate based on engagement
     if (reach < 1000) {
       const likeCount = item.like_count || 0;
       const commentCount = item.comment_count || 0;
       const engagementScore = likeCount + (commentCount * 10); // Comments weighted more
-      
+
       // Estimate reach based on engagement (typical engagement rate is 1-3%)
       reach = Math.max(1000, Math.floor(engagementScore * 50)); // Assume 2% engagement rate
     }
-    
+
     // Calculate trend score based on multiple factors
     let score = item.trend_score || item.score;
     if (!score) {
       const likeCount = item.like_count || 0;
       const commentCount = item.comment_count || 0;
       const engagementRatio = reach > 0 ? ((likeCount + commentCount) / reach) * 100 : 0;
-      
+
       // Base score on engagement ratio and reach
       const reachScore = Math.min(40, Math.floor(Math.log10(reach)) * 5); // Log scale for reach
       const engagementScore = Math.min(40, Math.floor(engagementRatio * 20)); // Engagement contribution
       const recencyScore = 20; // Base recency score
-      
+
       score = Math.min(99, Math.max(50, reachScore + engagementScore + recencyScore));
     }
 
@@ -1178,9 +1178,9 @@ async function filterChart() {
   const filterSelect = document.getElementById('trendFilter');
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
-  
+
   selectedTrends = filterSelect.value;
-  
+
   // If a specific trend is selected and we have date filters, re-run the search
   if (selectedTrends !== 'all' && (startDateInput.value || endDateInput.value)) {
     await filterByDateRange();
@@ -1225,7 +1225,7 @@ async function searchTrends() {
   const filterSelect = document.getElementById('trendFilter');
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
-  
+
   let searchTerm = searchInput.value.toLowerCase().trim();
   const selectedTrend = filterSelect.value;
   const startDate = startDateInput.value;
@@ -1266,10 +1266,10 @@ async function searchTrends() {
 
     // Fetch all available data (existing + any new data)
     const allData = await fetchYouTubeDataFromSupabase();
-    
+
     if (allData && allData.length > 0) {
       let dataToProcess = allData;
-      
+
       // Filter by search term first
       if (searchTerm !== 'trending' && searchTerm !== 'all') {
         dataToProcess = allData.filter(item => {
@@ -1277,14 +1277,14 @@ async function searchTrends() {
           const category = (item.trend_category || '').toLowerCase();
           const channel = (item.channel_title || '').toLowerCase();
           const description = (item.description || '').toLowerCase();
-          
+
           return title.includes(searchTerm) || 
                  category.includes(searchTerm) || 
                  channel.includes(searchTerm) ||
                  description.includes(searchTerm);
         });
       }
-      
+
       // Filter by date range if specified
       if (startDate || endDate) {
         dataToProcess = dataToProcess.filter(item => {
@@ -1294,56 +1294,56 @@ async function searchTrends() {
           return itemDate >= start && itemDate <= end;
         });
       }
-      
+
       console.log(`📊 Filtered to ${dataToProcess.length} videos matching "${searchTerm}"`);
-      
+
       if (dataToProcess.length > 0) {
         // Process data for chart
         const chartData = startDate || endDate ? 
           processSupabaseDataForChartWithDateRange(dataToProcess, startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]) :
           processSupabaseDataForChart(dataToProcess);
-        
+
         // Calculate reach metrics for search results
         const totalReach = dataToProcess.reduce((sum, item) => sum + (item.view_count || 0), 0);
         const avgReach = dataToProcess.length > 0 ? Math.floor(totalReach / dataToProcess.length) : 0;
-        
+
         console.log(`📈 Total reach for "${searchTerm}": ${formatNumber(totalReach)}`);
         console.log(`📈 Average reach per video: ${formatNumber(avgReach)}`);
-        
+
         // Update the display
         currentData = { chartData, tableData: dataToProcess };
         filteredData = chartData;
-        
+
         updateTrendFilter(chartData);
         createChart(chartData, selectedTrends);
         createTrendTable(dataToProcess.slice(0, 25));
-        
+
         // Update selected trends for chart filtering
         selectedTrends = searchTerm === 'trending' || searchTerm === 'all' ? 'all' : searchTerm;
-        
+
         // Show search results summary
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
         if (foundNewData) {
           console.log('📥 Includes newly fetched data from YouTube API');
         }
-        
+
       } else {
         console.log(`⚠️ No videos found matching "${searchTerm}"`);
-        
+
         // Show empty results
         const tableBody = document.getElementById('trendTableBody');
         if (tableBody) {
           tableBody.innerHTML = `<tr><td colspan="4">No videos found for "${searchTerm}"</td></tr>`;
         }
-        
+
         // Create empty chart
         filteredData = createEmptyChartDataForDateRange(startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]);
         createChart(filteredData, selectedTrends);
       }
-      
+
     } else {
       console.log('⚠️ No data available in database');
-      
+
       // Show no data message
       const tableBody = document.getElementById('trendTableBody');
       if (tableBody) {
@@ -1357,7 +1357,7 @@ async function searchTrends() {
 
   } catch (error) {
     console.error('❌ Error in search:', error);
-    
+
     // Restore button state
     const submitBtn = document.querySelector('button[onclick="performComprehensiveSearch()"]');
     if (submitBtn) {
@@ -1413,7 +1413,7 @@ async function filterByDateRange() {
       if (!error && data && data.length > 0) {
         filteredApiData = data;
         console.log(`✅ Found ${filteredApiData.length} videos in date range`);
-        
+
         // Apply search/trend filtering on top of date filtering
         if (searchTerm || (selectedTrend && selectedTrend !== 'all')) {
           const filterTerm = searchTerm || selectedTrend.toLowerCase();
@@ -1440,7 +1440,7 @@ async function filterByDateRange() {
 
       // Update table with filtered data
       createTrendTable(filteredApiData.slice(0, 25));
-      
+
       // Update current data to reflect the filter
       currentData = { 
         chartData: filteredChartData, 
@@ -1452,7 +1452,7 @@ async function filterByDateRange() {
       // No data in range, show empty chart with date range
       filteredData = createEmptyChartDataForDateRange(startDate, endDate);
       console.log('📊 No data found in selected date range');
-      
+
       // Clear table
       const tableBody = document.getElementById('trendTableBody');
       if (tableBody) {
@@ -1464,13 +1464,13 @@ async function filterByDateRange() {
 
   } catch (error) {
     console.error('❌ Error filtering by date range:', error);
-    
+
     // Show error message
     const tableBody = document.getElementById('trendTableBody');
     if (tableBody) {
       tableBody.innerHTML = '<tr><td colspan="4">Error loading data for selected date range</td></tr>';
     }
-    
+
     // Create empty chart with proper date range
     filteredData = createEmptyChartDataForDateRange(startDate, endDate);
     createChart(filteredData, selectedTrends);
@@ -1586,14 +1586,14 @@ async function fetchFreshYouTubeData() {
 async function fetchBulkData(categories = 'all', totalResults = 1000) {
   try {
     console.log(`🔄 Starting bulk fetch: ${totalResults} videos across ${categories} categories...`);
-    
+
     const response = await fetch(`/api/bulk-fetch?categories=${categories}&totalResults=${totalResults}`);
     const result = await response.json();
 
     if (result.success) {
       console.log(`✅ Bulk fetch completed: ${result.count} videos fetched`);
       console.log(`📊 Used ${result.queries_used} different search queries`);
-      
+
       // Refresh the display
       location.reload();
       return result;
@@ -1616,12 +1616,12 @@ async function performComprehensiveSearch() {
   const filterSelect = document.getElementById('trendFilter');
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
-  
+
   const searchTerm = searchInput.value.toLowerCase().trim();
   const selectedTrend = filterSelect.value;
   const startDate = startDateInput.value;
   const endDate = endDateInput.value;
-  
+
   // Determine what to search for
   let queryTerm = searchTerm;
   if (!queryTerm && selectedTrend !== 'all') {
@@ -1630,23 +1630,23 @@ async function performComprehensiveSearch() {
   if (!queryTerm) {
     queryTerm = 'trending';
   }
-  
+
   console.log(`🔍 Comprehensive search for: "${queryTerm}", dates: ${startDate || 'any'} to ${endDate || 'any'}`);
-  
+
   try {
     // First, try to fetch fresh data for this search term
     if (queryTerm !== 'all') {
       const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(queryTerm)}&maxResults=50`);
       const result = await response.json();
-      
+
       if (result.success) {
         console.log(`✅ Fetched ${result.count} new videos for "${queryTerm}"`);
       }
     }
-    
+
     // Then filter existing data
     await filterByDateRange();
-    
+
   } catch (error) {
     console.error('❌ Error in comprehensive search:', error);
   }
@@ -1670,9 +1670,23 @@ function updateTable(tableData) {
   }
 }
 
-// Initialize on page load
+// Analyze: The code initializes the dashboard and sets the default date range to six months prior to the current date.
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('🚀 Initializing WAVESIGHT dashboard...');
+
+  // Set default 6-month date range
+  const today = new Date();
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(today.getMonth() - 6);
+
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+
+  if (startDateInput && endDateInput) {
+    startDateInput.value = sixMonthsAgo.toISOString().split('T')[0];
+    endDateInput.value = today.toISOString().split('T')[0];
+    console.log(`📅 Default date range set: ${startDateInput.value} to ${endDateInput.value}`);
+  }
 
   // Initialize Supabase
   initSupabase();
