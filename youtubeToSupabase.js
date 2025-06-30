@@ -329,7 +329,7 @@ app.get('/api/youtube-data', async (req, res) => {
       .from('youtube_trends')
       .select('*')
       .order('published_at', { ascending: false })
-      .limit(50);
+      .limit(100);
 
     if (error) {
       throw error;

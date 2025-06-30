@@ -746,7 +746,7 @@ function processSupabaseDataForChart(supabaseData) {
     return dataPoint;
   });
 
-  // Limit chart data to top 8 trends
+  // Limit chart data to top 12 trends for better visualization
   const trendTotals = {};
   chartData.forEach(dataPoint => {
     Object.keys(dataPoint).forEach(trend => {
@@ -758,7 +758,7 @@ function processSupabaseDataForChart(supabaseData) {
 
   const sortedTrends = Object.entries(trendTotals)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 8)
+    .slice(0, 12)
     .map(([trend]) => trend);
 
   const limitedChartData = chartData.map(dataPoint => {
@@ -921,7 +921,7 @@ function createTrendTable(data) {
   console.log('Creating table with data:', data);
 
   // Create table rows from data
-  const tableHTML = data.slice(0, 10).map((item, index) => {
+  const tableHTML = data.slice(0, 25).map((item, index) => {
     // Handle both YouTube API data and fallback data
     const trendName = item.title || item.trend_name || `Trend ${index + 1}`;
     const platform = item.channel_title || item.platform || 'YouTube';
@@ -939,7 +939,7 @@ function createTrendTable(data) {
   }).join('');
 
   tableBody.innerHTML = tableHTML;
-  console.log(`Table populated with ${data.slice(0, 10).length} rows`);
+  console.log(`Table populated with ${data.slice(0, 25).length} rows`);
 }
 
 // Filter chart function
