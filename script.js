@@ -1363,8 +1363,65 @@ function createSingleTrendChartData(searchData, searchTerm, startDate, endDate) 
   return chartData;
 }
 
+// Create chart data specifically for search results - simplified approach
+function createSearchChartData(searchResults, searchTerm, startDate, endDate) {
+  console.log(`📊 Creating search chart for "${searchTerm}" with ${searchResults.length} results`);
+  
+  // Create date range - use last 12 months if no dates specified
+  const dates = [];
+  const dateMap = new Map();
+  
+  if (startDate && endDate) {
+    // Use specified date range with monthly intervals
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const monthStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
+      if (!dates.includes(monthStr)) {
+        dates.push(monthStr);
+        dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
+      }
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+  } else {
+    // Default to last 12 months
+    const currentDate = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate);
+      date.setMonth(date.getMonth() - i);
+      const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      dates.push(monthStr);
+      dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
+    }
+  }
+  
+  // Aggregate all search results under the single search term
+  searchResults.forEach(item => {
+    const pubDate = new Date(item.published_at);
+    const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+    
+    if (dateMap.has(monthStr)) {
+      const dataPoint = dateMap.get(monthStr);
+      const viewCount = item.view_count || item.reach_count || 0;
+      dataPoint[searchTerm] = (dataPoint[searchTerm] || 0) + viewCount;
+      dateMap.set(monthStr, dataPoint);
+      
+      console.log(`📊 Added ${viewCount} views to ${searchTerm} for ${monthStr}`);
+    }
+  });
+  
+  const chartData = dates.map(date => dateMap.get(date));
+  
+  console.log(`📊 Search chart created with ${chartData.length} data points`);
+  console.log(`📊 Chart contains ONLY: "${searchTerm}"`);
+  
+  return chartData;
+}
+
 // Create empty chart for failed searches
-function createEmptyChartForSearch(searchTerm) {
+function createEmptySearchChart(searchTerm) {
   const dates = [];
   const dateMap = new Map();
   const currentDate = new Date();
@@ -2029,41 +2086,42 @@ async function searchTrends() {
                description.includes(searchTerm);
       });
 
+      const searchTermDisplay = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+
       if (searchResults.length > 0) {
-        const searchTermDisplay = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+        console.log(`📊 Found ${searchResults.length} videos for "${searchTerm}"`);
+        console.log(`📊 Creating single trend chart for "${searchTermDisplay}"`);
         
-        console.log(`📊 Creating single trend chart for "${searchTermDisplay}" with ${searchResults.length} videos`);
-        
-        // Create chart data with ONLY the searched trend
-        const chartData = createSingleTrendChartData(searchResults, searchTermDisplay, startDate, endDate);
+        // Create chart data with ONLY the searched trend - use simple monthly aggregation
+        const chartData = createSearchChartData(searchResults, searchTermDisplay, startDate, endDate);
         
         // Update UI
         currentData = { chartData, tableData: searchResults };
         selectedTrends = searchTermDisplay;
         
         // Update filter dropdown to show ONLY the search result
-        filterSelect.innerHTML = '<option value="all">All Trends</option>';
-        const option = document.createElement('option');
-        option.value = searchTermDisplay;
-        option.textContent = searchTermDisplay;
-        option.selected = true;
-        filterSelect.appendChild(option);
+        if (filterSelect) {
+          filterSelect.innerHTML = '<option value="all">All Trends</option>';
+          const option = document.createElement('option');
+          option.value = searchTermDisplay;
+          option.textContent = searchTermDisplay;
+          option.selected = true;
+          filterSelect.appendChild(option);
+        }
         
         // Create chart showing ONLY the searched trend
         createChart(chartData, searchTermDisplay);
         createTrendTable(searchResults.slice(0, 25));
         
-        console.log(`✅ Found ${searchResults.length} videos for "${searchTerm}"`);
-        console.log(`📊 Chart will show ONLY: "${searchTermDisplay}"`);
+        console.log(`✅ Chart will show ONLY: "${searchTermDisplay}"`);
       } else {
         console.log(`⚠️ No results for "${searchTerm}"`);
-        const searchTermDisplay = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
         const tableBody = document.getElementById('trendTableBody');
         if (tableBody) {
           tableBody.innerHTML = `<tr><td colspan="4">No data found for "${searchTerm}"</td></tr>`;
         }
         // Show empty chart with search term
-        const emptyChart = createEmptyChartForSearch(searchTermDisplay);
+        const emptyChart = createEmptySearchChart(searchTermDisplay);
         createChart(emptyChart, searchTermDisplay);
       }
     } else {
@@ -2074,7 +2132,7 @@ async function searchTrends() {
       selectedTrends = 'all';
       
       updateTrendFilter(chartData);
-      filterSelect.value = 'all';
+      if (filterSelect) filterSelect.value = 'all';
       
       createChart(chartData, 'all');
       createTrendTable(dataToProcess.slice(0, 25));
