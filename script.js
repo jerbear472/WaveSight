@@ -1193,6 +1193,95 @@ function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDa
   return chartData;
 }
 
+// Create a focused single-trend chart for search results
+function createSingleTrendChart(searchData, trendName, startDate, endDate) {
+  if (!searchData || searchData.length === 0) {
+    return createEmptyChartDataForDateRange(startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]);
+  }
+
+  console.log(`📊 Creating single trend chart for "${trendName}" with ${searchData.length} videos`);
+
+  // Determine date range
+  const start = startDate ? new Date(startDate) : new Date();
+  const end = endDate ? new Date(endDate) : new Date();
+
+  if (!startDate && !endDate) {
+    // Default to last 6 months if no dates specified
+    start.setMonth(start.getMonth() - 6);
+  }
+
+  const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+  // Create date intervals
+  const dates = [];
+  const dateMap = new Map();
+
+  if (daysDiff <= 30) {
+    // Daily intervals for month or less
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
+      dates.push(dateStr);
+      dateMap.set(dateStr, { date: dateStr, [trendName]: 0 });
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  } else if (daysDiff <= 180) {
+    // Weekly intervals for 6 months or less
+    const currentDate = new Date(start);
+    let weekCount = 1;
+    while (currentDate <= end) {
+      const dateStr = `Week ${weekCount}`;
+      dates.push(dateStr);
+      dateMap.set(dateStr, { date: dateStr, [trendName]: 0 });
+      currentDate.setDate(currentDate.getDate() + 7);
+      weekCount++;
+    }
+  } else {
+    // Monthly intervals for longer ranges
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
+      if (!dates.includes(dateStr)) {
+        dates.push(dateStr);
+        dateMap.set(dateStr, { date: dateStr, [trendName]: 0 });
+      }
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+  }
+
+  // Aggregate all search results under the single trend name
+  searchData.forEach(item => {
+    const pubDate = new Date(item.published_at);
+    let dateKey;
+
+    if (daysDiff <= 30) {
+      dateKey = `${pubDate.getMonth() + 1}/${pubDate.getDate()}`;
+    } else if (daysDiff <= 180) {
+      const weeksDiff = Math.floor((pubDate - start) / (1000 * 60 * 60 * 24 * 7)) + 1;
+      dateKey = `Week ${Math.max(1, weeksDiff)}`;
+    } else {
+      dateKey = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+    }
+
+    if (dateMap.has(dateKey)) {
+      const dataPoint = dateMap.get(dateKey);
+      const viewCount = item.view_count || 0;
+      
+      // Aggregate ALL search results under the trend name
+      dataPoint[trendName] = (dataPoint[trendName] || 0) + viewCount;
+      dateMap.set(dateKey, dataPoint);
+      
+      console.log(`📊 Added ${viewCount} views to ${trendName} for ${dateKey}`);
+    }
+  });
+
+  const chartData = dates.map(date => dateMap.get(date));
+
+  console.log(`📊 Single trend chart data created for "${trendName}":`, chartData);
+
+  return chartData;
+}
+
 // Create chart data optimized for search results
 function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) {
   if (!searchData || searchData.length === 0) {
@@ -1884,13 +1973,15 @@ async function searchTrends() {
 
           console.log(`📊 Displaying all default trends`);
         } else {
-          // Show only the specific searched trend
-          chartData = createSearchBasedChartData(dataToProcess, finalSearchTerm, startDate, endDate);
+          // Show only the specific searched trend - create focused single-trend chart
           const searchTermCapitalized = finalSearchTerm.charAt(0).toUpperCase() + finalSearchTerm.slice(1);
+          
+          // Create a single trend chart with aggregated data
+          chartData = createSingleTrendChart(dataToProcess, searchTermCapitalized, startDate, endDate);
           trendsToShow = searchTermCapitalized;
           selectedTrends = searchTermCapitalized;
 
-          // Update filter dropdown
+          // Update filter dropdown to show only the search term
           if (filterSelect) {
             filterSelect.innerHTML = '<option value="all">All Trends</option>';
             const searchOption = document.createElement('option');
