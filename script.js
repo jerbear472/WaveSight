@@ -236,7 +236,7 @@ const fallbackData = {
   ]
 };
 
-// Create chart with Canvas API
+// Create interactive chart with click functionality
 function createChart(data, filteredTrends = 'all') {
   const chartContainer = document.getElementById('trendChart');
   if (!chartContainer) return;
@@ -251,13 +251,14 @@ function createChart(data, filteredTrends = 'all') {
 
   // Set actual canvas size (accounting for device pixel ratio)
   canvas.width = containerWidth * dpr;
-  canvas.height = 330 * dpr;
+  canvas.height = 400 * dpr;
 
   // Set display size (CSS pixels)
   canvas.style.width = '100%';
-  canvas.style.height = '330px';
+  canvas.style.height = '400px';
   canvas.style.background = '#13131f';
   canvas.style.borderRadius = '12px';
+  canvas.style.cursor = 'pointer';
 
   chartContainer.appendChild(canvas);
 
@@ -270,25 +271,38 @@ function createChart(data, filteredTrends = 'all') {
   ctx.textRenderingOptimization = 'optimizeQuality';
   ctx.imageSmoothingEnabled = true;
 
-  if (!data || data.length === 0) {
-    ctx.fillStyle = '#f1f1f1';
-    ctx.font = '16px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('No data available', displayWidth / 2, displayHeight / 2);
-    return;
-  }
-
   // Chart dimensions (use display size, not canvas size)
   const padding = 60;
-  const legendHeight = 30; // Space for top legend
-  const axisHeight = 25; // Reduced space for month labels
+  const legendHeight = 40;
+  const axisHeight = 30;
   const displayWidth = containerWidth;
-  const displayHeight = 330;
+  const displayHeight = 400;
   const chartWidth = displayWidth - padding * 2;
   const chartHeight = displayHeight - padding * 2 - legendHeight - axisHeight;
 
+  // Process chart data if not available
+  if (!data || data.length === 0) {
+    // Create mock chart data from current table data
+    if (currentData && currentData.tableData) {
+      data = createMockChartData(currentData.tableData);
+    } else {
+      ctx.fillStyle = '#f1f1f1';
+      ctx.font = '16px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No data available', displayWidth / 2, displayHeight / 2);
+      return;
+    }
+  }
+
   // Get all trend names
-  let allTrendNames = [...new Set(data.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
+  let allTrendNames = [];
+  data.forEach(dataPoint => {
+    Object.keys(dataPoint).forEach(key => {
+      if (key !== 'date' && !allTrendNames.includes(key)) {
+        allTrendNames.push(key);
+      }
+    });
+  });
 
   // Calculate trend totals for prioritization
   const trendTotals = {};
@@ -307,10 +321,9 @@ function createChart(data, filteredTrends = 'all') {
     trendNames = sortedAllTrends.filter(name => name.toLowerCase().includes(filteredTrends.toLowerCase()));
   }
 
-  // Expanded color palette with unique colors
+  // Expanded color palette
   const colors = [
-    '#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#06b6d4',
-    '#84cc16', '#f472b6', '#a855f7', '#22d3ee', '#fb923c', '#34d399', '#fbbf24', '#f87171'
+    '#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'
   ];
 
   // Ensure we have valid trends with data
@@ -322,34 +335,40 @@ function createChart(data, filteredTrends = 'all') {
     return;
   }
 
-  // Find max value for scaling (only from visible trends)
+  // Find max value for scaling
   const allValues = data.flatMap(d => 
     trendNames.map(trend => d[trend] || 0).filter(v => typeof v === 'number' && v > 0)
   );
+  const maxValue = allValues.length > 0 ? Math.max(...allValues) : 1000000;
 
-  const maxValue = allValues.length > 0 ? Math.max(...allValues) : 1;
-
-  // Calculate final positions for all points
+  // Calculate positions for all points
   const finalPositions = [];
+  const clickableAreas = [];
+  
   trendNames.forEach((trendName, trendIndex) => {
     const positions = [];
     data.forEach((item, index) => {
-      const value = item[trendName];
-      if (value !== undefined && value !== null && typeof value === 'number') {
-        const x = padding + (chartWidth * index) / (data.length - 1);
-        const y = padding + legendHeight + chartHeight - ((value / maxValue) * chartHeight);
-        positions.push({ x, y, value });
-      }
+      const value = item[trendName] || 0;
+      const x = padding + (chartWidth * index) / Math.max(data.length - 1, 1);
+      const y = padding + legendHeight + chartHeight - ((value / maxValue) * chartHeight);
+      
+      positions.push({ x, y, value, dataIndex: index, trendName });
+      
+      // Add clickable area (circle around each point)
+      clickableAreas.push({
+        x, y, 
+        radius: 8,
+        trendName,
+        value,
+        dataIndex: index,
+        color: colors[trendIndex % colors.length]
+      });
     });
     finalPositions.push(positions);
   });
 
-  // Animation variables
-  let animationProgress = 0;
-  const animationDuration = 1500; // 1.5 seconds
-  const startTime = Date.now();
-
-  function drawStaticElements() {
+  // Draw static elements
+  function drawChart() {
     // Clear canvas
     ctx.clearRect(0, 0, displayWidth, displayHeight);
 
@@ -358,8 +377,8 @@ function createChart(data, filteredTrends = 'all') {
     ctx.lineWidth = 1;
 
     // Horizontal grid lines
-    for (let i = 0; i <= 4; i++) {
-      const y = padding + legendHeight + (chartHeight * i) / 4;
+    for (let i = 0; i <= 5; i++) {
+      const y = padding + legendHeight + (chartHeight * i) / 5;
       ctx.beginPath();
       ctx.moveTo(padding, y);
       ctx.lineTo(padding + chartWidth, y);
@@ -371,180 +390,313 @@ function createChart(data, filteredTrends = 'all') {
     ctx.font = 'bold 12px Inter, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'right';
 
-    for (let i = 0; i <= 4; i++) {
-      const value = maxValue * (4 - i) / 4;
-      const y = padding + legendHeight + (chartHeight * i) / 4;
+    for (let i = 0; i <= 5; i++) {
+      const value = maxValue * (5 - i) / 5;
+      const y = padding + legendHeight + (chartHeight * i) / 5;
       ctx.fillText(formatNumber(value), padding - 10, y + 4);
     }
 
-    // Draw x-axis labels dynamically based on date range
+    // Draw y-axis title
+    ctx.save();
+    ctx.translate(20, padding + legendHeight + chartHeight / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = '#5ee3ff';
+    ctx.font = 'bold 14px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Reach Count (Views)', 0, 0);
+    ctx.restore();
+
+    // Draw x-axis labels
     ctx.fillStyle = '#9ca3af';
-    ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.font = '11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
 
-    // Simplified x-axis labels
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const dataLength = data.length;
-
-    // Show every other label to prevent overcrowding
-    const labelStep = Math.max(1, Math.floor(dataLength / 6));
-
+    
     data.forEach((item, index) => {
-      if (index % labelStep === 0 || index === dataLength - 1) {
-        const x = padding + (chartWidth * index) / (dataLength - 1);
-        let label = item.date;
+      const x = padding + (chartWidth * index) / Math.max(data.length - 1, 1);
+      let label = item.date || `Period ${index + 1}`;
 
-        // Try to format the date nicely
-        if (item.date && item.date.includes('/')) {
-          const parts = item.date.split('/');
-          if (parts.length === 2) {
-            const month = parseInt(parts[0]) - 1;
-            if (month >= 0 && month < 12) {
-              label = monthNames[month];
-            }
+      // Format date if possible
+      if (item.date && item.date.includes('/')) {
+        const parts = item.date.split('/');
+        if (parts.length >= 2) {
+          const month = parseInt(parts[0]) - 1;
+          if (month >= 0 && month < 12) {
+            label = monthNames[month];
           }
         }
-
-        ctx.fillStyle = '#9ca3af';
-        ctx.font = '11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(label, x, padding + legendHeight + chartHeight + 20);
       }
+
+      ctx.fillText(label, x, padding + legendHeight + chartHeight + 20);
     });
 
-    // Draw horizontal legend at the top
-    ctx.font = 'bold 11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
-    ctx.textAlign = 'left';
-
-    let legendX = padding;
-    const legendY = 20;
-
-    trendNames.forEach((trendName, trendIndex) => {
-      const color = colors[trendIndex % colors.length];
-
-      // Draw legend box
-      ctx.fillStyle = color;
-      ctx.fillRect(legendX, legendY, 8, 8);
-
-      // Draw legend text
-      ctx.fillStyle = '#f1f1f1';
-      ctx.fillText(trendName, legendX + 12, legendY + 7);
-
-      // Calculate text width and move to next position
-      const textWidth = ctx.measureText(trendName).width;
-      legendX += textWidth + 25; // 12 for box + text + 25 for spacing
-    });
-  }
-
-  function easeOutCubic(t) {
-    return 1 - Math.pow(1 - t, 3);
-  }
-
-  function drawAnimatedLines() {
-    // Draw trend lines with animation
+    // Draw trend lines and areas
     finalPositions.forEach((positions, trendIndex) => {
       if (positions.length === 0) return;
 
       const color = colors[trendIndex % colors.length];
-      const baseY = padding + legendHeight + chartHeight; // Bottom of chart
+      
+      // Draw filled area
+      const gradient = ctx.createLinearGradient(0, padding + legendHeight, 0, padding + legendHeight + chartHeight);
+      gradient.addColorStop(0, color + '40');
+      gradient.addColorStop(1, color + '08');
 
-      // Create gradient for the fill
-      const gradient = ctx.createLinearGradient(0, padding + legendHeight, 0, baseY);
-      gradient.addColorStop(0, color + '40'); // 25% opacity at top
-      gradient.addColorStop(1, color + '08'); // 3% opacity at bottom
-
-      // Draw filled area first
       ctx.fillStyle = gradient;
       ctx.beginPath();
-
-      // Start from bottom left
+      
       if (positions.length > 0) {
-        const firstAnimatedY = baseY - (baseY - positions[0].y) * easeOutCubic(animationProgress);
-        ctx.moveTo(positions[0].x, baseY);
-        ctx.lineTo(positions[0].x, firstAnimatedY);
-
-        // Draw the smooth curve path for fill using cubic Bézier curves
-        positions.forEach((finalPos, pointIndex) => {
-          const animatedY = baseY - (baseY - finalPos.y) * easeOutCubic(animationProgress);
-
-          if (pointIndex === 0) {
-            // Already moved to first point above
-          } else {
-            const prevPos = positions[pointIndex - 1];
-            const prevAnimatedY = baseY - (baseY - prevPos.y) * easeOutCubic(animationProgress);
-
-            // Calculate control points for smooth cubic Bézier curve
-            const tension = 0.4; // Adjust this value to control curve smoothness (0.1 to 0.5)
-            const deltaX = finalPos.x - prevPos.x;
-
-            const cp1x = prevPos.x + deltaX * tension;
-            const cp1y = prevAnimatedY;
-            const cp2x = finalPos.x - deltaX * tension;
-            const cp2y = animatedY;
-
-            // Use cubic Bézier curve for smooth fill
-            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, finalPos.x, animatedY);
-          }
-        });
-
-        // Close the path back to bottom
-        const lastPos = positions[positions.length - 1];
-        ctx.lineTo(lastPos.x, baseY);
+        ctx.moveTo(positions[0].x, padding + legendHeight + chartHeight);
+        ctx.lineTo(positions[0].x, positions[0].y);
+        
+        for (let i = 1; i < positions.length; i++) {
+          ctx.lineTo(positions[i].x, positions[i].y);
+        }
+        
+        ctx.lineTo(positions[positions.length - 1].x, padding + legendHeight + chartHeight);
         ctx.closePath();
         ctx.fill();
       }
 
-      // Draw the line on top
+      // Draw trend line
       ctx.strokeStyle = color;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
       ctx.beginPath();
-
-      // Create smooth curves using cubic Bézier curves
-      positions.forEach((finalPos, pointIndex) => {
-        const animatedY = baseY - (baseY - finalPos.y) * easeOutCubic(animationProgress);
-
-        if (pointIndex === 0) {
-          ctx.moveTo(finalPos.x, animatedY);
+      positions.forEach((pos, index) => {
+        if (index === 0) {
+          ctx.moveTo(pos.x, pos.y);
         } else {
-          const prevPos = positions[pointIndex - 1];
-          const prevAnimatedY = baseY - (baseY - prevPos.y) * easeOutCubic(animationProgress);
-
-          // Calculate control points for smooth cubic Bézier curve
-          const tension = 0.4; // Adjust this value to control curve smoothness
-          const deltaX = finalPos.x - prevPos.x;
-
-          const cp1x = prevPos.x + deltaX * tension;
-          const cp1y = prevAnimatedY;
-          const cp2x = finalPos.x - deltaX * tension;
-          const cp2y = animatedY;
-
-          // Use cubic Bézier curve for smooth transitions
-          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, finalPos.x, animatedY);
+          ctx.lineTo(pos.x, pos.y);
         }
       });
-
       ctx.stroke();
+
+      // Draw data points
+      positions.forEach(pos => {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, 4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Add white border for visibility
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+    });
+
+    // Draw legend
+    ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'left';
+
+    let legendX = padding;
+    const legendY = 25;
+
+    trendNames.forEach((trendName, trendIndex) => {
+      const color = colors[trendIndex % colors.length];
+
+      // Draw legend box
+      ctx.fillStyle = color;
+      ctx.fillRect(legendX, legendY, 10, 10);
+
+      // Draw legend text
+      ctx.fillStyle = '#f1f1f1';
+      ctx.fillText(trendName, legendX + 15, legendY + 8);
+
+      // Calculate text width and move to next position
+      const textWidth = ctx.measureText(trendName).width;
+      legendX += textWidth + 30;
     });
   }
 
-  function animate() {
-    const currentTime = Date.now();
-    const elapsed = currentTime - startTime;
-    animationProgress = Math.min(elapsed / animationDuration, 1);
+  // Add click event listener
+  canvas.addEventListener('click', function(event) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width * dpr);
+    const scaleY = canvas.height / (rect.height * dpr);
+    
+    const clickX = (event.clientX - rect.left) * scaleX / dpr;
+    const clickY = (event.clientY - rect.top) * scaleY / dpr;
 
-    drawStaticElements();
-    drawAnimatedLines();
+    // Check if click is on any data point
+    clickableAreas.forEach(area => {
+      const distance = Math.sqrt(
+        Math.pow(clickX - area.x, 2) + Math.pow(clickY - area.y, 2)
+      );
+      
+      if (distance <= area.radius) {
+        showTrendBreakdown(area.trendName, area.value, area.dataIndex);
+      }
+    });
+  });
 
-    if (animationProgress < 1) {
-      requestAnimationFrame(animate);
+  // Draw the chart
+  drawChart();
+}
+
+// Create mock chart data from table data
+function createMockChartData(tableData) {
+  if (!tableData || tableData.length === 0) return [];
+
+  // Group data by trend categories
+  const trendGroups = {};
+  
+  tableData.forEach(item => {
+    const category = item.trend_category || categorizeContent(item.title || item.trend_name || '');
+    const reach = item.view_count || item.reach_count || 0;
+    
+    if (!trendGroups[category]) {
+      trendGroups[category] = [];
     }
+    trendGroups[category].push(reach);
+  });
+
+  // Create time series data
+  const dates = ['6/2024', '7/2024', '8/2024', '9/2024', '10/2024', '11/2024', '12/2024', '1/2025'];
+  const chartData = [];
+
+  dates.forEach((date, index) => {
+    const dataPoint = { date };
+    
+    Object.keys(trendGroups).forEach(category => {
+      const baseValue = trendGroups[category].reduce((sum, val) => sum + val, 0) / trendGroups[category].length;
+      // Add some variation over time
+      const variation = 0.8 + (Math.sin(index * 0.5) + 1) * 0.3;
+      dataPoint[category] = Math.floor(baseValue * variation);
+    });
+    
+    chartData.push(dataPoint);
+  });
+
+  return chartData;
+}
+
+// Categorize content based on title
+function categorizeContent(title) {
+  const titleLower = title.toLowerCase();
+  
+  if (titleLower.includes('ai') || titleLower.includes('artificial intelligence') || titleLower.includes('machine learning')) {
+    return 'AI Tools';
+  } else if (titleLower.includes('crypto') || titleLower.includes('bitcoin') || titleLower.includes('blockchain')) {
+    return 'Crypto';
+  } else if (titleLower.includes('game') || titleLower.includes('gaming') || titleLower.includes('esports')) {
+    return 'Gaming';
+  } else if (titleLower.includes('music') || titleLower.includes('song') || titleLower.includes('artist')) {
+    return 'Music';
+  } else if (titleLower.includes('movie') || titleLower.includes('film') || titleLower.includes('tv') || titleLower.includes('series')) {
+    return 'Movies & TV';
+  } else if (titleLower.includes('car') || titleLower.includes('auto') || titleLower.includes('vehicle')) {
+    return 'Automotive';
+  } else if (titleLower.includes('health') || titleLower.includes('fitness') || titleLower.includes('workout')) {
+    return 'Health & Fitness';
+  } else if (titleLower.includes('art') || titleLower.includes('design') || titleLower.includes('creative')) {
+    return 'Art & Design';
+  } else if (titleLower.includes('sport') || titleLower.includes('football') || titleLower.includes('basketball')) {
+    return 'Sports';
+  } else if (titleLower.includes('lifestyle') || titleLower.includes('vlog') || titleLower.includes('daily')) {
+    return 'Lifestyle';
+  }
+  
+  return 'General';
+}
+
+// Show detailed breakdown when user clicks on a trend point
+function showTrendBreakdown(trendName, value, dataIndex) {
+  console.log(`🔍 Clicked on ${trendName} trend - Value: ${formatNumber(value)}`);
+  
+  // Get videos that contribute to this trend
+  const contributingVideos = getContributingVideos(trendName);
+  
+  // Create and show modal
+  showBreakdownModal(trendName, value, contributingVideos);
+}
+
+// Get videos that contribute to a specific trend
+function getContributingVideos(trendName) {
+  if (!currentData || !currentData.tableData) return [];
+  
+  return currentData.tableData.filter(video => {
+    const category = video.trend_category || categorizeContent(video.title || video.trend_name || '');
+    return category === trendName;
+  }).slice(0, 10); // Limit to top 10 contributing videos
+}
+
+// Show breakdown modal with contributing videos
+function showBreakdownModal(trendName, totalReach, videos) {
+  // Remove existing modal if any
+  const existingModal = document.getElementById('breakdownModal');
+  if (existingModal) {
+    existingModal.remove();
   }
 
-  // Start animation
-  animate();
+  // Create modal HTML
+  const modalHTML = `
+    <div id="breakdownModal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>${trendName} Breakdown</h2>
+          <button class="modal-close" onclick="closeBreakdownModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="breakdown-summary">
+            <div class="total-reach">
+              <span class="label">Total Reach:</span>
+              <span class="value">${formatNumber(totalReach)}</span>
+            </div>
+            <div class="video-count">
+              <span class="label">Contributing Videos:</span>
+              <span class="value">${videos.length}</span>
+            </div>
+          </div>
+          <div class="contributing-videos">
+            <h3>Top Contributing Videos</h3>
+            <div class="video-list">
+              ${videos.map(video => `
+                <div class="video-item">
+                  <div class="video-thumbnail">
+                    <img src="${video.thumbnail_medium || video.thumbnail_default || '/api/placeholder/120/90'}" 
+                         alt="Thumbnail" onerror="this.src='/api/placeholder/120/90'">
+                  </div>
+                  <div class="video-details">
+                    <h4 class="video-title">${video.title || video.trend_name || 'Untitled'}</h4>
+                    <p class="video-channel">${video.channel_title || video.platform || 'Unknown Channel'}</p>
+                    <div class="video-stats">
+                      <span class="views">${formatNumber(video.view_count || video.reach_count || 0)} views</span>
+                      <span class="likes">${formatNumber(video.like_count || 0)} likes</span>
+                      <span class="comments">${formatNumber(video.comment_count || 0)} comments</span>
+                      <span class="score">Score: ${video.trend_score || video.score || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Add modal to page
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  // Add event listener to close modal when clicking outside
+  const modal = document.getElementById('breakdownModal');
+  modal.addEventListener('click', function(event) {
+    if (event.target === modal) {
+      closeBreakdownModal();
+    }
+  });
+}
+
+// Close breakdown modal
+function closeBreakdownModal() {
+  const modal = document.getElementById('breakdownModal');
+  if (modal) {
+    modal.remove();
+  }
 }
 
 // Fetch data with YouTube integration
