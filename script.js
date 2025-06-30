@@ -1120,7 +1120,7 @@ function createTrendTable(data) {
   console.log('Creating table with data:', data);
 
   // Create table rows from data
-  const tableHTML = data.slice(0, 25).map((item, index) => {
+  const tableHTML = data.slice(0, 50).map((item, index) => {
     // Handle both YouTube API data and fallback data
     const trendName = item.title || item.trend_name || `Trend ${index + 1}`;
     const platform = item.channel_title || item.platform || 'YouTube';
@@ -1138,7 +1138,7 @@ function createTrendTable(data) {
   }).join('');
 
   tableBody.innerHTML = tableHTML;
-  console.log(`Table populated with ${data.slice(0, 25).length} rows`);
+  console.log(`Table populated with ${data.slice(0, 50).length} rows`);
 }
 
 // Filter chart function
