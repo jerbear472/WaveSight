@@ -326,7 +326,7 @@ function createChart(data, filteredTrends = 'all') {
   const allValues = data.flatMap(d => 
     trendNames.map(trend => d[trend] || 0).filter(v => typeof v === 'number' && v > 0)
   );
-  
+
   const maxValue = allValues.length > 0 ? Math.max(...allValues) : 1;
 
   // Calculate final positions for all points
@@ -385,15 +385,15 @@ function createChart(data, filteredTrends = 'all') {
     // Simplified x-axis labels
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const dataLength = data.length;
-    
+
     // Show every other label to prevent overcrowding
     const labelStep = Math.max(1, Math.floor(dataLength / 6));
-    
+
     data.forEach((item, index) => {
       if (index % labelStep === 0 || index === dataLength - 1) {
         const x = padding + (chartWidth * index) / (dataLength - 1);
         let label = item.date;
-        
+
         // Try to format the date nicely
         if (item.date && item.date.includes('/')) {
           const parts = item.date.split('/');
@@ -404,7 +404,7 @@ function createChart(data, filteredTrends = 'all') {
             }
           }
         }
-        
+
         ctx.fillStyle = '#9ca3af';
         ctx.font = '11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textAlign = 'center';
@@ -459,19 +459,19 @@ function createChart(data, filteredTrends = 'all') {
 
       // Start from bottom left
       if (positions.length > 0) {
-        const firstAnimatedY = baseY + (positions[0].y - baseY) * easeOutCubic(animationProgress);
+        const firstAnimatedY = baseY - (baseY - positions[0].y) * easeOutCubic(animationProgress);
         ctx.moveTo(positions[0].x, baseY);
         ctx.lineTo(positions[0].x, firstAnimatedY);
 
         // Draw the smooth curve path for fill using cubic Bézier curves
         positions.forEach((finalPos, pointIndex) => {
-          const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
+          const animatedY = baseY - (baseY - finalPos.y) * easeOutCubic(animationProgress);
 
           if (pointIndex === 0) {
             // Already moved to first point above
           } else {
             const prevPos = positions[pointIndex - 1];
-            const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
+            const prevAnimatedY = baseY - (baseY - prevPos.y) * easeOutCubic(animationProgress);
 
             // Calculate control points for smooth cubic Bézier curve
             const tension = 0.4; // Adjust this value to control curve smoothness (0.1 to 0.5)
@@ -504,13 +504,13 @@ function createChart(data, filteredTrends = 'all') {
 
       // Create smooth curves using cubic Bézier curves
       positions.forEach((finalPos, pointIndex) => {
-        const animatedY = baseY + (finalPos.y - baseY) * easeOutCubic(animationProgress);
+        const animatedY = baseY - (baseY - finalPos.y) * easeOutCubic(animationProgress);
 
         if (pointIndex === 0) {
           ctx.moveTo(finalPos.x, animatedY);
         } else {
           const prevPos = positions[pointIndex - 1];
-          const prevAnimatedY = baseY + (prevPos.y - baseY) * easeOutCubic(animationProgress);
+          const prevAnimatedY = baseY - (baseY - prevPos.y) * easeOutCubic(animationProgress);
 
           // Calculate control points for smooth cubic Bézier curve
           const tension = 0.4; // Adjust this value to control curve smoothness
@@ -678,8 +678,10 @@ function processSupabaseDataForChart(supabaseData) {
       date.setMonth(date.getMonth() - i);
       const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
       dates.push(monthStr);
+```text
+
     }
-    
+
     dates.forEach(date => {
       dateMap.set(date, {
         date: date,
@@ -697,17 +699,17 @@ function processSupabaseDataForChart(supabaseData) {
     const startDate = actualDates[0];
     const endDate = actualDates[actualDates.length - 1];
     const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-    
+
     // Create weekly intervals (7-day periods) for better data distribution
     const dates = [];
     const intervalDays = Math.max(1, Math.ceil(totalDays / 12)); // Ensure we have ~12 data points
-    
+
     for (let i = 0; i < 12; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + (i * intervalDays));
       const monthStr = `${date.getMonth() + 1}/${date.getDate()}`;
       dates.push(monthStr);
-      
+
       dateMap.set(monthStr, {
         date: monthStr,
         'AI Tools': 0,
@@ -760,7 +762,7 @@ function processSupabaseDataForChart(supabaseData) {
       const daysSinceStart = Math.floor((pubDate - startDate) / (1000 * 60 * 60 * 24));
       const intervalDays = Math.max(1, Math.ceil((actualDates[actualDates.length - 1] - startDate) / (1000 * 60 * 60 * 24) / 12));
       const intervalIndex = Math.min(11, Math.floor(daysSinceStart / intervalDays));
-      
+
       // Get the corresponding date key
       const dates = Array.from(dateMap.keys());
       targetDate = dates[intervalIndex] || dates[0];
