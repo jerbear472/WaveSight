@@ -370,32 +370,43 @@ function createChart(data, filteredTrends = 'all') {
     ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
 
-    // Generate date labels based on data length and range
+    // Generate date labels based on actual data dates
     const dateLabels = [];
     const dataLength = data.length;
-    
-    // For generated data, create monthly progression
-    const currentDate = new Date();
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
     data.forEach((item, index) => {
-      // Create date based on index going back in time
-      const monthsBack = dataLength - 1 - index;
-      const targetDate = new Date(currentDate);
-      targetDate.setMonth(targetDate.getMonth() - monthsBack);
+      let displayLabel = item.date;
+      let isYearLabel = false;
       
-      const month = targetDate.getMonth();
-      const year = targetDate.getFullYear();
-      
-      // Show year if it's January or the first/last data point
-      const showYear = month === 0 || index === 0 || index === dataLength - 1;
+      // Parse the date format (could be M/D or M/YYYY)
+      if (item.date.includes('/')) {
+        const dateParts = item.date.split('/');
+        if (dateParts.length === 2) {
+          const month = parseInt(dateParts[0]) - 1; // Convert to 0-based
+          const dayOrYear = parseInt(dateParts[1]);
+          
+          if (dayOrYear > 31) {
+            // This is M/YYYY format
+            displayLabel = `${monthNames[month]} ${dayOrYear}`;
+            isYearLabel = true;
+          } else {
+            // This is M/D format - show current year for context
+            const currentYear = new Date().getFullYear();
+            displayLabel = index === 0 || index === dataLength - 1 ? 
+              `${monthNames[month]} ${currentYear}` : 
+              monthNames[month];
+            isYearLabel = index === 0 || index === dataLength - 1;
+          }
+        }
+      }
       
       dateLabels.push({
         x: padding + (chartWidth * index) / (dataLength - 1),
-        label: showYear ? `${monthNames[month]} ${year}` : monthNames[month],
-        isYearLabel: showYear,
-        month: month,
-        year: year
+        label: displayLabel,
+        isYearLabel: isYearLabel,
+        month: parseInt(item.date.split('/')[0]) - 1,
+        year: new Date().getFullYear()
       });
     });
 
@@ -674,44 +685,66 @@ function processSupabaseDataForChart(supabaseData) {
     return fallbackData.chartData;
   }
 
-  // Group data by date and aggregate reach by trend - Extended to show years of data
+  // Group data by date and aggregate reach by trend
   const dateMap = new Map();
 
-  // Create date range going back 3 years with monthly intervals
-  const dates = [];
-  const currentDate = new Date();
+  // Find the actual date range in the data
+  const actualDates = supabaseData
+    .filter(item => item.published_at)
+    .map(item => new Date(item.published_at))
+    .sort((a, b) => a - b);
 
-  // Generate monthly data points for the last 3 years (36 months)
-  for (let i = 35; i >= 0; i--) {
-    const date = new Date(currentDate);
-    date.setMonth(date.getMonth() - i);
-    const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
-    dates.push(monthStr);
-    dateMap.set(monthStr, {
-      date: monthStr,
-      'AI Tools': 0,
-      'Crypto': 0,
-      'Gaming': 0,
-      'Technology': 0,
-      'Entertainment': 0,
-      'Movies & TV': 0,
-      'General': 0
+  if (actualDates.length === 0) {
+    // Fallback to recent monthly data if no dates found
+    const dates = [];
+    const currentDate = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate);
+      date.setMonth(date.getMonth() - i);
+      const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      dates.push(monthStr);
+    }
+    
+    dates.forEach(date => {
+      dateMap.set(date, {
+        date: date,
+        'AI Tools': 0,
+        'Crypto': 0,
+        'Gaming': 0,
+        'Technology': 0,
+        'Entertainment': 0,
+        'Movies & TV': 0,
+        'General': 0
+      });
     });
+  } else {
+    // Use actual data range, but create weekly intervals for better distribution
+    const startDate = actualDates[0];
+    const endDate = actualDates[actualDates.length - 1];
+    const totalDays = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    
+    // Create weekly intervals (7-day periods) for better data distribution
+    const dates = [];
+    const intervalDays = Math.max(1, Math.ceil(totalDays / 12)); // Ensure we have ~12 data points
+    
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + (i * intervalDays));
+      const monthStr = `${date.getMonth() + 1}/${date.getDate()}`;
+      dates.push(monthStr);
+      
+      dateMap.set(monthStr, {
+        date: monthStr,
+        'AI Tools': 0,
+        'Crypto': 0,
+        'Gaming': 0,
+        'Technology': 0,
+        'Entertainment': 0,
+        'Movies & TV': 0,
+        'General': 0
+      });
+    }
   }
-
-  // Initialize dates
-  dates.forEach(date => {
-    dateMap.set(date, {
-      date: date,
-      'AI Tools': 0,
-      'Crypto': 0,
-      'Gaming': 0,
-      'Technology': 0,
-      'Entertainment': 0,
-      'Movies & TV': 0,
-      'General': 0
-    });
-  });
 
   // Group trends by keywords - Expanded to 25+ categories
   const trendGroups = {
@@ -744,21 +777,23 @@ function processSupabaseDataForChart(supabaseData) {
 
   // Categorize and aggregate data based on actual published dates
   supabaseData.forEach((item, index) => {
-    // Parse the actual published date
+    // Parse the actual published date and find the closest interval
     let targetDate;
-    if (item.published_at) {
+    if (item.published_at && actualDates.length > 0) {
       const pubDate = new Date(item.published_at);
-      targetDate = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+      const startDate = actualDates[0];
+      const daysSinceStart = Math.floor((pubDate - startDate) / (1000 * 60 * 60 * 24));
+      const intervalDays = Math.max(1, Math.ceil((actualDates[actualDates.length - 1] - startDate) / (1000 * 60 * 60 * 24) / 12));
+      const intervalIndex = Math.min(11, Math.floor(daysSinceStart / intervalDays));
+      
+      // Get the corresponding date key
+      const dates = Array.from(dateMap.keys());
+      targetDate = dates[intervalIndex] || dates[0];
     } else {
       // Fallback to distributing across available dates
+      const dates = Array.from(dateMap.keys());
       const dateIndex = index % dates.length;
       targetDate = dates[dateIndex];
-    }
-
-    // Ensure the target date exists in our date map
-    if (!dateMap.has(targetDate)) {
-      // Find the closest date if exact match doesn't exist
-      targetDate = dates[Math.floor(Math.random() * dates.length)];
     }
 
     const title = (item.title || item.trend_name || '').toLowerCase();
