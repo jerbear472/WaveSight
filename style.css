@@ -516,23 +516,48 @@ h1, h2, h3, .logo, .header-title {
     0 8px 32px rgba(0, 0, 0, 0.2),
     0 0 0 1px rgba(94, 227, 255, 0.1);
   backdrop-filter: blur(10px);
+  table-layout: fixed;
 }
 
 .trend-table th,
 .trend-table td {
-  padding: 20px 24px;
+  padding: 16px 20px;
   text-align: left;
   border-bottom: 1px solid rgba(46, 46, 69, 0.5);
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.trend-table th:first-child,
+.trend-table td:first-child {
+  width: 35%;
+}
+
+.trend-table th:nth-child(2),
+.trend-table td:nth-child(2) {
+  width: 20%;
+}
+
+.trend-table th:nth-child(3),
+.trend-table td:nth-child(3) {
+  width: 25%;
+}
+
+.trend-table th:nth-child(4),
+.trend-table td:nth-child(4) {
+  width: 20%;
 }
 
 .trend-table th {
   background: linear-gradient(135deg, #1a1a2e 0%, #252545 50%, #13131f 100%);
   color: #5ee3ff;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   letter-spacing: 1px;
   text-transform: uppercase;
   position: relative;
+  height: 60px;
 }
 
 .trend-table th::after {
@@ -547,9 +572,18 @@ h1, h2, h3, .logo, .header-title {
 
 .trend-table td {
   color: #e5e7eb;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   background: rgba(26, 26, 46, 0.8);
   transition: all 0.3s ease;
+  line-height: 1.4;
+  min-height: 70px;
+}
+
+.trend-table td a {
+  color: #5ee3ff;
+  text-decoration: none;
+  word-break: break-word;
+  hyphens: auto;
 }
 
 .trend-table td a:hover {
@@ -810,19 +844,28 @@ h1, h2, h3, .logo, .header-title {
 .topic-cell {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .topic-name {
   color: #8b5cf6;
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  word-break: break-word;
+  hyphens: auto;
+  max-width: 100%;
 }
 
 .topic-subtitle {
   color: #9ca3af;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 400;
+  line-height: 1.2;
 }
 
 .platform-count {
@@ -1659,5 +1702,43 @@ h1, h2, h3, .logo, .header-title {
   .submit-btn {
     width: 100%;
     min-width: auto;
+  }
+
+  /* Mobile table improvements */
+  .trend-table {
+    font-size: 0.85rem;
+  }
+
+  .trend-table th,
+  .trend-table td {
+    padding: 12px 16px;
+  }
+
+  .trend-table th:first-child,
+  .trend-table td:first-child {
+    width: 40%;
+  }
+
+  .trend-table th:nth-child(2),
+  .trend-table td:nth-child(2) {
+    width: 25%;
+  }
+
+  .trend-table th:nth-child(3),
+  .trend-table td:nth-child(3) {
+    width: 20%;
+  }
+
+  .trend-table th:nth-child(4),
+  .trend-table td:nth-child(4) {
+    width: 15%;
+  }
+
+  .topic-name {
+    font-size: 0.85rem;
+  }
+
+  .topic-subtitle {
+    font-size: 0.7rem;
   }
 }
