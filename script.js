@@ -1852,12 +1852,19 @@ function processDataForChart(rawData) {
 // Create trending topics table with aggregated insights
 function createTrendTable(data) {
   const tableBody = document.getElementById('trendTableBody');
-  if (!tableBody || !data || data.length === 0) {
-    console.log('No table data to display');
+  if (!tableBody) {
+    console.log('❌ Table body element not found');
+    return;
+  }
+  
+  if (!data || data.length === 0) {
+    console.log('❌ No table data to display');
+    tableBody.innerHTML = '<tr><td colspan="4">No data available</td></tr>';
     return;
   }
 
-  console.log('Creating trending topics table with data:', data);
+  console.log('✅ Creating trending topics table with', data.length, 'items');
+  console.log('📊 Sample data item:', data[0]);
 
   // Aggregate data by trending topics/categories
   const topicAggregation = {};
@@ -1923,6 +1930,9 @@ function createTrendTable(data) {
   const totalReach = trendingTopics.reduce((sum, topic) => sum + topic.totalViews, 0);
 
   // Create enhanced table rows
+  console.log('📊 Creating table HTML for', trendingTopics.length, 'topics');
+  console.log('📊 Sample topic:', trendingTopics[0]);
+
   const tableHTML = trendingTopics.map((topic, index) => {
     const reachPercentage = totalReach > 0 ? ((topic.totalViews / totalReach) * 100).toFixed(1) : '0.0';
     const engagementRate = topic.totalViews > 0 ? 
@@ -1968,9 +1978,15 @@ function createTrendTable(data) {
     `;
   }).join('');
 
-  tableBody.innerHTML = tableHTML;
-  console.log(`Trending topics table populated with ${trendingTopics.length} categories`);
-  console.log(`Total reach across all topics: ${formatNumber(totalReach)}`);
+  try {
+    tableBody.innerHTML = tableHTML;
+    console.log(`✅ Trending topics table populated with ${trendingTopics.length} categories`);
+    console.log(`📊 Total reach across all topics: ${formatNumber(totalReach)}`);
+    console.log('📊 Table HTML length:', tableHTML.length);
+  } catch (error) {
+    console.error('❌ Error setting table HTML:', error);
+    tableBody.innerHTML = '<tr><td colspan="4">Error loading table data</td></tr>';
+  }
 }
 
 // Simple chart filtering
@@ -2742,6 +2758,8 @@ document.addEventListener('DOMContentLoaded', async function() {
       // Display everything with 'all' filter to show multiple trend lines
       createChart(chartData, 'all');
       createTrendTable(dataToUse.slice(0, 25));
+      
+      console.log('📊 Table data being passed:', dataToUse.slice(0, 5));
       
       console.log('✅ Dashboard initialized with DEFAULT TRENDS successfully');
       console.log('📊 Showing trends:', Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
