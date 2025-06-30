@@ -296,6 +296,13 @@ function createChart(data, filteredTrends = 'all') {
   ctx.textRenderingOptimization = 'optimizeQuality';
   ctx.imageSmoothingEnabled = true;
 
+  // Chart dimensions (use display size, not canvas size)
+  const padding = 60;
+  const legendHeight = 30; // Space for top legend
+  const axisHeight = 25; // Reduced space for month labels
+  const displayWidth = containerWidth;
+  const displayHeight = 330;
+
   if (!data || data.length === 0) {
     ctx.fillStyle = '#f1f1f1';
     ctx.font = '16px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
@@ -303,13 +310,6 @@ function createChart(data, filteredTrends = 'all') {
     ctx.fillText('No data available', displayWidth / 2, displayHeight / 2);
     return;
   }
-
-  // Chart dimensions (use display size, not canvas size)
-  const padding = 60;
-  const legendHeight = 30; // Space for top legend
-  const axisHeight = 25; // Reduced space for month labels
-  const displayWidth = containerWidth;
-  const displayHeight = 330;
   const chartWidth = displayWidth - padding * 2;
   const chartHeight = displayHeight - padding * 2 - legendHeight - axisHeight;
 
