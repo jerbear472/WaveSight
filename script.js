@@ -330,20 +330,27 @@ function createChart(data, filteredTrends = 'all') {
   if (filteredTrends === 'all') {
     trendNames = sortedAllTrends;
   } else {
-    // For search results, show only trends that match the search term
-    trendNames = sortedAllTrends.filter(name => {
-      // Check if the trend name contains the search term or if it's a direct match
-      const nameMatch = name.toLowerCase().includes(filteredTrends.toLowerCase());
-      const searchTermCapitalized = filteredTrends.charAt(0).toUpperCase() + filteredTrends.slice(1);
-      const exactMatch = name === searchTermCapitalized;
-      return nameMatch || exactMatch;
-    });
+    // For specific search/filter, show ONLY the matching trend
+    const searchTermCapitalized = filteredTrends.charAt(0).toUpperCase() + filteredTrends.slice(1);
     
-    // If no direct matches, try to find the closest matching trend
+    // First try exact match
+    trendNames = sortedAllTrends.filter(name => name === searchTermCapitalized);
+    
+    // If no exact match, try case-insensitive partial match
     if (trendNames.length === 0) {
-      const searchTermCapitalized = filteredTrends.charAt(0).toUpperCase() + filteredTrends.slice(1);
-      // Look for the trend category that was created for this search
-      trendNames = sortedAllTrends.filter(name => name === searchTermCapitalized);
+      trendNames = sortedAllTrends.filter(name => 
+        name.toLowerCase().includes(filteredTrends.toLowerCase())
+      );
+    }
+    
+    // If still no match, show only the search term as a category
+    if (trendNames.length === 0) {
+      trendNames = [searchTermCapitalized];
+    }
+    
+    // For search results, limit to just the first matching trend to focus the chart
+    if (trendNames.length > 1 && filteredTrends !== 'all') {
+      trendNames = [trendNames[0]];
     }
   }
 
@@ -1270,7 +1277,7 @@ function createSearchCategories(searchData, searchTerm) {
     return [searchTermCategory];
   }
 
-  // For 'trending' or 'all', get categories from existing data but limit to top 3
+  // For 'trending' or 'all', get categories from existing data but limit to top 5
   const categoryCount = new Map();
 
   searchData.forEach(item => {
@@ -1280,7 +1287,7 @@ function createSearchCategories(searchData, searchTerm) {
 
   const sortedCategories = Array.from(categoryCount.entries())
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 3) // Limit to top 3 categories for general searches
+    .slice(0, 5) // Limit to top 5 categories for general searches
     .map(([category]) => category);
 
   return sortedCategories.length > 0 ? sortedCategories : ['General'];
@@ -1925,9 +1932,29 @@ async function searchTrends() {
         createChart(chartData, searchTerm); // Show only the searched trend
         createTrendTable(dataToProcess.slice(0, 25));
 
-        // Set selected trends to the search term
+        // Set selected trends to the search term for proper filtering
         selectedTrends = searchTerm;
-        filterSelect.value = 'all'; // Keep filter dropdown at 'all' but chart will show only searched trend
+        
+        // Update the filter dropdown to show the search term is selected
+        const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+        
+        // Add the search term to filter dropdown if it doesn't exist
+        let optionExists = false;
+        for (let i = 0; i < filterSelect.options.length; i++) {
+          if (filterSelect.options[i].value.toLowerCase() === searchTerm.toLowerCase()) {
+            filterSelect.value = filterSelect.options[i].value;
+            optionExists = true;
+            break;
+          }
+        }
+        
+        if (!optionExists) {
+          const option = document.createElement('option');
+          option.value = searchTermCapitalized;
+          option.textContent = searchTermCapitalized;
+          option.selected = true;
+          filterSelect.appendChild(option);
+        }
 
         // Show search results summary
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
