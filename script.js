@@ -1109,7 +1109,7 @@ function processDataForChart(rawData) {
   return chartData;
 }
 
-// Create trend table
+// Create trend table with enhanced reach calculation
 function createTrendTable(data) {
   const tableBody = document.getElementById('trendTableBody');
   if (!tableBody || !data || data.length === 0) {
@@ -1119,26 +1119,58 @@ function createTrendTable(data) {
 
   console.log('Creating table with data:', data);
 
+  // Calculate total reach for percentage calculations
+  const totalReach = data.reduce((sum, item) => sum + (item.view_count || item.reach_count || 0), 0);
+
   // Create table rows from data
   const tableHTML = data.slice(0, 50).map((item, index) => {
     // Handle both YouTube API data and fallback data
     const trendName = item.title || item.trend_name || `Trend ${index + 1}`;
     const platform = item.channel_title || item.platform || 'YouTube';
-    const reach = item.view_count || item.reach_count || Math.floor(Math.random() * 2000000) + 500000;
-    const score = item.trend_score || item.score || Math.min(99, Math.max(50, Math.floor(reach / 15000) + 45));
+    let reach = item.view_count || item.reach_count || 0;
+    
+    // If reach is 0 or very low, calculate based on engagement
+    if (reach < 1000) {
+      const likeCount = item.like_count || 0;
+      const commentCount = item.comment_count || 0;
+      const engagementScore = likeCount + (commentCount * 10); // Comments weighted more
+      
+      // Estimate reach based on engagement (typical engagement rate is 1-3%)
+      reach = Math.max(1000, Math.floor(engagementScore * 50)); // Assume 2% engagement rate
+    }
+    
+    // Calculate trend score based on multiple factors
+    let score = item.trend_score || item.score;
+    if (!score) {
+      const likeCount = item.like_count || 0;
+      const commentCount = item.comment_count || 0;
+      const engagementRatio = reach > 0 ? ((likeCount + commentCount) / reach) * 100 : 0;
+      
+      // Base score on engagement ratio and reach
+      const reachScore = Math.min(40, Math.floor(Math.log10(reach)) * 5); // Log scale for reach
+      const engagementScore = Math.min(40, Math.floor(engagementRatio * 20)); // Engagement contribution
+      const recencyScore = 20; // Base recency score
+      
+      score = Math.min(99, Math.max(50, reachScore + engagementScore + recencyScore));
+    }
+
+    // Format reach with better display
+    const reachDisplay = formatNumber(reach);
+    const reachPercentage = totalReach > 0 ? ((reach / totalReach) * 100).toFixed(1) : '0.0';
 
     return `
       <tr>
-        <td>${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</td>
+        <td title="${trendName}">${trendName.length > 50 ? trendName.substring(0, 50) + '...' : trendName}</td>
         <td>${platform}</td>
-        <td>${formatNumber(reach)}</td>
-        <td>${score}</td>
+        <td title="${reach.toLocaleString()} views (${reachPercentage}% of total)">${reachDisplay}</td>
+        <td><span style="color: ${score >= 80 ? '#10B981' : score >= 60 ? '#F59E0B' : '#EF4444'}">${score}</span></td>
       </tr>
     `;
   }).join('');
 
   tableBody.innerHTML = tableHTML;
   console.log(`Table populated with ${data.slice(0, 50).length} rows`);
+  console.log(`Total reach across all items: ${formatNumber(totalReach)}`);
 }
 
 // Enhanced filter chart function that works with search and dates
@@ -1187,7 +1219,7 @@ function updateTrendFilter(chartData) {
   });
 }
 
-// Enhanced search function that fetches YouTube data
+// Enhanced search function that fetches YouTube data and searches existing data
 async function searchTrends() {
   const searchInput = document.getElementById('searchInput');
   const filterSelect = document.getElementById('trendFilter');
@@ -1213,52 +1245,70 @@ async function searchTrends() {
 
   try {
     // Show loading state
-    const submitBtn = document.querySelector('button[onclick="searchTrends()"]');
+    const submitBtn = document.querySelector('button[onclick="performComprehensiveSearch()"]');
     const originalText = submitBtn.textContent;
     submitBtn.textContent = 'Searching...';
     submitBtn.disabled = true;
 
-    // Fetch fresh YouTube data based on search criteria
-    const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
-    const result = await response.json();
+    // First, try to fetch fresh YouTube data based on search criteria
+    let foundNewData = false;
+    try {
+      const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
+      const result = await response.json();
 
-    if (result.success && result.data && result.data.length > 0) {
-      console.log(`✅ Found ${result.count} new videos for "${searchTerm}"`);
+      if (result.success && result.data && result.data.length > 0) {
+        console.log(`✅ Found ${result.count} new videos for "${searchTerm}"`);
+        foundNewData = true;
+      }
+    } catch (fetchError) {
+      console.log(`⚠️ Could not fetch new data for "${searchTerm}":`, fetchError.message);
+    }
+
+    // Fetch all available data (existing + any new data)
+    const allData = await fetchYouTubeDataFromSupabase();
+    
+    if (allData && allData.length > 0) {
+      let dataToProcess = allData;
       
-      // Fetch all data including the new results
-      const allData = await fetchYouTubeDataFromSupabase();
+      // Filter by search term first
+      if (searchTerm !== 'trending' && searchTerm !== 'all') {
+        dataToProcess = allData.filter(item => {
+          const title = (item.title || '').toLowerCase();
+          const category = (item.trend_category || '').toLowerCase();
+          const channel = (item.channel_title || '').toLowerCase();
+          const description = (item.description || '').toLowerCase();
+          
+          return title.includes(searchTerm) || 
+                 category.includes(searchTerm) || 
+                 channel.includes(searchTerm) ||
+                 description.includes(searchTerm);
+        });
+      }
       
-      if (allData && allData.length > 0) {
-        let dataToProcess = allData;
-        
-        // Filter by date range if specified
-        if (startDate || endDate) {
-          dataToProcess = allData.filter(item => {
-            const itemDate = new Date(item.published_at);
-            const start = startDate ? new Date(startDate) : new Date('1900-01-01');
-            const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
-            return itemDate >= start && itemDate <= end;
-          });
-        }
-        
-        // Filter by search term or trend
-        if (searchTerm !== 'trending' && searchTerm !== 'all') {
-          dataToProcess = dataToProcess.filter(item => {
-            const title = (item.title || '').toLowerCase();
-            const category = (item.trend_category || '').toLowerCase();
-            const channel = (item.channel_title || '').toLowerCase();
-            return title.includes(searchTerm) || 
-                   category.includes(searchTerm) || 
-                   channel.includes(searchTerm);
-          });
-        }
-        
-        console.log(`📊 Filtered to ${dataToProcess.length} videos matching criteria`);
-        
+      // Filter by date range if specified
+      if (startDate || endDate) {
+        dataToProcess = dataToProcess.filter(item => {
+          const itemDate = new Date(item.published_at);
+          const start = startDate ? new Date(startDate) : new Date('1900-01-01');
+          const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
+          return itemDate >= start && itemDate <= end;
+        });
+      }
+      
+      console.log(`📊 Filtered to ${dataToProcess.length} videos matching "${searchTerm}"`);
+      
+      if (dataToProcess.length > 0) {
         // Process data for chart
         const chartData = startDate || endDate ? 
           processSupabaseDataForChartWithDateRange(dataToProcess, startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]) :
           processSupabaseDataForChart(dataToProcess);
+        
+        // Calculate reach metrics for search results
+        const totalReach = dataToProcess.reduce((sum, item) => sum + (item.view_count || 0), 0);
+        const avgReach = dataToProcess.length > 0 ? Math.floor(totalReach / dataToProcess.length) : 0;
+        
+        console.log(`📈 Total reach for "${searchTerm}": ${formatNumber(totalReach)}`);
+        console.log(`📈 Average reach per video: ${formatNumber(avgReach)}`);
         
         // Update the display
         currentData = { chartData, tableData: dataToProcess };
@@ -1271,15 +1321,33 @@ async function searchTrends() {
         // Update selected trends for chart filtering
         selectedTrends = searchTerm === 'trending' || searchTerm === 'all' ? 'all' : searchTerm;
         
+        // Show search results summary
+        console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
+        if (foundNewData) {
+          console.log('📥 Includes newly fetched data from YouTube API');
+        }
+        
       } else {
-        console.log('⚠️ No data found after fetching');
+        console.log(`⚠️ No videos found matching "${searchTerm}"`);
+        
+        // Show empty results
+        const tableBody = document.getElementById('trendTableBody');
+        if (tableBody) {
+          tableBody.innerHTML = `<tr><td colspan="4">No videos found for "${searchTerm}"</td></tr>`;
+        }
+        
+        // Create empty chart
+        filteredData = createEmptyChartDataForDateRange(startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]);
+        createChart(filteredData, selectedTrends);
       }
-    } else {
-      console.log(`⚠️ No new videos found for "${searchTerm}"`);
       
-      // Still try to filter existing data if we have it
-      if (currentData) {
-        await filterByDateRange();
+    } else {
+      console.log('⚠️ No data available in database');
+      
+      // Show no data message
+      const tableBody = document.getElementById('trendTableBody');
+      if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="4">No data available</td></tr>';
       }
     }
 
@@ -1291,7 +1359,7 @@ async function searchTrends() {
     console.error('❌ Error in search:', error);
     
     // Restore button state
-    const submitBtn = document.querySelector('button[onclick="searchTrends()"]');
+    const submitBtn = document.querySelector('button[onclick="performComprehensiveSearch()"]');
     if (submitBtn) {
       submitBtn.textContent = 'Search';
       submitBtn.disabled = false;
