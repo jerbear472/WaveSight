@@ -190,6 +190,17 @@ async function fetchYouTubeDataFromSupabase() {
     }
 
     console.log(`✅ Retrieved ${result.count} records from Supabase via server`);
+    console.log('📊 Sample fetched data:', result.data?.[0]);
+    
+    // Validate data structure
+    if (result.data && result.data.length > 0) {
+      const sample = result.data[0];
+      console.log('📊 Data fields available:', Object.keys(sample));
+      console.log('📊 View count field:', sample.view_count);
+      console.log('📊 Title field:', sample.title);
+      console.log('📊 Category field:', sample.trend_category);
+    }
+    
     return result.data;
 
   } catch (error) {
@@ -1866,15 +1877,28 @@ function createTrendTable(data) {
   console.log('✅ Creating trending topics table with', data.length, 'items');
   console.log('📊 Sample data item:', data[0]);
 
-  // Ensure we have valid data structure
+  // Ensure we have valid data structure - be more flexible with field names
   const validData = data.filter(item => {
-    return item && (item.title || item.trend_name) && (item.view_count !== undefined || item.reach_count !== undefined);
+    if (!item) return false;
+    
+    // Check for title/name field
+    const hasTitle = item.title || item.trend_name || item.video_id;
+    
+    // Check for view count field
+    const hasViews = item.view_count !== undefined || 
+                     item.reach_count !== undefined || 
+                     item.view_count !== null || 
+                     item.reach_count !== null;
+    
+    return hasTitle && hasViews;
   });
 
   console.log('📊 Valid data items:', validData.length);
 
   if (validData.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="4">No valid data to display</td></tr>';
+    // Show more detailed error information
+    console.log('📊 Sample data structure:', data[0]);
+    tableBody.innerHTML = '<tr><td colspan="4">No valid data structure found. Please check data format.</td></tr>';
     return;
   }
 
@@ -1882,11 +1906,30 @@ function createTrendTable(data) {
   const topicAggregation = {};
 
   validData.forEach(item => {
-    const category = item.trend_category || item.category || 'General';
-    const views = parseInt(item.view_count || item.reach_count || 0);
-    const likes = parseInt(item.like_count || 0);
-    const comments = parseInt(item.comment_count || 0);
-    const score = parseInt(item.trend_score || item.score || Math.floor(Math.random() * 100));
+    // More flexible category detection
+    let category = item.trend_category || item.category || 'General';
+    
+    // If category is null or empty, try to categorize from title
+    if (!category || category === '' || category === 'null') {
+      const title = (item.title || item.trend_name || '').toLowerCase();
+      if (title.includes('ai') || title.includes('artificial intelligence')) {
+        category = 'AI Tools';
+      } else if (title.includes('crypto') || title.includes('bitcoin')) {
+        category = 'Crypto';
+      } else if (title.includes('game') || title.includes('gaming')) {
+        category = 'Gaming';
+      } else if (title.includes('tech') || title.includes('technology')) {
+        category = 'Technology';
+      } else {
+        category = 'General';
+      }
+    }
+    
+    // Parse numeric values more safely
+    const views = Math.max(0, parseInt(item.view_count || item.reach_count || 0) || 0);
+    const likes = Math.max(0, parseInt(item.like_count || 0) || 0);
+    const comments = Math.max(0, parseInt(item.comment_count || 0) || 0);
+    const score = Math.max(0, parseInt(item.trend_score || item.score || 0) || Math.floor(Math.random() * 100));
 
     if (!topicAggregation[category]) {
       topicAggregation[category] = {
@@ -1916,7 +1959,7 @@ function createTrendTable(data) {
         title: item.title || item.trend_name || 'Untitled',
         views: views,
         video_id: item.video_id,
-        channel: item.channel_title || item.platform
+        channel: item.channel_title || item.platform || 'Unknown'
       });
     }
   });
@@ -1993,11 +2036,18 @@ function createTrendTable(data) {
   }).join('');
 
   try {
-    tableBody.innerHTML = tableHTML;
-    console.log(`✅ Trending topics table populated with ${trendingTopics.length} categories`);
-    console.log(`📊 Total reach across all topics: ${formatNumber(totalReach)}`);
+    if (tableHTML && tableHTML.length > 0) {
+      tableBody.innerHTML = tableHTML;
+      console.log(`✅ Trending topics table populated with ${trendingTopics.length} categories`);
+      console.log(`📊 Total reach across all topics: ${formatNumber(totalReach)}`);
+      console.log(`📊 Table HTML length: ${tableHTML.length} characters`);
+    } else {
+      console.log('❌ No table HTML generated');
+      tableBody.innerHTML = '<tr><td colspan="4">No trending topics found</td></tr>';
+    }
   } catch (error) {
     console.error('❌ Error setting table HTML:', error);
+    console.error('❌ Error details:', error.message);
     tableBody.innerHTML = '<tr><td colspan="4">Error loading table data</td></tr>';
   }
 }
@@ -2756,6 +2806,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       // Use all available data (don't filter by date for initial load)
       const dataToUse = allData;
       console.log(`📊 Using ${dataToUse.length} videos for default display`);
+      console.log(`📊 Sample data structure:`, dataToUse[0]);
       
       // Create chart showing ALL default trends - this is key
       const chartData = processSupabaseDataForChart(dataToUse);
@@ -2770,9 +2821,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       
       // Display everything with 'all' filter to show multiple trend lines
       createChart(chartData, 'all');
-      createTrendTable(dataToUse.slice(0, 25));
       
-      console.log('📊 Table data being passed:', dataToUse.slice(0, 5));
+      // Force table creation with detailed logging
+      console.log('📊 Creating table with data:', dataToUse.length, 'items');
+      createTrendTable(dataToUse);
       
       console.log('✅ Dashboard initialized with DEFAULT TRENDS successfully');
       console.log('📊 Showing trends:', Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
