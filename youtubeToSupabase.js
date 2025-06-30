@@ -253,6 +253,16 @@ function processYouTubeDataForSupabase(youtubeData) {
     historicalDate.setHours(historicalDate.getHours() - hoursBack);
     historicalDate.setMinutes(historicalDate.getMinutes() - minutesBack);
 
+    // Calculate wave score (mock sentiment for now)
+    const mockSentiment = 0.5 + (Math.random() * 0.4 - 0.2); // 0.3 to 0.7 range
+    const lastViewCount = Math.floor(viewCount * (0.6 + Math.random() * 0.3)); // Mock previous views
+    
+    // Simple wave score calculation
+    const growthFactor = lastViewCount > 0 ? Math.min((viewCount - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
+    const engagementFactor = viewCount > 0 ? Math.min((likeCount + commentCount) / viewCount * 1000, 1.0) : 0;
+    const volumeFactor = Math.min(viewCount / 10000000, 1.0);
+    const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + mockSentiment * 0.2);
+
     return {
       video_id: item.id.videoId,
       title: snippet.title,
@@ -267,7 +277,10 @@ function processYouTubeDataForSupabase(youtubeData) {
       like_count: likeCount,
       comment_count: commentCount,
       trend_category: category,
-      trend_score: trendScore
+      trend_score: trendScore,
+      wave_score: Math.round(waveScore * 1000) / 1000,
+      sentiment_score: Math.round(mockSentiment * 1000) / 1000,
+      last_view_count: lastViewCount
     };
   });
 }

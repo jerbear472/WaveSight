@@ -743,23 +743,28 @@ function showTrendDetailModal(trendName, trendColor) {
           </div>
           <div class="modal-body">
             <div class="trend-summary">
-              <div class="summary-stat">
-                <span class="stat-label">Total Videos:</span>
-                <span class="stat-value">${detailData.length}</span>
+                <div class="summary-stat">
+                  <span class="stat-label">Total Videos:</span>
+                  <span class="stat-value">${detailData.length}</span>
+                </div>
+                <div class="summary-stat">
+                  <span class="stat-label">Total Views:</span>
+                  <span class="stat-value">${formatNumber(detailData.reduce((sum, item) => sum + (item.view_count || 0), 0))}</span>
+                </div>
+                <div class="summary-stat">
+                  <span class="stat-label">Avg Trend Score:</span>
+                  <span class="stat-value">${Math.round(detailData.reduce((sum, item) => sum + (item.trend_score || 0), 0) / detailData.length)}</span>
+                </div>
+                <div class="summary-stat">
+                  <span class="stat-label">Date Range:</span>
+                  <span class="stat-value">${getDateRange(detailData)}</span>
+                </div>
+                <div class="wave-score-section">
+                  <button class="wave-score-btn" onclick="analyzeWaveScore('${trendName}')">
+                    🌊 Analyze Wave Score
+                  </button>
+                </div>
               </div>
-              <div class="summary-stat">
-                <span class="stat-label">Total Views:</span>
-                <span class="stat-value">${formatNumber(detailData.reduce((sum, item) => sum + (item.view_count || 0), 0))}</span>
-              </div>
-              <div class="summary-stat">
-                <span class="stat-label">Avg Trend Score:</span>
-                <span class="stat-value">${Math.round(detailData.reduce((sum, item) => sum + (item.trend_score || 0), 0) / detailData.length)}</span>
-              </div>
-              <div class="summary-stat">
-                <span class="stat-label">Date Range:</span>
-                <span class="stat-value">${getDateRange(detailData)}</span>
-              </div>
-            </div>
             <div class="trend-videos">
               <h3>Contributing Videos</h3>
               <div class="video-list">
@@ -1325,7 +1330,7 @@ function createSingleTrendChartData(searchData, searchTerm, startDate, endDate) 
       date.setMonth(date.getMonth() - i);
       const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
       dates.push(monthStr);
-      dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
+      dateMap.set(monthStr, { date: dateStr, [searchTerm]: 0 });
     }
   }
 
@@ -1438,6 +1443,7 @@ function createEmptySearchChart(searchTerm) {
 
   // Create monthly intervals for the last 12 months
   for (let i = 11; i >= 0; i--) {
+```text
     const date = new Date(currentDate);
     date.setMonth(date.getMonth() - i);
     const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;    dates.push(monthStr);
@@ -2848,3 +2854,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('📊 Showing fallback default trends after error');
   }
 });
+
+async function analyzeWaveScore(trendName) {
+  console.log(`Analyzing wave score for ${trendName}`);
+  // Placeholder function for analyzing wave score
+  alert(`Wave score analysis for ${trendName} is not yet implemented.`);
+}
+
+window.analyzeWaveScore = analyzeWaveScore;

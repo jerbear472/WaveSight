@@ -7,6 +7,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import time
 import random
+from wave_score import calculate_wave_score
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 app = Flask(__name__)
 CORS(app)
@@ -46,6 +48,104 @@ else:
 
 if OPENAI_API_KEY:
     openai.api_key = OPENAI_API_KEY
+
+# Initialize sentiment analyzer
+analyzer = SentimentIntensityAnalyzer()
+
+def analyze_sentiment_from_comments(comments):
+    """Analyze sentiment from a list of comments using VADER"""
+    sentiment_counts = {"pos": 0, "neg": 0, "neu": 0}
+    for comment in comments:
+        score = analyzer.polarity_scores(comment)
+        if score["compound"] >= 0.05:
+            sentiment_counts["pos"] += 1
+        elif score["compound"] <= -0.05:
+            sentiment_counts["neg"] += 1
+        else:
+            sentiment_counts["neu"] += 1
+
+    total = sum(sentiment_counts.values())
+    if total == 0:
+        return 0.5  # neutral default
+
+    sentiment_score = (sentiment_counts["pos"] - sentiment_counts["neg"]) / total
+    sentiment_score = max(min((sentiment_score + 1) / 2, 1), 0)  # normalize to 0–1
+    return round(sentiment_score, 3)
+
+def fetch_mock_reddit_comments(topic):
+    """Generate mock Reddit comments for testing"""
+    return [
+        f"I love {topic}, it's amazing!",
+        f"{topic} is changing everything!",
+        f"I'm not sure about {topic}, seems overhyped.",
+        f"{topic} sucks, total waste.",
+        f"{topic} is the future.",
+        f"Really excited about {topic} developments",
+        f"Not convinced about {topic} yet",
+        f"{topic} has potential but needs work"
+    ]
+
+def fetch_video_metrics(video_id):
+    """Fetch video metrics - mock data for now"""
+    return {
+        "view_count": random.randint(100000, 5000000),
+        "last_view_count": random.randint(50000, 2000000),
+        "likes": random.randint(1000, 100000),
+        "comments": random.randint(100, 10000)
+    }
+
+def analyze_and_store_trend(topic, video_id=None):
+    """Comprehensive trend analysis with wave score calculation"""
+    print(f"🔍 Analyzing topic: {topic}")
+    
+    # Get Reddit comments (mock for now)
+    reddit_comments = fetch_mock_reddit_comments(topic)
+    sentiment_score = analyze_sentiment_from_comments(reddit_comments)
+    
+    # Get video metrics
+    metrics = fetch_video_metrics(video_id or "default")
+    
+    # Calculate wave score
+    wave_score = calculate_wave_score(
+        view_count=metrics["view_count"],
+        last_view_count=metrics["last_view_count"],
+        likes=metrics["likes"],
+        comments=metrics["comments"],
+        sentiment_score=sentiment_score
+    )
+    
+    print(f"✅ WaveScore for '{topic}' is {wave_score}")
+    print(f"📊 Sentiment score: {sentiment_score}")
+    print(f"📈 View count: {metrics['view_count']:,}")
+    print(f"👍 Engagement: {metrics['likes'] + metrics['comments']:,}")
+    
+    # Store in Supabase
+    result_data = {
+        "topic": topic,
+        "platform": "Reddit + YouTube",
+        "date": datetime.now().date().isoformat(),
+        "sentiment_yes": reddit_comments.count("pos") if hasattr(reddit_comments, 'count') else len([c for c in reddit_comments if 'love' in c or 'amazing' in c or 'future' in c]),
+        "sentiment_no": reddit_comments.count("neg") if hasattr(reddit_comments, 'count') else len([c for c in reddit_comments if 'sucks' in c or 'waste' in c]),
+        "sentiment_unclear": reddit_comments.count("neu") if hasattr(reddit_comments, 'count') else len([c for c in reddit_comments if 'not sure' in c or 'not convinced' in c]),
+        "confidence": sentiment_score * 100,
+        "certainty_score": round(wave_score * 100, 2),
+        "prediction_outcome": "Rising" if wave_score > 0.7 else "Stable" if wave_score > 0.4 else "Declining",
+        "cultural_momentum": "Strong" if wave_score > 0.8 else "Moderate" if wave_score > 0.5 else "Weak",
+        "total_responses": len(reddit_comments),
+        "wave_score": wave_score,
+        "view_count": metrics["view_count"],
+        "likes": metrics["likes"],
+        "comments_count": metrics["comments"]
+    }
+    
+    if supabase:
+        try:
+            response = supabase.table("sentiment_forecasts").insert(result_data).execute()
+            print("📡 Stored result in Supabase:", response.data[0]["id"] if response.data else "Success")
+        except Exception as e:
+            print(f"❌ Error storing in Supabase: {e}")
+    
+    return result_data
 
 def classify_sentiment_openai(comment: str) -> str:
     if not OPENAI_API_KEY:
@@ -279,6 +379,7 @@ def analyze_sentiment_endpoint():
         data = request.get_json()
         topic = data.get('topic', '')
         limit = data.get('limit', 100)
+        video_id = data.get('video_id', None)
 
         if not topic:
             return jsonify({
@@ -312,6 +413,38 @@ def analyze_sentiment_endpoint():
             'message': str(e),
             'reddit_connected': reddit is not None,
             'supabase_connected': supabase is not None
+        }), 500
+
+@app.route('/api/wave-score', methods=['POST'])
+def calculate_wave_score_endpoint():
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '')
+        video_id = data.get('video_id', None)
+
+        if not topic:
+            return jsonify({
+                'success': False,
+                'message': 'Topic is required'
+            }), 400
+
+        print(f"🌊 API Request: Calculating wave score for '{topic}'")
+
+        # Perform comprehensive analysis
+        result = analyze_and_store_trend(topic, video_id)
+
+        return jsonify({
+            'success': True,
+            'data': result,
+            'wave_score': result.get('wave_score', 0),
+            'message': f'Successfully calculated wave score for "{topic}"'
+        })
+
+    except Exception as e:
+        print(f"❌ Wave Score API Error: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
         }), 500
 
 @app.route('/api/health', methods=['GET'])
