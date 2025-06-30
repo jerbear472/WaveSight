@@ -1469,10 +1469,10 @@ function createEmptySearchChart(searchTerm) {
 
   // Create monthly intervals for the last 12 months
   for (let i = 11; i >= 0; i--) {
-```text
-    const date = new Date(currentDate);
+const date = new Date(currentDate);
     date.setMonth(date.getMonth() - i);
-    const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;    dates.push(monthStr);
+    const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
+    dates.push(monthStr);
 
     dateMap.set(monthStr, {
       date: monthStr,

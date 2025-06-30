@@ -417,8 +417,7 @@ function createChart(data, filteredTrends = 'all') {
     trendNames = sortedAllTrends;
   } else {
     // For specific search/filter, show ONLY the specified trend
-    console.log(`🔍 Filtering chart for specific trend: "${filteredTrends}"`);
-    console.log(`📊 Available trends in data:`, sortedAllTrends);
+    console.log(`🔍 Filtering chart for specific trend: "${filteredTrends}"`);log(`📊 Available trends in data:`, sortedAllTrends);
 
     // When filtering for a specific trend, show EXACTLY that trend
     if (sortedAllTrends.includes(filteredTrends)) {

@@ -152,7 +152,7 @@ SUPABASE_ANON_KEY=your_anon_key
 
 ---
 
-**Export Date**: $(date)
+**Export Date**: Generated automatically
 **Total Files**: 20+ core files
 **Code Lines**: 3,500+ lines
 **Ready for Production**: ✅
