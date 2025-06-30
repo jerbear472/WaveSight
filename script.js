@@ -1267,27 +1267,28 @@ function createSearchCategories(searchData, searchTerm) {
   const searchTermLower = searchTerm.toLowerCase();
   const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
 
-  // For specific search terms, ALWAYS create a single focused category
-  if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
-    console.log(`🎯 Creating single focused category for "${searchTerm}"`);
-    // Always return the search term as the single category
-    return [searchTermCategory];
+  // For 'all' or 'trending', get categories from existing data but limit to top 8
+  if (searchTermLower === 'trending' || searchTermLower === 'all') {
+    console.log(`🎯 Creating multiple categories for "${searchTerm}"`);
+    
+    const categoryCount = new Map();
+
+    searchData.forEach(item => {
+      const category = item.trend_category || 'General';
+      categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
+    });
+
+    const sortedCategories = Array.from(categoryCount.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8) // Show top 8 categories for general searches
+      .map(([category]) => category);
+
+    return sortedCategories.length > 0 ? sortedCategories : ['General'];
   }
 
-  // For 'trending' or 'all', get categories from existing data but limit to top 5
-  const categoryCount = new Map();
-
-  searchData.forEach(item => {
-    const category = item.trend_category || 'General';
-    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
-  });
-
-  const sortedCategories = Array.from(categoryCount.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5) // Limit to top 5 categories for general searches
-    .map(([category]) => category);
-
-  return sortedCategories.length > 0 ? sortedCategories : ['General'];
+  // For specific search terms, create a single focused category
+  console.log(`🎯 Creating single focused category for "${searchTerm}"`);
+  return [searchTermCategory];
 }
 
   // Aggregate data into the date map
@@ -1845,9 +1846,9 @@ async function searchTrends() {
     searchTerm = selectedTrend;
   }
 
-  // Default to trending if nothing specified
-  if (!searchTerm) {
-    searchTerm = 'trending';
+  // If no specific search term, show all trends (don't default to 'trending')
+  if (!searchTerm || searchTerm === 'all') {
+    searchTerm = 'all';
   }
 
   console.log(`🔍 Searching for: "${searchTerm}" with date range: ${startDate || 'any'} to ${endDate || 'any'}`);
@@ -1928,8 +1929,38 @@ async function searchTrends() {
       console.log(`📊 Filtered to ${dataToProcess.length} videos matching "${searchTerm}"`);
 
       if (dataToProcess.length > 0) {
-        // Process data for chart with custom search-based categorization
-        const chartData = createSearchBasedChartData(dataToProcess, searchTerm, startDate, endDate);
+        let chartData;
+        let trendsToShow;
+
+        // Handle different search scenarios
+        if (searchTerm === 'all' || searchTerm === 'trending') {
+          // Show all default trends
+          chartData = processSupabaseDataForChart(dataToProcess);
+          trendsToShow = 'all';
+          selectedTrends = 'all';
+          
+          // Update filter dropdown with all available trends
+          updateTrendFilter(chartData);
+          filterSelect.value = 'all';
+          
+          console.log(`📊 Showing all default trends for "${searchTerm}"`);
+        } else {
+          // Show specific search term only
+          chartData = createSearchBasedChartData(dataToProcess, searchTerm, startDate, endDate);
+          const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+          trendsToShow = searchTermCapitalized;
+          selectedTrends = searchTermCapitalized;
+
+          // Update the filter dropdown to show ONLY the search term
+          filterSelect.innerHTML = '<option value="all">All Trends</option>';
+          const searchOption = document.createElement('option');
+          searchOption.value = searchTermCapitalized;
+          searchOption.textContent = searchTermCapitalized;
+          searchOption.selected = true;
+          filterSelect.appendChild(searchOption);
+          
+          console.log(`🎯 Showing single trend: "${searchTermCapitalized}"`);
+        }
 
         // Calculate reach metrics for search results
         const totalReach = dataToProcess.reduce((sum, item) => sum + (item.view_count || 0), 0);
@@ -1942,25 +1973,12 @@ async function searchTrends() {
         currentData = { chartData, tableData: dataToProcess };
         filteredData = chartData;
 
-        // Set selected trends to the search term for proper filtering
-        const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
-        selectedTrends = searchTermCapitalized;
-
-        console.log(`🎯 Setting selectedTrends to: "${selectedTrends}"`);
-        console.log(`📈 Creating chart with selectedTrends: "${selectedTrends}"`);
         console.log(`📊 Chart data being used:`, chartData);
+        console.log(`🎯 Trends to show: "${trendsToShow}"`);
 
-        // Create chart with the search term as the only trend
-        createChart(chartData, selectedTrends);
+        // Create chart with appropriate filtering
+        createChart(chartData, trendsToShow);
         createTrendTable(dataToProcess.slice(0, 25));
-
-        // Update the filter dropdown to show ONLY the search term
-        filterSelect.innerHTML = '<option value="all">All Trends</option>';
-        const searchOption = document.createElement('option');
-        searchOption.value = searchTermCapitalized;
-        searchOption.textContent = searchTermCapitalized;
-        searchOption.selected = true;
-        filterSelect.appendChild(searchOption);
 
         // Show search results summary
         console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
@@ -2303,8 +2321,8 @@ async function performComprehensiveSearch() {
   if (!queryTerm && selectedTrend !== 'all') {
     queryTerm = selectedTrend;
   }
-  if (!queryTerm) {
-    queryTerm = 'trending';
+  if (!queryTerm || queryTerm === 'all') {
+    queryTerm = 'all'; // Show all trends instead of defaulting to 'trending'
   }
 
   console.log(`🔍 Comprehensive search for: "${queryTerm}", dates: ${startDate || 'any'} to ${endDate || 'any'}`);
