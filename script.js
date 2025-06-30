@@ -1855,27 +1855,31 @@ async function searchTrends() {
     submitBtn.disabled = true;
 
     // Try to fetch fresh YouTube data, but handle quota exceeded gracefully
-    console.log(`🎯 Attempting to fetch fresh YouTube data for "${searchTerm}"...`);
+    console.log(`🎯 Checking for fresh YouTube data for "${searchTerm}"...`);
     let quotaExceeded = false;
+    let quotaError = null;
+    
     try {
       const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
       const result = await response.json();
 
       if (result.success && result.data && result.data.length > 0) {
         console.log(`✅ Fetched ${result.count} new videos for "${searchTerm}"`);
-      } else if (result.error && result.error.includes('quota')) {
+      } else if (result.error && (result.error.includes('quota') || result.error.includes('403'))) {
         quotaExceeded = true;
+        quotaError = result.error;
         console.log(`⚠️ YouTube API quota exceeded - using existing data only`);
+      } else if (!result.success) {
+        quotaExceeded = true;
+        quotaError = result.message || 'API limit reached';
+        console.log(`⚠️ API request failed: ${result.message} - using existing data`);
       } else {
         console.log(`⚠️ No new data found for "${searchTerm}", will use existing data`);
       }
     } catch (fetchError) {
-      if (fetchError.message.includes('quota') || fetchError.message.includes('403')) {
-        quotaExceeded = true;
-        console.log(`⚠️ YouTube API quota exceeded - using existing data only`);
-      } else {
-        console.log(`⚠️ Could not fetch new data for "${searchTerm}":`, fetchError.message);
-      }
+      quotaExceeded = true;
+      quotaError = fetchError.message;
+      console.log(`⚠️ YouTube API error: ${fetchError.message} - using existing data only`);
     }
 
     // Fetch all available data (existing + any new data)
@@ -1975,30 +1979,73 @@ async function searchTrends() {
           statusMessage.className = 'quota-warning';
           statusMessage.innerHTML = `
             <p>⚠️ YouTube API quota exceeded. Showing existing data for "${searchTerm}". 
-            Quota resets daily at midnight PT.</p>
+            <br>📊 Found ${dataToProcess.length} existing videos. Quota resets daily at midnight PT.
+            <br>💡 Tip: Try different search terms or date ranges to explore existing data.</p>
           `;
           statusMessage.style.cssText = `
-            background: #fbbf24; color: #000; padding: 10px; border-radius: 8px; 
-            margin: 10px 0; text-align: center; font-weight: bold;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b); 
+            color: #000; padding: 15px; border-radius: 12px; 
+            margin: 15px 0; text-align: center; font-weight: bold;
+            border: 2px solid #d97706; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
           `;
           
           const chartContainer = document.getElementById('trendChart');
           if (chartContainer && chartContainer.parentNode) {
             chartContainer.parentNode.insertBefore(statusMessage, chartContainer);
-            setTimeout(() => statusMessage.remove(), 5000);
+            setTimeout(() => statusMessage.remove(), 8000);
           }
         }
 
       } else {
         console.log(`⚠️ No videos found matching "${searchTerm}"`);
 
-        // Show empty results or quota message
+        // Show helpful message based on the situation
         const tableBody = document.getElementById('trendTableBody');
         if (tableBody) {
-          const message = quotaExceeded ? 
-            `YouTube API quota exceeded. No existing data for "${searchTerm}". Try again after midnight PT.` :
-            `No videos found for "${searchTerm}"`;
+          let message = '';
+          if (quotaExceeded) {
+            message = `
+              <div style="text-align: center; padding: 20px;">
+                <h3>🔍 No existing data found for "${searchTerm}"</h3>
+                <p>YouTube API quota exceeded for today. Try:</p>
+                <ul style="text-align: left; display: inline-block;">
+                  <li>🔄 Different search terms (ai, crypto, gaming, etc.)</li>
+                  <li>📅 Adjusting the date range</li>
+                  <li>⏰ Waiting for quota reset (midnight PT)</li>
+                  <li>🔍 Browse "All Trends" in the filter dropdown</li>
+                </ul>
+              </div>
+            `;
+          } else {
+            message = `
+              <div style="text-align: center; padding: 20px;">
+                <h3>🔍 No videos found for "${searchTerm}"</h3>
+                <p>Try different search terms or date ranges</p>
+              </div>
+            `;
+          }
           tableBody.innerHTML = `<tr><td colspan="4">${message}</td></tr>`;
+        }
+
+        // Show quota exceeded message if applicable
+        if (quotaExceeded) {
+          const statusMessage = document.createElement('div');
+          statusMessage.innerHTML = `
+            <p>⚠️ YouTube API quota exceeded. No existing data for "${searchTerm}".
+            <br>💡 Try searching for: "ai", "crypto", "gaming", "music", or "sports"</p>
+          `;
+          statusMessage.style.cssText = `
+            background: linear-gradient(135deg, #fbbf24, #f59e0b); 
+            color: #000; padding: 15px; border-radius: 12px; 
+            margin: 15px 0; text-align: center; font-weight: bold;
+            border: 2px solid #d97706;
+          `;
+          
+          const chartContainer = document.getElementById('trendChart');
+          if (chartContainer && chartContainer.parentNode) {
+            chartContainer.parentNode.insertBefore(statusMessage, chartContainer);
+            setTimeout(() => statusMessage.remove(), 10000);
+          }
         }
 
         // Create empty chart
