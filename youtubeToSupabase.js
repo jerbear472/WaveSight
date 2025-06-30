@@ -19,7 +19,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // YouTube API functions
-async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
+async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
   try {
     console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
 
@@ -83,7 +83,19 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
         // Business & Career
         'entrepreneur business startup success',
         'career advice job interview tips',
-        'marketing digital business strategy'
+        'marketing digital business strategy',
+
+        // Additional trending topics
+        'viral trends social media latest',
+        'breaking news current events',
+        'celebrity gossip entertainment news',
+        'memes funny viral videos',
+        'product reviews unboxing hauls',
+        'tutorials how to guides',
+        'reaction videos trending topics',
+        'podcast highlights interviews',
+        'live streams gaming music',
+        'shorts viral tiktok trends'
       ];
     }
 
@@ -346,6 +358,84 @@ app.get('/api/config', (req, res) => {
     SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
     YOUTUBE_API_KEY: YOUTUBE_API_KEY
   });
+});
+
+// Bulk fetch endpoint for massive data collection
+app.get('/api/bulk-fetch', async (req, res) => {
+  try {
+    const categories = req.query.categories || 'all';
+    const totalResults = parseInt(req.query.totalResults) || 1000;
+    
+    console.log(`🔄 Bulk fetch initiated: ${totalResults} total results`);
+    
+    // Define category-specific queries
+    const categoryQueries = {
+      'tech': ['AI artificial intelligence', 'programming coding', 'tech reviews gadgets', 'software development'],
+      'entertainment': ['movies trailers', 'music videos', 'celebrity news', 'tv shows series'],
+      'gaming': ['gaming gameplay', 'esports tournaments', 'game reviews', 'streaming highlights'],
+      'lifestyle': ['fitness health', 'cooking recipes', 'travel vlogs', 'fashion beauty'],
+      'education': ['tutorials learning', 'science discovery', 'history documentary', 'skills training'],
+      'business': ['entrepreneurship', 'investing finance', 'marketing business', 'career advice'],
+      'trending': ['viral trends', 'memes funny', 'breaking news', 'social media trends']
+    };
+    
+    let allQueries = [];
+    if (categories === 'all') {
+      allQueries = Object.values(categoryQueries).flat();
+    } else {
+      const selectedCategories = categories.split(',');
+      selectedCategories.forEach(cat => {
+        if (categoryQueries[cat.trim()]) {
+          allQueries.push(...categoryQueries[cat.trim()]);
+        }
+      });
+    }
+    
+    const resultsPerQuery = Math.ceil(totalResults / allQueries.length);
+    let allVideos = [];
+    
+    for (const query of allQueries) {
+      try {
+        const videos = await fetchYouTubeVideos(query, resultsPerQuery);
+        if (videos && videos.length > 0) {
+          allVideos.push(...videos);
+        }
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.log(`⚠️ Error fetching for query "${query}":`, error.message);
+        continue;
+      }
+    }
+    
+    if (allVideos.length > 0) {
+      const processedData = processYouTubeDataForSupabase(allVideos);
+      const savedData = await saveDataToSupabase(processedData);
+      
+      res.json({
+        success: true,
+        message: `Bulk fetch completed: ${allVideos.length} videos processed`,
+        data: savedData || processedData,
+        count: allVideos.length,
+        categories: categories,
+        queries_used: allQueries.length
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: 'No data found in bulk fetch',
+        categories: categories
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Bulk fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      error: error.toString()
+    });
+  }
 });
 
 // Health check endpoint

@@ -1208,6 +1208,34 @@ async function fetchFreshYouTubeData() {
   }
 }
 
+// Function for bulk data fetching
+async function fetchBulkData(categories = 'all', totalResults = 1000) {
+  try {
+    console.log(`🔄 Starting bulk fetch: ${totalResults} videos across ${categories} categories...`);
+    
+    const response = await fetch(`/api/bulk-fetch?categories=${categories}&totalResults=${totalResults}`);
+    const result = await response.json();
+
+    if (result.success) {
+      console.log(`✅ Bulk fetch completed: ${result.count} videos fetched`);
+      console.log(`📊 Used ${result.queries_used} different search queries`);
+      
+      // Refresh the display
+      location.reload();
+      return result;
+    } else {
+      console.error('❌ Bulk fetch failed:', result.message);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Error in bulk fetch:', error);
+    return null;
+  }
+}
+
+// Make bulk fetch available globally
+window.fetchBulkData = fetchBulkData;
+
 // Helper functions for updating display
 function updateChart(chartData) {
   if (chartData) {
