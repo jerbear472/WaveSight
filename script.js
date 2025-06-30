@@ -1841,17 +1841,31 @@ async function searchTrends() {
   const startDate = startDateInput.value;
   const endDate = endDateInput.value;
 
-  // Use selected trend if no search term provided
-  if (!searchTerm && selectedTrend !== 'all') {
-    searchTerm = selectedTrend;
-  }
+  console.log(`🔍 Raw search term: "${searchTerm}", selected trend: "${selectedTrend}"`);
 
-  // If no specific search term, show all trends (don't default to 'trending')
-  if (!searchTerm || searchTerm === 'all') {
-    searchTerm = 'all';
-  }
+  // Determine if this is a specific search or showing default trends
+  const isSpecificSearch = searchTerm && searchTerm !== '' && searchTerm !== 'all' && searchTerm !== 'trending';
+  const isFilteredTrend = selectedTrend && selectedTrend !== 'all' && !searchTerm;
 
-  console.log(`🔍 Searching for: "${searchTerm}" with date range: ${startDate || 'any'} to ${endDate || 'any'}`);
+  let finalSearchTerm;
+  let showMode;
+
+  if (isSpecificSearch) {
+    // User entered a specific search term - show only that trend
+    finalSearchTerm = searchTerm;
+    showMode = 'single';
+    console.log(`🎯 Specific search mode: "${finalSearchTerm}"`);
+  } else if (isFilteredTrend) {
+    // User selected a trend from dropdown - show only that trend
+    finalSearchTerm = selectedTrend.toLowerCase();
+    showMode = 'single';
+    console.log(`🎯 Filter mode: "${finalSearchTerm}"`);
+  } else {
+    // No specific search - show all default trends
+    finalSearchTerm = 'all';
+    showMode = 'multiple';
+    console.log(`📊 Default mode: showing all trends`);
+  }
 
   try {
     // Show loading spinner
@@ -1859,60 +1873,57 @@ async function searchTrends() {
 
     // Show loading state on button
     const submitBtn = document.querySelector('button[onclick="performComprehensiveSearch()"]');
-    const originalText = submitBtn.textContent;
-    submitBtn.textContent = 'Searching...';
-    submitBtn.disabled = true;
+    const originalText = submitBtn?.textContent || 'Search';
+    if (submitBtn) {
+      submitBtn.textContent = 'Searching...';
+      submitBtn.disabled = true;
+    }
 
-    // Try to fetch fresh YouTube data, but handle quota exceeded gracefully
-    console.log(`🎯 Checking for fresh YouTube data for "${searchTerm}"...`);
+    // Try to fetch fresh YouTube data only for specific searches
     let quotaExceeded = false;
     let quotaError = null;
 
-    try {
-      const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
-      const result = await response.json();
+    if (showMode === 'single' && finalSearchTerm !== 'all') {
+      try {
+        console.log(`🎯 Fetching fresh data for specific search: "${finalSearchTerm}"`);
+        const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(finalSearchTerm)}&maxResults=50`);
+        const result = await response.json();
 
-      if (result.success && result.data && result.data.length > 0) {
-        console.log(`✅ Fetched ${result.count} new videos for "${searchTerm}"`);
-      } else if (result.error && (result.error.includes('quota') || result.error.includes('403'))) {
+        if (result.success && result.data && result.data.length > 0) {
+          console.log(`✅ Fetched ${result.count} new videos for "${finalSearchTerm}"`);
+        } else if (result.error && (result.error.includes('quota') || result.error.includes('403'))) {
+          quotaExceeded = true;
+          quotaError = result.error;
+          console.log(`⚠️ YouTube API quota exceeded - using existing data only`);
+        }
+      } catch (fetchError) {
         quotaExceeded = true;
-        quotaError = result.error;
-        console.log(`⚠️ YouTube API quota exceeded - using existing data only`);
-      } else if (!result.success) {
-        quotaExceeded = true;
-        quotaError = result.message || 'API limit reached';
-        console.log(`⚠️ API request failed: ${result.message} - using existing data`);
-      } else {
-        console.log(`⚠️ No new data found for "${searchTerm}", will use existing data`);
+        quotaError = fetchError.message;
+        console.log(`⚠️ YouTube API error: ${fetchError.message} - using existing data only`);
       }
-    } catch (fetchError) {
-      quotaExceeded = true;
-      quotaError = fetchError.message;
-      console.log(`⚠️ YouTube API error: ${fetchError.message} - using existing data only`);
     }
 
-    // Fetch all available data (existing + any new data)
+    // Fetch all available data
     const allData = await fetchYouTubeDataFromSupabase();
 
     if (allData && allData.length > 0) {
       let dataToProcess = allData;
 
-      // Filter by search term - be more flexible with matching
-      if (searchTerm && searchTerm !== 'trending' && searchTerm !== 'all') {
+      // Apply filters based on mode
+      if (showMode === 'single') {
+        // Filter for specific search term
         dataToProcess = allData.filter(item => {
           const title = (item.title || '').toLowerCase();
           const category = (item.trend_category || '').toLowerCase();
           const channel = (item.channel_title || '').toLowerCase();
           const description = (item.description || '').toLowerCase();
 
-          // Exact match first, then partial matches
-          return title.includes(searchTerm) || 
-                 category.includes(searchTerm) || 
-                 channel.includes(searchTerm) ||
-                 description.includes(searchTerm) ||
-                 // Check if search term is part of words in title/description
-                 title.split(' ').some(word => word.includes(searchTerm)) ||
-                 description.split(' ').some(word => word.includes(searchTerm));
+          return title.includes(finalSearchTerm) || 
+                 category.includes(finalSearchTerm) || 
+                 channel.includes(finalSearchTerm) ||
+                 description.includes(finalSearchTerm) ||
+                 title.split(' ').some(word => word.includes(finalSearchTerm)) ||
+                 description.split(' ').some(word => word.includes(finalSearchTerm));
         });
       }
 
@@ -1926,14 +1937,13 @@ async function searchTrends() {
         });
       }
 
-      console.log(`📊 Filtered to ${dataToProcess.length} videos matching "${searchTerm}"`);
+      console.log(`📊 Filtered to ${dataToProcess.length} videos for mode: ${showMode}`);
 
       if (dataToProcess.length > 0) {
         let chartData;
         let trendsToShow;
 
-        // Handle different search scenarios
-        if (searchTerm === 'all' || searchTerm === 'trending') {
+        if (showMode === 'multiple') {
           // Show all default trends
           chartData = processSupabaseDataForChart(dataToProcess);
           trendsToShow = 'all';
@@ -1941,57 +1951,46 @@ async function searchTrends() {
           
           // Update filter dropdown with all available trends
           updateTrendFilter(chartData);
-          filterSelect.value = 'all';
+          if (filterSelect) filterSelect.value = 'all';
           
-          console.log(`📊 Showing all default trends for "${searchTerm}"`);
+          console.log(`📊 Showing all default trends`);
         } else {
-          // Show specific search term only
-          chartData = createSearchBasedChartData(dataToProcess, searchTerm, startDate, endDate);
-          const searchTermCapitalized = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+          // Show only the specific searched trend
+          chartData = createSearchBasedChartData(dataToProcess, finalSearchTerm, startDate, endDate);
+          const searchTermCapitalized = finalSearchTerm.charAt(0).toUpperCase() + finalSearchTerm.slice(1);
           trendsToShow = searchTermCapitalized;
           selectedTrends = searchTermCapitalized;
 
-          // Update the filter dropdown to show ONLY the search term
-          filterSelect.innerHTML = '<option value="all">All Trends</option>';
-          const searchOption = document.createElement('option');
-          searchOption.value = searchTermCapitalized;
-          searchOption.textContent = searchTermCapitalized;
-          searchOption.selected = true;
-          filterSelect.appendChild(searchOption);
+          // Update filter dropdown to show the search term
+          if (filterSelect) {
+            filterSelect.innerHTML = '<option value="all">All Trends</option>';
+            const searchOption = document.createElement('option');
+            searchOption.value = searchTermCapitalized;
+            searchOption.textContent = searchTermCapitalized;
+            searchOption.selected = true;
+            filterSelect.appendChild(searchOption);
+          }
           
           console.log(`🎯 Showing single trend: "${searchTermCapitalized}"`);
         }
-
-        // Calculate reach metrics for search results
-        const totalReach = dataToProcess.reduce((sum, item) => sum + (item.view_count || 0), 0);
-        const avgReach = dataToProcess.length > 0 ? Math.floor(totalReach / dataToProcess.length) : 0;
-
-        console.log(`📈 Total reach for "${searchTerm}": ${formatNumber(totalReach)}`);
-        console.log(`📈 Average reach per video: ${formatNumber(avgReach)}`);
 
         // Update the display
         currentData = { chartData, tableData: dataToProcess };
         filteredData = chartData;
 
-        console.log(`📊 Chart data being used:`, chartData);
-        console.log(`🎯 Trends to show: "${trendsToShow}"`);
-
         // Create chart with appropriate filtering
         createChart(chartData, trendsToShow);
         createTrendTable(dataToProcess.slice(0, 25));
 
-        // Show search results summary
-        console.log(`✅ Search completed: ${dataToProcess.length} videos found for "${searchTerm}"`);
-        console.log(`📊 Chart updated with single trend: "${searchTermCapitalized}"`);
+        console.log(`✅ Search completed: ${dataToProcess.length} videos, mode: ${showMode}`);
 
         // Show quota status if relevant
         if (quotaExceeded) {
           const statusMessage = document.createElement('div');
           statusMessage.className = 'quota-warning';
           statusMessage.innerHTML = `
-            <p>⚠️ YouTube API quota exceeded. Showing existing data for "${searchTerm}". 
-            <br>📊 Found ${dataToProcess.length} existing videos. Quota resets daily at midnight PT.
-            <br>💡 Tip: Try different search terms or date ranges to explore existing data.</p>
+            <p>⚠️ YouTube API quota exceeded. Showing existing data for "${finalSearchTerm}". 
+            <br>📊 Found ${dataToProcess.length} existing videos. Quota resets daily at midnight PT.</p>
           `;
           statusMessage.style.cssText = `
             background: linear-gradient(135deg, #fbbf24, #f59e0b); 
@@ -2008,14 +2007,13 @@ async function searchTrends() {
         }
 
       } else {
-        console.log(`⚠️ No videos found matching "${searchTerm}"`);
+        console.log(`⚠️ No videos found for: "${finalSearchTerm}"`);
 
-        // Show helpful message
         const tableBody = document.getElementById('trendTableBody');
         if (tableBody) {
           let message = `
             <div style="text-align: center; padding: 20px;">
-              <h3>🔍 No videos found for "${searchTerm}"</h3>
+              <h3>🔍 No videos found for "${finalSearchTerm}"</h3>
               <p>Try different search terms. Available data includes: AI, crypto, gaming, tech, music, sports</p>
             </div>
           `;
@@ -2024,7 +2022,7 @@ async function searchTrends() {
 
         // Create empty chart
         filteredData = createEmptyChartDataForDateRange(startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]);
-        createChart(filteredData, searchTerm);
+        createChart(filteredData, finalSearchTerm);
       }
 
     } else {
@@ -2036,14 +2034,15 @@ async function searchTrends() {
     }
 
     // Restore button state and hide spinner
-    submitBtn.textContent = originalText;
-    submitBtn.disabled = false;
+    if (submitBtn) {
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+    }
     hideLoadingSpinner();
 
   } catch (error) {
     console.error('❌ Error in search:', error);
 
-    // Restore button state and hide spinner
     const submitBtn = document.querySelector('button[onclick="performComprehensiveSearch()"]');
     if (submitBtn) {
       submitBtn.textContent = 'Search';
@@ -2306,50 +2305,8 @@ window.fetchBulkData = fetchBulkData;
 
 // Combined search function that handles trends, search terms, and date ranges
 async function performComprehensiveSearch() {
-  const searchInput = document.getElementById('searchInput');
-  const filterSelect = document.getElementById('trendFilter');
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-
-  const searchTerm = searchInput.value.toLowerCase().trim();
-  const selectedTrend = filterSelect.value;
-  const startDate = startDateInput.value;
-  const endDate = endDateInput.value;
-
-  // Determine what to search for
-  let queryTerm = searchTerm;
-  if (!queryTerm && selectedTrend !== 'all') {
-    queryTerm = selectedTrend;
-  }
-  if (!queryTerm || queryTerm === 'all') {
-    queryTerm = 'all'; // Show all trends instead of defaulting to 'trending'
-  }
-
-  console.log(`🔍 Comprehensive search for: "${queryTerm}", dates: ${startDate || 'any'} to ${endDate || 'any'}`);
-
-  try {
-    // Show loading spinner
-    showLoadingSpinner();
-    // First, try to fetch fresh data for this search term
-    if (queryTerm !== 'all') {
-      const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(queryTerm)}&maxResults=50`);
-      const result = await response.json();
-
-      if (result.success) {
-        console.log(`✅ Fetched ${result.count} new videos for "${queryTerm}"`);
-      }
-    }
-
-    // Then filter existing data
-    await filterByDateRange();
-
-    // Hide loading spinner
-    hideLoadingSpinner();
-
-  } catch (error) {
-    console.error('❌ Error in comprehensive search:', error);
-    hideLoadingSpinner();
-  }
+  // Use the enhanced searchTrends function which now handles all cases correctly
+  await searchTrends();
 }
 
 // Make comprehensive search available globally
