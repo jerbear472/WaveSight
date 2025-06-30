@@ -382,27 +382,46 @@ function createChart(data, filteredTrends = 'all') {
     ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
 
-    // Simplified x-axis labels
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const dataLength = data.length;
 
-    // Show every other label to prevent overcrowding
-    const labelStep = Math.max(1, Math.floor(dataLength / 6));
+    // Dynamic label step based on data length
+    let labelStep = 1;
+    if (dataLength > 12) {
+      labelStep = Math.max(1, Math.floor(dataLength / 8));
+    } else if (dataLength > 6) {
+      labelStep = Math.max(1, Math.floor(dataLength / 6));
+    }
 
     data.forEach((item, index) => {
       if (index % labelStep === 0 || index === dataLength - 1) {
         const x = padding + (chartWidth * index) / (dataLength - 1);
         let label = item.date;
 
-        // Try to format the date nicely
+        // Format different types of date labels
         if (item.date && item.date.includes('/')) {
           const parts = item.date.split('/');
+          
           if (parts.length === 2) {
+            // Monthly format: "MM/YYYY"
             const month = parseInt(parts[0]) - 1;
             if (month >= 0 && month < 12) {
               label = monthNames[month];
+              if (parts[1] && parts[1].length === 4) {
+                label += ` '${parts[1].slice(-2)}`;
+              }
+            }
+          } else if (parts.length === 3) {
+            // Daily format: "MM/DD/YYYY"
+            const month = parseInt(parts[0]) - 1;
+            const day = parseInt(parts[1]);
+            if (month >= 0 && month < 12) {
+              label = `${monthNames[month]} ${day}`;
             }
           }
+        } else if (item.date && item.date.includes('Week')) {
+          // Week format: "Week 1", "Week 2", etc.
+          label = item.date;
         }
 
         ctx.fillStyle = '#9ca3af';
@@ -652,6 +671,186 @@ async function fetchData() {
   };
 
   return enhancedFallbackData;
+}
+
+// Helper function to create empty chart data for a date range
+function createEmptyChartDataForDateRange(startDate, endDate) {
+  if (!startDate || !endDate) {
+    return [];
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const dates = [];
+  const dateMap = new Map();
+
+  // Create daily intervals between start and end dates
+  const currentDate = new Date(start);
+  while (currentDate <= end) {
+    const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
+    dates.push(dateStr);
+    
+    dateMap.set(dateStr, {
+      date: dateStr,
+      'AI Tools': 0,
+      'Crypto': 0,
+      'Gaming': 0,
+      'Technology': 0,
+      'Entertainment': 0,
+      'Movies & TV': 0,
+      'General': 0
+    });
+    
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return dates.map(date => dateMap.get(date));
+}
+
+// Process Supabase data with specific date range
+function processSupabaseDataForChartWithDateRange(supabaseData, startDate, endDate) {
+  if (!supabaseData || supabaseData.length === 0) {
+    return createEmptyChartDataForDateRange(startDate, endDate);
+  }
+
+  console.log('Processing Supabase data for chart with date range:', supabaseData.length, 'items');
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const dates = [];
+  const dateMap = new Map();
+
+  // Create date intervals based on the range
+  const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+  
+  if (daysDiff <= 7) {
+    // Daily intervals for week or less
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
+      dates.push(dateStr);
+      
+      dateMap.set(dateStr, {
+        date: dateStr,
+        'AI Tools': 0,
+        'Crypto': 0,
+        'Gaming': 0,
+        'Technology': 0,
+        'Entertainment': 0,
+        'Movies & TV': 0,
+        'General': 0
+      });
+      
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+  } else if (daysDiff <= 31) {
+    // Weekly intervals for month or less
+    const currentDate = new Date(start);
+    let weekCount = 1;
+    while (currentDate <= end) {
+      const dateStr = `Week ${weekCount}`;
+      dates.push(dateStr);
+      
+      dateMap.set(dateStr, {
+        date: dateStr,
+        'AI Tools': 0,
+        'Crypto': 0,
+        'Gaming': 0,
+        'Technology': 0,
+        'Entertainment': 0,
+        'Movies & TV': 0,
+        'General': 0
+      });
+      
+      currentDate.setDate(currentDate.getDate() + 7);
+      weekCount++;
+    }
+  } else {
+    // Monthly intervals for longer ranges
+    const currentDate = new Date(start);
+    while (currentDate <= end) {
+      const dateStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
+      if (!dates.includes(dateStr)) {
+        dates.push(dateStr);
+        
+        dateMap.set(dateStr, {
+          date: dateStr,
+          'AI Tools': 0,
+          'Crypto': 0,
+          'Gaming': 0,
+          'Technology': 0,
+          'Entertainment': 0,
+          'Movies & TV': 0,
+          'General': 0
+        });
+      }
+      
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+  }
+
+  console.log('Created date range for filtering:', dates);
+
+  // Group trends by expanded categories
+  const trendGroups = {
+    'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai', 'gpt', 'claude', 'midjourney', 'stable diffusion'],
+    'Crypto': ['crypto', 'bitcoin', 'ethereum', 'dogecoin', 'trading', 'defi', 'nft', 'altcoin', 'binance'],
+    'Blockchain': ['blockchain', 'web3', 'smart contract', 'solana', 'polygon', 'cardano', 'chainlink'],
+    'Programming': ['coding', 'programming', 'developer', 'software', 'javascript', 'python', 'react', 'node'],
+    'Gaming': ['gaming', 'game', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'valorant'],
+    'Technology': ['tech', 'technology', 'gadget', 'smartphone', 'laptop', 'computer', 'review'],
+    'Entertainment': ['entertainment', 'celebrity', 'news', 'gossip', 'viral', 'trending'],
+    'Movies & TV': ['movie', 'film', 'series', 'netflix', 'review', 'trailer', 'actor', 'cinema'],
+    'Music': ['music', 'song', 'artist', 'album', 'concert', 'band', 'guitar', 'piano', 'remix'],
+    'Sports': ['sports', 'football', 'basketball', 'soccer', 'baseball', 'tennis', 'golf', 'olympics'],
+    'Health & Fitness': ['health', 'fitness', 'workout', 'diet', 'nutrition', 'wellness', 'meditation', 'yoga'],
+    'Food & Cooking': ['food', 'cooking', 'recipe', 'chef', 'restaurant', 'baking', 'kitchen', 'meal'],
+    'General': []
+  };
+
+  // Aggregate data into the date map
+  supabaseData.forEach(item => {
+    const pubDate = new Date(item.published_at);
+    let dateKey;
+
+    if (daysDiff <= 7) {
+      // Daily grouping
+      dateKey = `${pubDate.getMonth() + 1}/${pubDate.getDate()}`;
+    } else if (daysDiff <= 31) {
+      // Weekly grouping
+      const startOfRange = new Date(start);
+      const weeksDiff = Math.floor((pubDate - startOfRange) / (1000 * 60 * 60 * 24 * 7)) + 1;
+      dateKey = `Week ${Math.max(1, weeksDiff)}`;
+    } else {
+      // Monthly grouping
+      dateKey = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+    }
+
+    if (dateMap.has(dateKey)) {
+      let category = 'General';
+      const title = (item.title || item.trend_name || '').toLowerCase();
+
+      for (const [groupName, keywords] of Object.entries(trendGroups)) {
+        if (keywords.some(keyword => title.includes(keyword))) {
+          category = groupName;
+          break;
+        }
+      }
+
+      const dataPoint = dateMap.get(dateKey);
+      dataPoint[category] = (dataPoint[category] || 0) + (item.view_count || item.reach_count || 0);
+      dateMap.set(dateKey, dataPoint);
+    }
+  });
+
+  // Convert dateMap to chart data array
+  const chartData = dates.map(date => {
+    const dataPoint = dateMap.get(date) || { date };
+    return dataPoint;
+  });
+
+  console.log('Processed chart data for date range:', chartData);
+  return chartData;
 }
 
 // Convert Supabase YouTube data to chart format
@@ -1015,6 +1214,7 @@ async function filterByDateRange() {
     filteredData = null;
     if (currentData) {
       createChart(currentData.chartData, selectedTrends);
+      createTrendTable(currentData.tableData);
     }
     return;
   }
@@ -1033,10 +1233,10 @@ async function filterByDateRange() {
 
       // Add date filters if provided
       if (startDate) {
-        query = query.gte('published_at', startDate + 'T00:00:00');
+        query = query.gte('published_at', startDate + 'T00:00:00.000Z');
       }
       if (endDate) {
-        query = query.lte('published_at', endDate + 'T23:59:59');
+        query = query.lte('published_at', endDate + 'T23:59:59.999Z');
       }
 
       const { data, error } = await query.limit(100);
@@ -1052,54 +1252,40 @@ async function filterByDateRange() {
 
     // Process the filtered API data into chart format
     if (filteredApiData.length > 0) {
-      const filteredChartData = processSupabaseDataForChart(filteredApiData);
+      const filteredChartData = processSupabaseDataForChartWithDateRange(filteredApiData, startDate, endDate);
       filteredData = filteredChartData;
 
       // Update table with filtered data
-      createTrendTable(filteredApiData.slice(0, 10));
+      createTrendTable(filteredApiData.slice(0, 25));
 
       // Show date range info
       console.log(`📊 Chart updated with data from ${startDate} to ${endDate}`);
     } else {
-      // No data in range, show empty chart
-      filteredData = [];
+      // No data in range, show empty chart with date range
+      filteredData = createEmptyChartDataForDateRange(startDate, endDate);
       console.log('📊 No data found in selected date range');
+      
+      // Clear table
+      const tableBody = document.getElementById('trendTableBody');
+      if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="4">No data found in selected date range</td></tr>';
+      }
     }
 
     createChart(filteredData, selectedTrends);
 
   } catch (error) {
     console.error('❌ Error filtering by date range:', error);
-
-    // Fallback to original chart data filtering
-    if (currentData && currentData.chartData) {
-      filteredData = currentData.chartData.filter(item => {
-        // This is a fallback for mock data with MM/DD format
-        if (!item.date) return true;
-
-        const dateParts = item.date.split('/');
-        if (dateParts.length !== 2) return true;
-
-        const month = parseInt(dateParts[0]);
-        const day = parseInt(dateParts[1]);
-        const currentYear = new Date().getFullYear();
-        const itemDate = new Date(currentYear, month - 1, day);
-
-        let isInRange = true;
-        if (startDate) {
-          const start = new Date(startDate);
-          isInRange = isInRange && itemDate >= start;
-        }
-        if (endDate) {
-          const end = new Date(endDate);
-          isInRange = isInRange && itemDate <= end;
-        }
-
-        return isInRange;
-      });
-
-      createChart(filteredData, selectedTrends);
+    
+    // Show error message
+    const tableBody = document.getElementById('trendTableBody');
+    if (tableBody) {
+      tableBody.innerHTML = '<tr><td colspan="4">Error loading data for selected date range</td></tr>';
     }
+    
+    // Create empty chart with proper date range
+    filteredData = createEmptyChartDataForDateRange(startDate, endDate);
+    createChart(filteredData, selectedTrends);
   }
 }
 
