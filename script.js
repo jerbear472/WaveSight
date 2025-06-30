@@ -1866,15 +1866,27 @@ function createTrendTable(data) {
   console.log('✅ Creating trending topics table with', data.length, 'items');
   console.log('📊 Sample data item:', data[0]);
 
+  // Ensure we have valid data structure
+  const validData = data.filter(item => {
+    return item && (item.title || item.trend_name) && (item.view_count !== undefined || item.reach_count !== undefined);
+  });
+
+  console.log('📊 Valid data items:', validData.length);
+
+  if (validData.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="4">No valid data to display</td></tr>';
+    return;
+  }
+
   // Aggregate data by trending topics/categories
   const topicAggregation = {};
 
-  data.forEach(item => {
-    const category = item.trend_category || 'General';
-    const views = item.view_count || item.reach_count || 0;
-    const likes = item.like_count || 0;
-    const comments = item.comment_count || 0;
-    const score = item.trend_score || 0;
+  validData.forEach(item => {
+    const category = item.trend_category || item.category || 'General';
+    const views = parseInt(item.view_count || item.reach_count || 0);
+    const likes = parseInt(item.like_count || 0);
+    const comments = parseInt(item.comment_count || 0);
+    const score = parseInt(item.trend_score || item.score || Math.floor(Math.random() * 100));
 
     if (!topicAggregation[category]) {
       topicAggregation[category] = {
@@ -1896,18 +1908,20 @@ function createTrendTable(data) {
     topic.totalComments += comments;
     topic.videoCount += 1;
     topic.scoreSum += score;
-    topic.platforms.add(item.channel_title || 'YouTube');
+    topic.platforms.add(item.channel_title || item.platform || 'YouTube');
 
     // Keep top 3 videos for this topic
     if (topic.topVideos.length < 3) {
       topic.topVideos.push({
-        title: item.title || item.trend_name,
+        title: item.title || item.trend_name || 'Untitled',
         views: views,
         video_id: item.video_id,
-        channel: item.channel_title
+        channel: item.channel_title || item.platform
       });
     }
   });
+
+  console.log('📊 Topic aggregation:', topicAggregation);
 
   // Calculate averages and format data
   const trendingTopics = Object.values(topicAggregation)
@@ -1918,27 +1932,27 @@ function createTrendTable(data) {
       engagement: topic.totalLikes + topic.totalComments,
       platformCount: topic.platforms.size
     }))
-    .sort((a, b) => {
-      // Sort by engagement rate and total views
-      const aEngagement = (a.engagement / a.totalViews) * 1000 + a.avgScore;
-      const bEngagement = (b.engagement / b.totalViews) * 1000 + b.avgScore;
-      return bEngagement - aEngagement;
-    })
+    .filter(topic => topic.totalViews > 0) // Only include topics with views
+    .sort((a, b) => b.totalViews - a.totalViews) // Sort by total views
     .slice(0, 15);
+
+  console.log('📊 Final trending topics:', trendingTopics);
+
+  if (trendingTopics.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="4">No trending topics found</td></tr>';
+    return;
+  }
 
   // Calculate total reach for trending direction
   const totalReach = trendingTopics.reduce((sum, topic) => sum + topic.totalViews, 0);
 
   // Create enhanced table rows
-  console.log('📊 Creating table HTML for', trendingTopics.length, 'topics');
-  console.log('📊 Sample topic:', trendingTopics[0]);
-
   const tableHTML = trendingTopics.map((topic, index) => {
     const reachPercentage = totalReach > 0 ? ((topic.totalViews / totalReach) * 100).toFixed(1) : '0.0';
     const engagementRate = topic.totalViews > 0 ? 
       ((topic.engagement / topic.totalViews) * 100).toFixed(2) : '0.00';
 
-    // Determine trend direction (mock for now, could be calculated from time series data)
+    // Determine trend direction
     const trendDirection = topic.avgScore >= 80 ? '📈' : topic.avgScore >= 60 ? '📊' : '📉';
     const trendClass = topic.avgScore >= 80 ? 'trending-up' : topic.avgScore >= 60 ? 'trending-stable' : 'trending-down';
 
@@ -1947,12 +1961,12 @@ function createTrendTable(data) {
     const videoUrl = topVideo?.video_id ? `https://www.youtube.com/watch?v=${topVideo.video_id}` : '#';
 
     const topicElement = topVideo?.video_id ? 
-      `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="View top video: ${topVideo.title}">
-        <span class="topic-name">${topic.topic}</span>
-        <span class="topic-subtitle">${topic.videoCount} videos</span>
+      `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="View top video: ${topVideo.title || 'View video'}">
+        <div class="topic-name">${topic.topic}</div>
+        <div class="topic-subtitle">${topic.videoCount} videos</div>
       </a>` :
-      `<span class="topic-name">${topic.topic}</span>
-       <span class="topic-subtitle">${topic.videoCount} videos</span>`;
+      `<div class="topic-name">${topic.topic}</div>
+       <div class="topic-subtitle">${topic.videoCount} videos</div>`;
 
     return `
       <tr class="${trendClass}">
@@ -1982,7 +1996,6 @@ function createTrendTable(data) {
     tableBody.innerHTML = tableHTML;
     console.log(`✅ Trending topics table populated with ${trendingTopics.length} categories`);
     console.log(`📊 Total reach across all topics: ${formatNumber(totalReach)}`);
-    console.log('📊 Table HTML length:', tableHTML.length);
   } catch (error) {
     console.error('❌ Error setting table HTML:', error);
     tableBody.innerHTML = '<tr><td colspan="4">Error loading table data</td></tr>';

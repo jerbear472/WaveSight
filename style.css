@@ -586,6 +586,78 @@ h1, h2, h3, .logo, .header-title {
   hyphens: auto;
 }
 
+.topic-cell {
+  padding: 16px 20px !important;
+}
+
+.topic-name {
+  display: block;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #f1f1f1;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.topic-subtitle {
+  display: block;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.platform-count {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.metric-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.primary-metric {
+  font-weight: 600;
+  color: #f1f1f1;
+  font-size: 0.9rem;
+}
+
+.secondary-metric {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.score-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trend-direction {
+  font-size: 1.1rem;
+}
+
+.score-value {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.trending-up {
+  background: rgba(16, 185, 129, 0.05);
+  border-left: 3px solid #10b981;
+}
+
+.trending-stable {
+  background: rgba(245, 158, 11, 0.05);
+  border-left: 3px solid #f59e0b;
+}
+
+.trending-down {
+  background: rgba(239, 68, 68, 0.05);
+  border-left: 3px solid #ef4444;
+}
+
 .trend-table td a:hover {
   color: #8b5cf6 !important;
   text-decoration: underline !important;
