@@ -1141,12 +1141,18 @@ function createTrendTable(data) {
   console.log(`Table populated with ${data.slice(0, 50).length} rows`);
 }
 
-// Filter chart function
-function filterChart() {
+// Enhanced filter chart function that works with search and dates
+async function filterChart() {
   const filterSelect = document.getElementById('trendFilter');
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  
   selectedTrends = filterSelect.value;
-
-  if (currentData) {
+  
+  // If a specific trend is selected and we have date filters, re-run the search
+  if (selectedTrends !== 'all' && (startDateInput.value || endDateInput.value)) {
+    await filterByDateRange();
+  } else if (currentData) {
     const dataToUse = filteredData || currentData.chartData;
     createChart(dataToUse, selectedTrends);
   }
@@ -1181,34 +1187,131 @@ function updateTrendFilter(chartData) {
   });
 }
 
-// Search function
-function searchTrends() {
+// Enhanced search function that fetches YouTube data
+async function searchTrends() {
   const searchInput = document.getElementById('searchInput');
-  const searchTerm = searchInput.value.toLowerCase();
+  const filterSelect = document.getElementById('trendFilter');
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  
+  let searchTerm = searchInput.value.toLowerCase().trim();
+  const selectedTrend = filterSelect.value;
+  const startDate = startDateInput.value;
+  const endDate = endDateInput.value;
 
-  if (searchTerm.trim() === '') {
-    selectedTrends = 'all';
-  } else {
-    selectedTrends = searchTerm;
+  // Use selected trend if no search term provided
+  if (!searchTerm && selectedTrend !== 'all') {
+    searchTerm = selectedTrend;
   }
 
-  // Update dropdown to reflect search
-  const filterSelect = document.getElementById('trendFilter');
-  filterSelect.value = selectedTrends === 'all' ? 'all' : 'all';
+  // Default to trending if nothing specified
+  if (!searchTerm) {
+    searchTerm = 'trending';
+  }
 
-  if (currentData) {
-    const dataToUse = filteredData || currentData.chartData;
-    createChart(dataToUse, selectedTrends);
+  console.log(`🔍 Searching for: "${searchTerm}" with date range: ${startDate || 'any'} to ${endDate || 'any'}`);
+
+  try {
+    // Show loading state
+    const submitBtn = document.querySelector('button[onclick="searchTrends()"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'Searching...';
+    submitBtn.disabled = true;
+
+    // Fetch fresh YouTube data based on search criteria
+    const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`);
+    const result = await response.json();
+
+    if (result.success && result.data && result.data.length > 0) {
+      console.log(`✅ Found ${result.count} new videos for "${searchTerm}"`);
+      
+      // Fetch all data including the new results
+      const allData = await fetchYouTubeDataFromSupabase();
+      
+      if (allData && allData.length > 0) {
+        let dataToProcess = allData;
+        
+        // Filter by date range if specified
+        if (startDate || endDate) {
+          dataToProcess = allData.filter(item => {
+            const itemDate = new Date(item.published_at);
+            const start = startDate ? new Date(startDate) : new Date('1900-01-01');
+            const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
+            return itemDate >= start && itemDate <= end;
+          });
+        }
+        
+        // Filter by search term or trend
+        if (searchTerm !== 'trending' && searchTerm !== 'all') {
+          dataToProcess = dataToProcess.filter(item => {
+            const title = (item.title || '').toLowerCase();
+            const category = (item.trend_category || '').toLowerCase();
+            const channel = (item.channel_title || '').toLowerCase();
+            return title.includes(searchTerm) || 
+                   category.includes(searchTerm) || 
+                   channel.includes(searchTerm);
+          });
+        }
+        
+        console.log(`📊 Filtered to ${dataToProcess.length} videos matching criteria`);
+        
+        // Process data for chart
+        const chartData = startDate || endDate ? 
+          processSupabaseDataForChartWithDateRange(dataToProcess, startDate || '2023-01-01', endDate || new Date().toISOString().split('T')[0]) :
+          processSupabaseDataForChart(dataToProcess);
+        
+        // Update the display
+        currentData = { chartData, tableData: dataToProcess };
+        filteredData = chartData;
+        
+        updateTrendFilter(chartData);
+        createChart(chartData, selectedTrends);
+        createTrendTable(dataToProcess.slice(0, 25));
+        
+        // Update selected trends for chart filtering
+        selectedTrends = searchTerm === 'trending' || searchTerm === 'all' ? 'all' : searchTerm;
+        
+      } else {
+        console.log('⚠️ No data found after fetching');
+      }
+    } else {
+      console.log(`⚠️ No new videos found for "${searchTerm}"`);
+      
+      // Still try to filter existing data if we have it
+      if (currentData) {
+        await filterByDateRange();
+      }
+    }
+
+    // Restore button state
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+
+  } catch (error) {
+    console.error('❌ Error in search:', error);
+    
+    // Restore button state
+    const submitBtn = document.querySelector('button[onclick="searchTrends()"]');
+    if (submitBtn) {
+      submitBtn.textContent = 'Search';
+      submitBtn.disabled = false;
+    }
   }
 }
 
-// Date range filter function
+// Enhanced date range filter function that works with search
 async function filterByDateRange() {
   const startDateInput = document.getElementById('startDate');
   const endDateInput = document.getElementById('endDate');
+  const searchInput = document.getElementById('searchInput');
+  const filterSelect = document.getElementById('trendFilter');
 
   startDate = startDateInput.value;
   endDate = endDateInput.value;
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  const selectedTrend = filterSelect.value;
+
+  console.log(`🗓️ Filtering data from ${startDate || 'any'} to ${endDate || 'any'}`);
 
   if (!startDate && !endDate) {
     filteredData = null;
@@ -1219,10 +1322,8 @@ async function filterByDateRange() {
     return;
   }
 
-  console.log(`🗓️ Filtering data from ${startDate} to ${endDate}`);
-
   try {
-    // Get fresh data from Supabase with date filtering
+    // Get data from Supabase with date filtering
     let filteredApiData = [];
 
     if (supabase) {
@@ -1239,11 +1340,25 @@ async function filterByDateRange() {
         query = query.lte('published_at', endDate + 'T23:59:59.999Z');
       }
 
-      const { data, error } = await query.limit(100);
+      const { data, error } = await query.limit(200);
 
       if (!error && data && data.length > 0) {
         filteredApiData = data;
         console.log(`✅ Found ${filteredApiData.length} videos in date range`);
+        
+        // Apply search/trend filtering on top of date filtering
+        if (searchTerm || (selectedTrend && selectedTrend !== 'all')) {
+          const filterTerm = searchTerm || selectedTrend.toLowerCase();
+          filteredApiData = filteredApiData.filter(item => {
+            const title = (item.title || '').toLowerCase();
+            const category = (item.trend_category || '').toLowerCase();
+            const channel = (item.channel_title || '').toLowerCase();
+            return title.includes(filterTerm) || 
+                   category.includes(filterTerm) || 
+                   channel.includes(filterTerm);
+          });
+          console.log(`📊 Further filtered to ${filteredApiData.length} videos matching "${filterTerm}"`);
+        }
       } else {
         console.log('⚠️ No data found in date range');
         filteredApiData = [];
@@ -1257,9 +1372,14 @@ async function filterByDateRange() {
 
       // Update table with filtered data
       createTrendTable(filteredApiData.slice(0, 25));
+      
+      // Update current data to reflect the filter
+      currentData = { 
+        chartData: filteredChartData, 
+        tableData: filteredApiData 
+      };
 
-      // Show date range info
-      console.log(`📊 Chart updated with data from ${startDate} to ${endDate}`);
+      console.log(`📊 Chart updated with ${filteredApiData.length} videos from ${startDate} to ${endDate}`);
     } else {
       // No data in range, show empty chart with date range
       filteredData = createEmptyChartDataForDateRange(startDate, endDate);
@@ -1421,6 +1541,51 @@ async function fetchBulkData(categories = 'all', totalResults = 1000) {
 
 // Make bulk fetch available globally
 window.fetchBulkData = fetchBulkData;
+
+// Combined search function that handles trends, search terms, and date ranges
+async function performComprehensiveSearch() {
+  const searchInput = document.getElementById('searchInput');
+  const filterSelect = document.getElementById('trendFilter');
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  const selectedTrend = filterSelect.value;
+  const startDate = startDateInput.value;
+  const endDate = endDateInput.value;
+  
+  // Determine what to search for
+  let queryTerm = searchTerm;
+  if (!queryTerm && selectedTrend !== 'all') {
+    queryTerm = selectedTrend;
+  }
+  if (!queryTerm) {
+    queryTerm = 'trending';
+  }
+  
+  console.log(`🔍 Comprehensive search for: "${queryTerm}", dates: ${startDate || 'any'} to ${endDate || 'any'}`);
+  
+  try {
+    // First, try to fetch fresh data for this search term
+    if (queryTerm !== 'all') {
+      const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(queryTerm)}&maxResults=50`);
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`✅ Fetched ${result.count} new videos for "${queryTerm}"`);
+      }
+    }
+    
+    // Then filter existing data
+    await filterByDateRange();
+    
+  } catch (error) {
+    console.error('❌ Error in comprehensive search:', error);
+  }
+}
+
+// Make comprehensive search available globally
+window.performComprehensiveSearch = performComprehensiveSearch;
 
 // Helper functions for updating display
 function updateChart(chartData) {
