@@ -32,6 +32,28 @@ function initSupabase() {
   }
 }
 
+// Validate YouTube API key
+async function validateYouTubeAPI() {
+  try {
+    console.log('🔍 Validating YouTube API key...');
+    const response = await fetch('/api/validate-youtube');
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ YouTube API key is valid');
+      console.log('📊 Quota remaining:', result.quota_remaining);
+      return true;
+    } else {
+      console.error('❌ YouTube API validation failed:', result.error);
+      console.error('💡 Troubleshooting:', result.troubleshooting);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error validating YouTube API:', error);
+    return false;
+  }
+}
+
 // YouTube API integration
 async function fetchYouTubeDataFromAPI() {
   try {
@@ -1731,6 +1753,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Initialize Supabase
   initSupabase();
+  
+  // Validate YouTube API
+  await validateYouTubeAPI();
 
   // Fetch and display data
   try {

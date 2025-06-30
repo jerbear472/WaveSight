@@ -22,6 +22,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
   try {
     console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
+    
+    // Check if YouTube API key is configured
+    if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+      console.error('❌ YouTube API key not configured in environment variables');
+      throw new Error('YouTube API key not configured');
+    }
+    
+    console.log('✅ YouTube API key found, proceeding with requests...');
 
     // Use diverse search queries for comprehensive historical-style data
     let searchQueries = [query];
@@ -111,7 +119,18 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
 
         const searchResponse = await fetch(searchUrl);
         if (!searchResponse.ok) {
+          const errorText = await searchResponse.text();
           console.log(`⚠️ Failed to fetch for query "${searchQuery}": ${searchResponse.status}`);
+          console.log(`❌ Error details: ${errorText}`);
+          
+          // Log specific error types
+          if (searchResponse.status === 403) {
+            console.log('❌ 403 Forbidden - Check your YouTube API key, quota limits, or restrictions');
+          } else if (searchResponse.status === 400) {
+            console.log('❌ 400 Bad Request - Check your query parameters');
+          } else if (searchResponse.status === 429) {
+            console.log('❌ 429 Too Many Requests - You have exceeded your quota');
+          }
           continue;
         }
 
@@ -356,8 +375,51 @@ app.get('/api/config', (req, res) => {
   res.json({
     SUPABASE_URL: SUPABASE_URL,
     SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
-    YOUTUBE_API_KEY: YOUTUBE_API_KEY
+    YOUTUBE_API_KEY: YOUTUBE_API_KEY ? 'Configured' : 'Missing'
   });
+});
+
+// YouTube API validation endpoint
+app.get('/api/validate-youtube', async (req, res) => {
+  try {
+    if (!YOUTUBE_API_KEY) {
+      return res.status(400).json({
+        success: false,
+        error: 'YouTube API key not configured'
+      });
+    }
+
+    // Test API key with a simple quota check
+    const testUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&type=video&maxResults=1&key=${YOUTUBE_API_KEY}`;
+    
+    const response = await fetch(testUrl);
+    
+    if (response.ok) {
+      const data = await response.json();
+      res.json({
+        success: true,
+        message: 'YouTube API key is valid',
+        quota_remaining: response.headers.get('x-ratelimit-remaining') || 'Unknown'
+      });
+    } else {
+      const errorText = await response.text();
+      res.status(response.status).json({
+        success: false,
+        error: `YouTube API error: ${response.status}`,
+        details: errorText,
+        troubleshooting: {
+          403: 'Check API key validity, quota limits, or HTTP referrer restrictions',
+          400: 'Check API key format and request parameters',
+          429: 'Quota exceeded - wait or increase limits'
+        }[response.status] || 'Unknown error'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 });
 
 // Bulk fetch endpoint for massive data collection
