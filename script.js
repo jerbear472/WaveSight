@@ -42,7 +42,7 @@ async function validateYouTubeAPI() {
     console.log('🔍 Validating YouTube API key...');
     const response = await fetch('/api/validate-youtube');
     const result = await response.json();
-    
+
     if (result.success) {
       console.log('✅ YouTube API key is valid');
       console.log('📊 Quota remaining:', result.quota_remaining);
@@ -591,14 +591,14 @@ function createChart(data, filteredTrends = 'all') {
       if (!window.chartClickableAreas) {
         window.chartClickableAreas = [];
       }
-      
+
       window.chartClickableAreas.push({
         trendName: trendName,
         color: color,
         points: clickablePoints,
         trendIndex: trendIndex
       });
-      
+
       console.log(`📍 Added clickable area for ${trendName} with ${clickablePoints.length} points`);
     });
   }
@@ -627,18 +627,18 @@ function createChart(data, filteredTrends = 'all') {
     // Check if click is near any trend line
     if (window.chartClickableAreas) {
       console.log(`🔍 Checking ${window.chartClickableAreas.length} clickable areas`);
-      
+
       window.chartClickableAreas.forEach((area, areaIndex) => {
         // Check if click is near any point in this trend line
         const clickRadius = 25; // Increased click tolerance
-        
+
         area.points.forEach((point, pointIndex) => {
           const distance = Math.sqrt(
             Math.pow(clickX - point.x, 2) + Math.pow(clickY - point.y, 2)
           );
-          
+
           console.log(`📊 Point ${pointIndex} in ${area.trendName}: distance ${distance.toFixed(2)}`);
-          
+
           if (distance <= clickRadius) {
             console.log(`✅ Clicked on ${area.trendName}!`);
             showTrendDetailModal(area.trendName, area.color);
@@ -767,7 +767,8 @@ async function getTrendDetailData(trendName) {
       return [];
     }
 
-    // Filter current data for this specific trend category
+    // Filter current data for this specific trend```text
+ category
     const trendData = currentData.tableData.filter(item => {
       const category = item.trend_category || 'General';
       const title = (item.title || '').toLowerCase();
@@ -790,11 +791,11 @@ async function getTrendDetailData(trendName) {
         description.includes(keyword.toLowerCase()) ||
         channel.includes(keyword.toLowerCase())
       );
-      
+
       if (matchFound) {
         console.log(`✅ Matched by keywords in ${trendName}`);
       }
-      
+
       return matchFound;
     });
 
@@ -1183,14 +1184,14 @@ function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) 
   // Determine date range strategy
   const start = startDate ? new Date(startDate) : new Date();
   const end = endDate ? new Date(endDate) : new Date();
-  
+
   if (!startDate && !endDate) {
     // Default to last 6 months if no dates specified
     start.setMonth(start.getMonth() - 6);
   }
 
   const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-  
+
   // Create date intervals
   const dates = [];
   const dateMap = new Map();
@@ -1229,8 +1230,60 @@ function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) 
   }
 
   // Create search-optimized categories
-  const searchCategories = createSearchCategories(searchData, searchTerm);
-  
+function createSearchCategories(searchData, searchTerm) {
+  console.log(`🏷️ Creating categories for search term: "${searchTerm}"`);
+
+  // For specific search terms, create a focused category structure
+  const searchTermLower = searchTerm.toLowerCase();
+  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+
+  // If searching for a specific term, make that the primary category
+  if (searchTermLower !== 'trending' && searchTermLower !== 'all') {
+    console.log(`🎯 Creating focused categories for "${searchTerm}"`);
+
+    // Group videos by relevance to search term
+    const relevantVideos = [];
+    const otherVideos = [];
+
+    searchData.forEach(item => {
+      const title = (item.title || '').toLowerCase();
+      const description = (item.description || '').toLowerCase();
+      const category = (item.trend_category || '').toLowerCase();
+
+      if (title.includes(searchTermLower) || 
+          description.includes(searchTermLower) || 
+          category.includes(searchTermLower)) {
+        relevantVideos.push(item);
+      } else {
+        otherVideos.push(item);
+      }
+    });
+
+    console.log(`📊 Found ${relevantVideos.length} videos directly related to "${searchTerm}"`);
+    console.log(`📊 Found ${otherVideos.length} videos in other categories`);
+
+    // If we have enough relevant videos, make search term the primary category
+    if (relevantVideos.length > 0) {
+      return [searchTermCategory];
+    }
+  }
+
+  // Fallback to existing category logic for broad searches
+  const categoryCount = new Map();
+
+  searchData.forEach(item => {
+    const category = item.trend_category || 'General';
+    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
+  });
+
+  const sortedCategories = Array.from(categoryCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5) // Limit to fewer categories for cleaner display
+    .map(([category]) => category);
+
+  return sortedCategories;
+}
+
   // Initialize all categories in dateMap
   dates.forEach(date => {
     const dataPoint = dateMap.get(date);
@@ -1263,57 +1316,31 @@ function createSearchBasedChartData(searchData, searchTerm, startDate, endDate) 
   });
 
   const chartData = dates.map(date => dateMap.get(date));
-  
+
   console.log(`📊 Search chart data created:`, chartData);
   console.log(`📊 Categories for "${searchTerm}":`, searchCategories);
-  
+
   return chartData;
 }
 
 // Create dynamic categories based on search results
-function createSearchCategories(searchData, searchTerm) {
-  const categoryCount = new Map();
-  
-  // Count existing categories
-  searchData.forEach(item => {
-    const category = item.trend_category || 'General';
-    categoryCount.set(category, (categoryCount.get(category) || 0) + 1);
-  });
-
-  // Get top categories, ensuring we have the search term as a category if relevant
-  const sortedCategories = Array.from(categoryCount.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 8)
-    .map(([category]) => category);
-
-  // Add search term as a category if it's not already represented
-  const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
-  if (!sortedCategories.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase()))) {
-    sortedCategories.unshift(searchTermCategory);
-    sortedCategories.splice(-1, 1); // Remove last category to keep count at 8
-  }
-
-  return sortedCategories;
-}
-
-// Categorize individual search results
 function categorizeSearchResult(item, searchTerm, availableCategories) {
   const title = (item.title || '').toLowerCase();
   const description = (item.description || '').toLowerCase();
   const existingCategory = item.trend_category || 'General';
-  
+
   // First check if existing category is in our available categories
   if (availableCategories.includes(existingCategory)) {
     return existingCategory;
   }
-  
+
   // Check if content strongly matches search term
   const searchTermCategory = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
   if (availableCategories.includes(searchTermCategory) && 
       (title.includes(searchTerm.toLowerCase()) || description.includes(searchTerm.toLowerCase()))) {
     return searchTermCategory;
   }
-  
+
   // Find best matching category
   for (const category of availableCategories) {
     const categoryKeywords = getCategoryKeywords(category);
@@ -1321,7 +1348,7 @@ function categorizeSearchResult(item, searchTerm, availableCategories) {
       return category;
     }
   }
-  
+
   // Default to first available category or General
   return availableCategories.includes('General') ? 'General' : availableCategories[0];
 }
@@ -1340,7 +1367,7 @@ function getCategoryKeywords(category) {
     'Education': ['education', 'learning', 'tutorial', 'course', 'study'],
     'Finance': ['finance', 'investing', 'stocks', 'money', 'business']
   };
-  
+
   return keywordMap[category] || [category.toLowerCase()];
 }
 
@@ -1612,14 +1639,14 @@ function createTrendTable(data) {
 
   // Aggregate data by trending topics/categories
   const topicAggregation = {};
-  
+
   data.forEach(item => {
     const category = item.trend_category || 'General';
     const views = item.view_count || item.reach_count || 0;
     const likes = item.like_count || 0;
     const comments = item.comment_count || 0;
     const score = item.trend_score || 0;
-    
+
     if (!topicAggregation[category]) {
       topicAggregation[category] = {
         topic: category,
@@ -1633,7 +1660,7 @@ function createTrendTable(data) {
         scoreSum: 0
       };
     }
-    
+
     const topic = topicAggregation[category];
     topic.totalViews += views;
     topic.totalLikes += likes;
@@ -1641,7 +1668,7 @@ function createTrendTable(data) {
     topic.videoCount += 1;
     topic.scoreSum += score;
     topic.platforms.add(item.channel_title || 'YouTube');
-    
+
     // Keep top 3 videos for this topic
     if (topic.topVideos.length < 3) {
       topic.topVideos.push({
@@ -1678,15 +1705,15 @@ function createTrendTable(data) {
     const reachPercentage = totalReach > 0 ? ((topic.totalViews / totalReach) * 100).toFixed(1) : '0.0';
     const engagementRate = topic.totalViews > 0 ? 
       ((topic.engagement / topic.totalViews) * 100).toFixed(2) : '0.00';
-    
+
     // Determine trend direction (mock for now, could be calculated from time series data)
     const trendDirection = topic.avgScore >= 80 ? '📈' : topic.avgScore >= 60 ? '📊' : '📉';
     const trendClass = topic.avgScore >= 80 ? 'trending-up' : topic.avgScore >= 60 ? 'trending-stable' : 'trending-down';
-    
+
     // Get the top video for this topic to link to
     const topVideo = topic.topVideos.sort((a, b) => b.views - a.views)[0];
     const videoUrl = topVideo?.video_id ? `https://www.youtube.com/watch?v=${topVideo.video_id}` : '#';
-    
+
     const topicElement = topVideo?.video_id ? 
       `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="View top video: ${topVideo.title}">
         <span class="topic-name">${topic.topic}</span>
@@ -1857,7 +1884,7 @@ async function searchTrends() {
 
           // Split search term into keywords for better matching
           const searchKeywords = searchTerm.split(' ').filter(word => word.length > 2);
-          
+
           return searchKeywords.some(keyword => 
             title.includes(keyword) || 
             category.includes(keyword) || 
@@ -1899,7 +1926,7 @@ async function searchTrends() {
 
         // Update filter dropdown with new trends
         updateTrendFilter(chartData);
-        
+
         // Create chart with search-optimized legend
         createChart(chartData, 'all'); // Show all trends for search results
         createTrendTable(dataToProcess.slice(0, 25));
@@ -2279,14 +2306,14 @@ async function handleAuthSuccess(user) {
     if (result.success) {
       currentUser = result.user;
       isAuthenticated = true;
-      
+
       console.log('✅ User session created:', currentUser);
       updateUserInterface();
-      
+
       // Store in localStorage for persistence
       localStorage.setItem('wavesight_user', JSON.stringify(currentUser));
       localStorage.setItem('wavesight_auth', 'true');
-      
+
     } else {
       console.error('❌ Authentication failed:', result.message);
     }
@@ -2312,7 +2339,7 @@ function updateUserInterface() {
       `;
       userSection.style.display = 'flex';
     }
-    
+
     // Hide login
     if (loginSection) {
       loginSection.style.display = 'none';
@@ -2328,7 +2355,7 @@ function updateUserInterface() {
     if (loginSection) {
       loginSection.style.display = 'block';
     }
-    
+
     // Hide user info
     if (userSection) {
       userSection.style.display = 'none';
@@ -2352,7 +2379,7 @@ function applyUserPreferences(config) {
 
       const startInput = document.getElementById('startDate');
       const endInput = document.getElementById('endDate');
-      
+
       if (startInput && endInput) {
         startInput.value = startDate.toISOString().split('T')[0];
         endInput.value = endDate.toISOString().split('T')[0];
@@ -2366,16 +2393,16 @@ function applyUserPreferences(config) {
 async function logout() {
   currentUser = null;
   isAuthenticated = false;
-  
+
   // Clear localStorage
   localStorage.removeItem('wavesight_user');
   localStorage.removeItem('wavesight_auth');
-  
+
   // Update UI
   updateUserInterface();
-  
+
   console.log('👋 User logged out');
-  
+
   // Reload page to reset state
   location.reload();
 }
@@ -2397,7 +2424,7 @@ function checkStoredAuth() {
     localStorage.removeItem('wavesight_user');
     localStorage.removeItem('wavesight_auth');
   }
-  
+
   return false;
 }
 
@@ -2443,7 +2470,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Initialize Supabase
   initSupabase();
-  
+
   // Validate YouTube API
   await validateYouTubeAPI();
 
