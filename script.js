@@ -272,9 +272,9 @@ function createChart(data, filteredTrends = 'all') {
 
   if (!data || data.length === 0) {
     ctx.fillStyle = '#f1f1f1';
-    ctx.font = '16px Inter';
+    ctx.font = '16px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('No data available', displayWidth / 2, displayHeight / 2);
     return;
   }
 
@@ -313,20 +313,32 @@ function createChart(data, filteredTrends = 'all') {
     '#84cc16', '#f472b6', '#a855f7', '#22d3ee', '#fb923c', '#34d399', '#fbbf24', '#f87171'
   ];
 
+  // Ensure we have valid trends with data
+  if (trendNames.length === 0) {
+    ctx.fillStyle = '#f1f1f1';
+    ctx.font = '16px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('No trend data available', displayWidth / 2, displayHeight / 2);
+    return;
+  }
+
   // Find max value for scaling (only from visible trends)
-  const maxValue = Math.max(...data.flatMap(d => 
-    trendNames.map(trend => d[trend] || 0).filter(v => typeof v === 'number')
-  ));
+  const allValues = data.flatMap(d => 
+    trendNames.map(trend => d[trend] || 0).filter(v => typeof v === 'number' && v > 0)
+  );
+  
+  const maxValue = allValues.length > 0 ? Math.max(...allValues) : 1;
 
   // Calculate final positions for all points
   const finalPositions = [];
   trendNames.forEach((trendName, trendIndex) => {
     const positions = [];
     data.forEach((item, index) => {
-      if (item[trendName] !== undefined) {
+      const value = item[trendName];
+      if (value !== undefined && value !== null && typeof value === 'number') {
         const x = padding + (chartWidth * index) / (data.length - 1);
-        const y = padding + legendHeight + chartHeight - ((item[trendName] / maxValue) * chartHeight);
-        positions.push({ x, y, value: item[trendName] });
+        const y = padding + legendHeight + chartHeight - ((value / maxValue) * chartHeight);
+        positions.push({ x, y, value });
       }
     });
     finalPositions.push(positions);
@@ -370,70 +382,33 @@ function createChart(data, filteredTrends = 'all') {
     ctx.font = 'bold 12px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
 
-    // Generate date labels based on actual data dates
-    const dateLabels = [];
-    const dataLength = data.length;
+    // Simplified x-axis labels
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dataLength = data.length;
+    
+    // Show every other label to prevent overcrowding
+    const labelStep = Math.max(1, Math.floor(dataLength / 6));
     
     data.forEach((item, index) => {
-      let displayLabel = item.date;
-      let isYearLabel = false;
-      
-      // Parse the date format (could be M/D or M/YYYY)
-      if (item.date.includes('/')) {
-        const dateParts = item.date.split('/');
-        if (dateParts.length === 2) {
-          const month = parseInt(dateParts[0]) - 1; // Convert to 0-based
-          const dayOrYear = parseInt(dateParts[1]);
-          
-          if (dayOrYear > 31) {
-            // This is M/YYYY format
-            displayLabel = `${monthNames[month]} ${dayOrYear}`;
-            isYearLabel = true;
-          } else {
-            // This is M/D format - show current year for context
-            const currentYear = new Date().getFullYear();
-            displayLabel = index === 0 || index === dataLength - 1 ? 
-              `${monthNames[month]} ${currentYear}` : 
-              monthNames[month];
-            isYearLabel = index === 0 || index === dataLength - 1;
+      if (index % labelStep === 0 || index === dataLength - 1) {
+        const x = padding + (chartWidth * index) / (dataLength - 1);
+        let label = item.date;
+        
+        // Try to format the date nicely
+        if (item.date && item.date.includes('/')) {
+          const parts = item.date.split('/');
+          if (parts.length === 2) {
+            const month = parseInt(parts[0]) - 1;
+            if (month >= 0 && month < 12) {
+              label = monthNames[month];
+            }
           }
         }
-      }
-      
-      dateLabels.push({
-        x: padding + (chartWidth * index) / (dataLength - 1),
-        label: displayLabel,
-        isYearLabel: isYearLabel,
-        month: parseInt(item.date.split('/')[0]) - 1,
-        year: new Date().getFullYear()
-      });
-    });
-
-    // Calculate optimal spacing to prevent overlap
-    const minSpacing = dataLength > 12 ? Math.ceil(dataLength / 6) : dataLength > 6 ? 2 : 1;
-    
-    dateLabels.forEach((labelData, index) => {
-      // Show labels with proper spacing
-      const shouldShow = index % minSpacing === 0 || 
-                        index === dataLength - 1 || 
-                        labelData.isYearLabel;
-      
-      if (shouldShow) {
-        // Draw year separator line
-        if (labelData.isYearLabel && index > 0) {
-          ctx.strokeStyle = '#374151';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(labelData.x, padding + legendHeight);
-          ctx.lineTo(labelData.x, padding + legendHeight + chartHeight);
-          ctx.stroke();
-        }
-
-        // Draw the label
-        ctx.fillStyle = labelData.isYearLabel ? '#f1f1f1' : '#9ca3af';
-        ctx.font = labelData.isYearLabel ? 'bold 12px Satoshi' : '11px Satoshi';
-        ctx.fillText(labelData.label, labelData.x, padding + legendHeight + chartHeight + 20);
+        
+        ctx.fillStyle = '#9ca3af';
+        ctx.font = '11px Satoshi, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, x, padding + legendHeight + chartHeight + 20);
       }
     });
 
