@@ -178,6 +178,41 @@ CREATE TABLE IF NOT EXISTS youtube_alerts (
     published_at TIMESTAMP WITH TIME ZONE
 );
 
+-- Trend Insights Table for Cultural Trend Analysis
+CREATE TABLE IF NOT EXISTS trend_insights (
+    id BIGSERIAL PRIMARY KEY,
+    trend_name VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    total_videos INTEGER DEFAULT 0,
+    total_reach BIGINT DEFAULT 0,
+    engagement_rate DECIMAL(10, 3) DEFAULT 0,
+    wave_score DECIMAL(10, 6) DEFAULT 0,
+    sentiment_score DECIMAL(5, 4) DEFAULT 0,
+    trend_score DECIMAL(10, 3) DEFAULT 0,
+    data_sources TEXT DEFAULT '["YouTube"]',
+    analysis_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    top_video_title TEXT,
+    top_video_views BIGINT DEFAULT 0,
+    geographic_regions TEXT,
+    influencer_involvement TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(trend_name, analysis_date::DATE)
+);
+
+-- Create indexes for trend insights
+CREATE INDEX IF NOT EXISTS idx_trend_insights_trend_name ON trend_insights(trend_name);
+CREATE INDEX IF NOT EXISTS idx_trend_insights_category ON trend_insights(category);
+CREATE INDEX IF NOT EXISTS idx_trend_insights_wave_score ON trend_insights(wave_score DESC);
+CREATE INDEX IF NOT EXISTS idx_trend_insights_analysis_date ON trend_insights(analysis_date DESC);
+CREATE INDEX IF NOT EXISTS idx_trend_insights_total_reach ON trend_insights(total_reach DESC);
+
+-- Enable Row Level Security for trend insights
+ALTER TABLE trend_insights ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for trend insights
+CREATE POLICY "Allow public access to trend_insights" ON trend_insights
+    FOR ALL USING (true);
+
 -- Add any additional indexes as needed
 CREATE INDEX IF NOT EXISTS idx_youtube_data_published_date ON youtube_data(published_date);
 CREATE INDEX IF NOT EXISTS idx_youtube_data_category ON youtube_data(category);

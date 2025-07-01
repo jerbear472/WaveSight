@@ -61,6 +61,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "python alert_scheduler.py"
 
+[[workflows.workflow]]
+name = "Cultural Trend Analysis"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python cultural_trend_processor.py"
+
 [[ports]]
 localPort = 80
 externalPort = 80

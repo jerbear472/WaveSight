@@ -408,6 +408,174 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+// Process and store trend insights
+app.post('/api/process-trends', async (req, res) => {
+  try {
+    console.log('🧠 Processing cultural trends and insights...');
+    
+    // Get recent YouTube data
+    const { data: youtubeData, error: ytError } = await supabase
+      .from('youtube_trends')
+      .select('*')
+      .gte('published_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
+      .order('published_at', { ascending: false });
+
+    if (ytError) throw ytError;
+
+    if (!youtubeData || youtubeData.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No recent data to process',
+        insights: []
+      });
+    }
+
+    // Group by trend categories and calculate insights
+    const trendGroups = {};
+    const culturalCategories = {
+      'Gen Z Internet Culture': ['aesthetic', 'vibe', 'tiktok', 'viral', 'meme', 'corecore'],
+      'Urban Style & Nightlife': ['streetwear', 'fashion', 'style', 'nightlife', 'club'],
+      'Tech Innovation': ['ai', 'tech', 'blockchain', 'crypto', 'innovation', 'startup'],
+      'Wellness & Mindfulness': ['health', 'fitness', 'wellness', 'meditation', 'mindful'],
+      'Entertainment & Media': ['movie', 'music', 'celebrity', 'entertainment', 'tv'],
+      'Gaming Culture': ['gaming', 'game', 'esports', 'streamer', 'twitch'],
+      'Financial Markets': ['finance', 'trading', 'investment', 'money', 'stocks'],
+      'Food & Lifestyle': ['food', 'cooking', 'recipe', 'lifestyle', 'diet']
+    };
+
+    // Categorize videos
+    youtubeData.forEach(video => {
+      const title = (video.title || '').toLowerCase();
+      const description = (video.description || '').toLowerCase();
+      const content = `${title} ${description}`;
+
+      let bestCategory = 'Emerging Subcultures';
+      let bestScore = 0;
+
+      for (const [category, keywords] of Object.entries(culturalCategories)) {
+        let score = 0;
+        keywords.forEach(keyword => {
+          if (content.includes(keyword)) score += 1;
+        });
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestCategory = category;
+        }
+      }
+
+      if (!trendGroups[bestCategory]) {
+        trendGroups[bestCategory] = [];
+      }
+      trendGroups[bestCategory].push(video);
+    });
+
+    // Calculate insights for each trend
+    const insights = [];
+    
+    for (const [trendName, videos] of Object.entries(trendGroups)) {
+      if (videos.length >= 2) { // Only process trends with multiple videos
+        const totalViews = videos.reduce((sum, v) => sum + (v.view_count || 0), 0);
+        const totalLikes = videos.reduce((sum, v) => sum + (v.like_count || 0), 0);
+        const totalComments = videos.reduce((sum, v) => sum + (v.comment_count || 0), 0);
+        const avgScore = videos.reduce((sum, v) => sum + (v.trend_score || 0), 0) / videos.length;
+        
+        const engagementRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews * 100) : 0;
+        
+        // Calculate wave score
+        const lastViewCount = Math.max(totalViews * 0.8, totalViews - 100000);
+        const growthFactor = lastViewCount > 0 ? Math.min((totalViews - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
+        const engagementFactor = totalViews > 0 ? Math.min((totalLikes + totalComments) / totalViews * 1000, 1.0) : 0;
+        const volumeFactor = Math.min(totalViews / 10000000, 1.0);
+        const sentimentScore = 0.5 + (Math.random() * 0.3); // Mock sentiment for now
+        const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + sentimentScore * 0.2);
+
+        const insight = {
+          trend_name: trendName,
+          category: trendName,
+          total_videos: videos.length,
+          total_reach: totalViews,
+          engagement_rate: Math.round(engagementRate * 100) / 100,
+          wave_score: Math.round(waveScore * 1000) / 1000,
+          sentiment_score: Math.round(sentimentScore * 1000) / 1000,
+          trend_score: Math.round(avgScore * 100) / 100,
+          data_sources: JSON.stringify(['YouTube']),
+          analysis_date: new Date().toISOString(),
+          top_video_title: videos[0]?.title || '',
+          top_video_views: Math.max(...videos.map(v => v.view_count || 0))
+        };
+
+        insights.push(insight);
+      }
+    }
+
+    // Store insights in database
+    if (insights.length > 0) {
+      const { data: savedInsights, error: insertError } = await supabase
+        .from('trend_insights')
+        .upsert(insights, { onConflict: 'trend_name,analysis_date' })
+        .select();
+
+      if (insertError) {
+        console.error('❌ Error saving trend insights:', insertError);
+        throw insertError;
+      }
+
+      console.log(`✅ Processed and saved ${insights.length} trend insights`);
+    }
+
+    res.json({
+      success: true,
+      message: `Processed ${insights.length} cultural trends`,
+      insights: insights,
+      categories_found: Object.keys(trendGroups).length,
+      total_videos_processed: youtubeData.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error processing trends:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+// Get trend insights
+app.get('/api/trend-insights', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const category = req.query.category || null;
+
+    let query = supabase
+      .from('trend_insights')
+      .select('*')
+      .order('analysis_date', { ascending: false })
+      .limit(limit);
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      insights: data || [],
+      count: data?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching trend insights:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
 // Get alerts from database
 app.get('/api/alerts', async (req, res) => {
   try {

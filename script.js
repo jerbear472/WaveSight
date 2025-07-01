@@ -336,7 +336,7 @@ function createChart(data, filteredTrends = 'all') {
 
   // Get all trend names and validate them
   let allTrendNames = [...new Set(validData.flatMap(d => Object.keys(d).filter(k => k !== 'date')))];
-  
+
   if (allTrendNames.length === 0) {
     console.log('❌ No trend names found in data');
     ctx.fillStyle = '#f1f1f1';
@@ -368,7 +368,7 @@ function createChart(data, filteredTrends = 'all') {
   } else {
     // For specific search/filter, show ONLY the specified trend
     console.log(`🔍 Filtering chart for specific trend: "${filteredTrends}"`);
-    
+
     if (nonZeroTrends.includes(filteredTrends)) {
       trendNames = [filteredTrends];
       console.log(`🎯 Showing existing trend: [${filteredTrends}]`);
@@ -2390,7 +2390,7 @@ async function resetDateFilter() {
 
     if (allData && allData.length > 0) {
       console.log(`✅ Got ${allData.length} videos for default view`);
-      
+
       // Process data to show all default trends
       const chartData = processSupabaseDataForChart(allData);
       currentData = { chartData, tableData: allData };
@@ -2541,7 +2541,7 @@ async function fetchBulkData(categories = 'all', totalResults = 1000) {
 async function fetchMassiveDataset(targetRows = 10000) {
   try {
     console.log(`🚀 Initiating massive data fetch: ${targetRows} target videos`);
-    
+
     // Show enhanced loading with progress
     const loadingOverlay = document.createElement('div');
     loadingOverlay.id = 'massiveLoadingOverlay';
@@ -2558,14 +2558,14 @@ async function fetchMassiveDataset(targetRows = 10000) {
     // Fetch data in categories to maximize diversity
     const categories = ['tech', 'entertainment', 'gaming', 'lifestyle', 'education', 'business', 'sports', 'news', 'automotive'];
     const videosPerCategory = Math.ceil(targetRows / categories.length);
-    
+
     let totalFetched = 0;
     let allResults = [];
 
     for (let i = 0; i < categories.length; i++) {
       const category = categories[i];
       const progressDetails = document.querySelector('.progress-details');
-      
+
       if (progressDetails) {
         progressDetails.textContent = `Fetching ${category} trends... (${i + 1}/${categories.length})`;
       }
@@ -2579,7 +2579,7 @@ async function fetchMassiveDataset(targetRows = 10000) {
           totalFetched += result.count;
           allResults.push(result);
           console.log(`✅ ${category}: ${result.count} videos (total: ${totalFetched})`);
-          
+
           if (progressDetails) {
             progressDetails.textContent = `Collected ${totalFetched.toLocaleString()} videos so far...`;
           }
@@ -2599,7 +2599,7 @@ async function fetchMassiveDataset(targetRows = 10000) {
     if (overlay) overlay.remove();
 
     console.log(`🎉 Massive fetch completed! Total videos: ${totalFetched}`);
-    
+
     // Show success message
     const successDiv = document.createElement('div');
     successDiv.innerHTML = `
@@ -2621,7 +2621,7 @@ async function fetchMassiveDataset(targetRows = 10000) {
     console.error('❌ Error in massive fetch:', error);
     const overlay = document.getElementById('massiveLoadingOverlay');
     if (overlay) overlay.remove();
-    
+
     alert(`Error fetching massive dataset: ${error.message}`);
     return null;
   }
@@ -2695,6 +2695,49 @@ async function resetToDefaultView() {
       createChart(currentData.chartData, 'all');
       createTrendTable(currentData.tableData);
     }
+  }
+}
+
+// Show notification
+function showNotification(message, type = 'info') {
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+
+  document.body.appendChild(notification);
+
+  // Remove the notification after 3 seconds
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+// Process cultural trends
+async function processCulturalTrends() {
+  try {
+    console.log('🧠 Processing cultural trends...');
+
+    const response = await fetch('/api/process-trends', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      console.log(`✅ Processed ${data.insights.length} cultural trends`);
+
+      // Refresh the insights display
+      await fetchTrendInsights();
+
+      // Show success message
+      showNotification(`🧠 Processed ${data.insights.length} cultural trends!`, 'success');
+    } else {
+      throw new Error(data.message);
+    }
+  } catch (error) {
+    console.error('❌ Error processing trends:', error);
+    showNotification('❌ Failed to process cultural trends', 'error');
   }
 }
 
@@ -2782,7 +2825,7 @@ window.searchExistingDataOnly = searchExistingDataOnly;
 async function generateSyntheticData(count = 5000) {
   try {
     console.log(`🎯 Generating ${count} synthetic trend records...`);
-    
+
     const loadingOverlay = document.createElement('div');
     loadingOverlay.id = 'syntheticLoadingOverlay';
     loadingOverlay.innerHTML = `
@@ -2799,7 +2842,7 @@ async function generateSyntheticData(count = 5000) {
 
     if (result.success) {
       console.log(`✅ Generated ${result.count} synthetic records`);
-      
+
       // Clean up loading overlay
       const overlay = document.getElementById('syntheticLoadingOverlay');
       if (overlay) overlay.remove();
@@ -3087,6 +3130,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     console.log('📊 Showing fallback default trends after error');
   }
+
+  // Start the periodic trend processing (e.g., every 6 hours)
+  setInterval(processCulturalTrends, 6 * 60 * 60 * 1000);
+
+  // Fetch initial trend insights
+  await fetchTrendInsights();
 });
 
 async function analyzeWaveScore(trendName) {
