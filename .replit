@@ -70,6 +70,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "python cultural_trend_processor.py"
 
+[[workflows.workflow]]
+name = "Process Cultural Trends"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python cultural_trend_processor.py"
+
 [[ports]]
 localPort = 80
 externalPort = 80
