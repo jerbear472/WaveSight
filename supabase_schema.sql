@@ -156,9 +156,12 @@ CREATE TRIGGER update_sentiment_forecasts_updated_at
 
 -- YouTube Alerts Table
 CREATE TABLE IF NOT EXISTS youtube_alerts (
-    alert_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    video_id VARCHAR(20) NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    alert_id VARCHAR(255) UNIQUE NOT NULL,
+    alert_type VARCHAR(100) DEFAULT 'TRENDING_VIDEO',
+    video_id VARCHAR(50) NOT NULL,
     title TEXT NOT NULL,
+    description TEXT,
     channel_title VARCHAR(255),
     view_count BIGINT DEFAULT 0,
     like_count BIGINT DEFAULT 0,
@@ -168,10 +171,9 @@ CREATE TABLE IF NOT EXISTS youtube_alerts (
     sentiment_score DECIMAL(5, 4) DEFAULT 0,
     severity VARCHAR(20) DEFAULT 'LOW' CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
     reason TEXT,
-    triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    dismissed BOOLEAN DEFAULT FALSE,
-    dismissed_at TIMESTAMP WITH TIME ZONE,
+    processed BOOLEAN DEFAULT FALSE,
+    notified BOOLEAN DEFAULT FALSE,
     category VARCHAR(100),
     published_at TIMESTAMP WITH TIME ZONE
 );
