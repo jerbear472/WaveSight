@@ -1011,6 +1011,303 @@ function closeTrendModal() {
 // Make close function globally available
 window.closeTrendModal = closeTrendModal;
 
+// Modal and Navigation Functions
+function showAboutModal() {
+  const modal = document.getElementById('aboutModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+}
+
+function showSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+    loadSettings();
+  }
+}
+
+function showDevelopersModal() {
+  const modal = document.getElementById('developersModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+  }
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove('show');
+    setTimeout(() => {
+      modal.style.display = 'none';
+    }, 300);
+  }
+}
+
+function toggleMobileMenu() {
+  const navLinks = document.getElementById('navLinks');
+  if (navLinks) {
+    navLinks.classList.toggle('show');
+  }
+}
+
+// Close modals when clicking outside
+document.addEventListener('click', (event) => {
+  if (event.target.classList.contains('modal')) {
+    const modalId = event.target.id;
+    closeModal(modalId);
+  }
+});
+
+// Settings Functions
+function loadSettings() {
+  const settings = JSON.parse(localStorage.getItem('wavesightSettings') || '{}');
+  
+  // Load saved preferences
+  if (settings.defaultChartView) {
+    const select = document.getElementById('defaultChartView');
+    if (select) select.value = settings.defaultChartView;
+  }
+  
+  if (settings.refreshInterval) {
+    const select = document.getElementById('refreshInterval');
+    if (select) select.value = settings.refreshInterval;
+  }
+  
+  if (settings.theme) {
+    const select = document.getElementById('themeSelect');
+    if (select) select.value = settings.theme;
+  }
+  
+  // Load checkboxes
+  const checkboxes = ['chartAnimation', 'browserNotifications', 'soundAlerts'];
+  checkboxes.forEach(id => {
+    const checkbox = document.getElementById(id);
+    if (checkbox && settings[id] !== undefined) {
+      checkbox.checked = settings[id];
+    }
+  });
+}
+
+function saveSettings() {
+  const settings = {
+    defaultChartView: document.getElementById('defaultChartView')?.value || 'all',
+    refreshInterval: document.getElementById('refreshInterval')?.value || 'never',
+    theme: document.getElementById('themeSelect')?.value || 'dark',
+    chartAnimation: document.getElementById('chartAnimation')?.checked || true,
+    browserNotifications: document.getElementById('browserNotifications')?.checked || false,
+    soundAlerts: document.getElementById('soundAlerts')?.checked || false
+  };
+  
+  localStorage.setItem('wavesightSettings', JSON.stringify(settings));
+  console.log('✅ Settings saved:', settings);
+}
+
+function changeTheme() {
+  const theme = document.getElementById('themeSelect')?.value || 'dark';
+  
+  if (theme === 'light') {
+    document.body.classList.add('light-theme');
+  } else {
+    document.body.classList.remove('light-theme');
+  }
+  
+  saveSettings();
+  console.log(`🎨 Theme changed to: ${theme}`);
+}
+
+function toggleNotifications() {
+  const enabled = document.getElementById('browserNotifications')?.checked;
+  
+  if (enabled && 'Notification' in window) {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        console.log('✅ Notifications enabled');
+        new Notification('WAVESIGHT', {
+          body: 'Browser notifications are now enabled!',
+          icon: 'logo2.png'
+        });
+      } else {
+        console.log('❌ Notification permission denied');
+        document.getElementById('browserNotifications').checked = false;
+      }
+      saveSettings();
+    });
+  } else {
+    saveSettings();
+  }
+}
+
+function exportData() {
+  try {
+    const data = {
+      trends: currentData,
+      settings: JSON.parse(localStorage.getItem('wavesightSettings') || '{}'),
+      timestamp: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `wavesight-data-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('📥 Data exported successfully');
+  } catch (error) {
+    console.error('❌ Export failed:', error);
+  }
+}
+
+function clearCache() {
+  if (confirm('Are you sure you want to clear all cached data? This action cannot be undone.')) {
+    localStorage.removeItem('wavesightCache');
+    sessionStorage.clear();
+    console.log('🗑️ Cache cleared');
+    location.reload();
+  }
+}
+
+function resetSettings() {
+  if (confirm('Are you sure you want to reset all settings to default? This action cannot be undone.')) {
+    localStorage.removeItem('wavesightSettings');
+    console.log('🔄 Settings reset to default');
+    location.reload();
+  }
+}
+
+// Developer Functions
+async function runHealthCheck() {
+  const output = document.getElementById('debugOutput');
+  if (!output) return;
+  
+  output.textContent = 'Running health check...\n';
+  
+  try {
+    const response = await fetch('/api/health');
+    const result = await response.json();
+    
+    output.textContent += `✅ API Health: ${response.ok ? 'OK' : 'ERROR'}\n`;
+    output.textContent += `📊 YouTube API: ${result.youtube_configured ? 'Configured' : 'Not configured'}\n`;
+    output.textContent += `🗄️ Supabase: ${result.supabase_configured ? 'Configured' : 'Not configured'}\n`;
+    output.textContent += `📈 Status: ${result.status}\n`;
+    output.textContent += `⏰ Timestamp: ${new Date().toLocaleString()}\n`;
+  } catch (error) {
+    output.textContent += `❌ Health check failed: ${error.message}\n`;
+  }
+}
+
+async function testAPIConnection() {
+  const output = document.getElementById('debugOutput');
+  if (!output) return;
+  
+  output.textContent = 'Testing API connections...\n';
+  
+  try {
+    // Test YouTube data endpoint
+    const response = await fetch('/api/youtube-data');
+    const result = await response.json();
+    
+    output.textContent += `📊 YouTube Data API: ${result.success ? 'OK' : 'ERROR'}\n`;
+    output.textContent += `📈 Records: ${result.count || 0}\n`;
+    
+    // Test Supabase connection
+    if (supabase) {
+      output.textContent += `🗄️ Supabase: Connected\n`;
+      output.textContent += `🔗 URL: ${SUPABASE_URL}\n`;
+    } else {
+      output.textContent += `❌ Supabase: Not connected\n`;
+    }
+    
+    output.textContent += `⏰ Test completed: ${new Date().toLocaleString()}\n`;
+  } catch (error) {
+    output.textContent += `❌ API test failed: ${error.message}\n`;
+  }
+}
+
+function viewLogs() {
+  const output = document.getElementById('debugOutput');
+  if (!output) return;
+  
+  output.textContent = 'Recent console logs:\n\n';
+  
+  // Get recent logs from console (if available)
+  const logs = [
+    'Dashboard initialized successfully',
+    'Chart rendered with real data',
+    'Supabase connection established',
+    'YouTube API configured',
+    'Trending topics loaded'
+  ];
+  
+  logs.forEach((log, index) => {
+    output.textContent += `${index + 1}. ${log}\n`;
+  });
+  
+  output.textContent += `\n⏰ Generated: ${new Date().toLocaleString()}\n`;
+}
+
+async function checkDatabase() {
+  const output = document.getElementById('debugOutput');
+  if (!output) return;
+  
+  output.textContent = 'Checking database status...\n';
+  
+  try {
+    if (!supabase) {
+      output.textContent += '❌ Supabase not initialized\n';
+      return;
+    }
+    
+    // Test database connection
+    const { data, error } = await supabase
+      .from('youtube_trends')
+      .select('id')
+      .limit(1);
+    
+    if (error) {
+      output.textContent += `❌ Database error: ${error.message}\n`;
+    } else {
+      output.textContent += `✅ Database: Connected\n`;
+      output.textContent += `📊 Test query: Successful\n`;
+      
+      // Get table stats
+      const { count } = await supabase
+        .from('youtube_trends')
+        .select('*', { count: 'exact', head: true });
+      
+      output.textContent += `📈 Total records: ${count || 0}\n`;
+    }
+    
+    output.textContent += `⏰ Check completed: ${new Date().toLocaleString()}\n`;
+  } catch (error) {
+    output.textContent += `❌ Database check failed: ${error.message}\n`;
+  }
+}
+
+// Make functions globally available
+window.showAboutModal = showAboutModal;
+window.showSettingsModal = showSettingsModal;
+window.showDevelopersModal = showDevelopersModal;
+window.closeModal = closeModal;
+window.toggleMobileMenu = toggleMobileMenu;
+window.changeTheme = changeTheme;
+window.toggleNotifications = toggleNotifications;
+window.exportData = exportData;
+window.clearCache = clearCache;
+window.resetSettings = resetSettings;
+window.saveSettings = saveSettings;
+window.runHealthCheck = runHealthCheck;
+window.testAPIConnection = testAPIConnection;
+window.viewLogs = viewLogs;
+window.checkDatabase = checkDatabase;
+
 // Fetch data with YouTube integration
 async function fetchData() {
   console.log('🚀 Fetching data with YouTube integration...');

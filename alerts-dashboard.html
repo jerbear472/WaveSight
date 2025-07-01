@@ -197,10 +197,13 @@
                 <img src="logo2.png" alt="Logo" class="logo-icon">
                 <span class="logo-text">WAVESIGHT</span>
             </div>
-            <div class="nav-links">
+            <div class="nav-links" id="navLinks">
                 <a href="index.html" class="nav-link">Trends</a>
                 <a href="sentiment-dashboard.html" class="nav-link">Sentiment</a>
                 <a href="alerts-dashboard.html" class="nav-link active">Alerts</a>
+                <a href="#about" class="nav-link" onclick="showAboutModal()">About Us</a>
+                <a href="#settings" class="nav-link" onclick="showSettingsModal()">Settings</a>
+                <a href="#developers" class="nav-link" onclick="showDevelopersModal()">For Developers</a>
             </div>
             <div class="auth-section">
                 <div id="userSection" class="user-section" style="display: none;">
@@ -210,7 +213,7 @@
                     <script authed="handleAuthSuccess(window.replit.user)" src="https://auth.util.repl.co/script.js"></script>
                 </div>
             </div>
-            <button class="menu-btn">☰</button>
+            <button class="menu-btn" onclick="toggleMobileMenu()">☰</button>
         </div>
 
         <div class="header">
@@ -245,9 +248,9 @@
 
         <main class="alerts-container"></main>
 
-        
 
-        
+
+
 
         <div class="chart-section">
             <h2>Alert Statistics</h2>
@@ -532,12 +535,55 @@
                 alert('Error dismissing alert: ' + error.message);
             }
         }
+
+        function toggleMobileMenu() {
+            var navLinks = document.getElementById("navLinks");
+            navLinks.style.display = (navLinks.style.display === "flex") ? "none" : "flex";
+        }
+
+        function showAboutModal() {
+            alert("About Us: Wavesight provides real-time YouTube trend monitoring.");
+        }
+
+        function showSettingsModal() {
+            alert("Settings: Configure your alert preferences here.");
+        }
+
+        function showDevelopersModal() {
+            alert("For Developers: API documentation and developer resources.");
+        }
     </script>
 
     <style>
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* Mobile menu styles */
+        @media screen and (max-width: 768px) {
+            .nav-links {
+                display: none;
+                flex-direction: column;
+                width: 100%;
+                text-align: center;
+            }
+            .nav-links a {
+                padding: 10px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .menu-btn {
+                display: block;
+                background: none;
+                border: none;
+                color: white;
+                font-size: 24px;
+                cursor: pointer;
+            }
+        }
+
+        .menu-btn {
+            display: none; /* Hidden by default, shown on smaller screens */
         }
         </style>
 </body>

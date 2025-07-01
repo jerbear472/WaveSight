@@ -23,11 +23,13 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                 <img src="logo2.png" alt="Logo" class="logo-icon">
                 <span class="logo-text">WAVESIGHT</span>
             </div>
-            <div class="nav-links">
+            <div class="nav-links" id="navLinks">
                 <a href="index.html" class="nav-link active">Trends</a>
                 <a href="sentiment-dashboard.html" class="nav-link">Sentiment</a>
                 <a href="alerts-dashboard.html" class="nav-link">Alerts</a>
-                
+                <a href="#about" class="nav-link" onclick="showAboutModal()">About Us</a>
+                <a href="#settings" class="nav-link" onclick="showSettingsModal()">Settings</a>
+                <a href="#developers" class="nav-link" onclick="showDevelopersModal()">For Developers</a>
             </div>
             <div class="auth-section">
                 <div id="userSection" class="user-section" style="display: none;">
@@ -37,7 +39,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                     <script authed="handleAuthSuccess(window.replit.user)" src="https://auth.util.repl.co/script.js"></script>
                 </div>
             </div>
-            <button class="menu-btn">☰</button>
+            <button class="menu-btn" onclick="toggleMobileMenu()">☰</button>
         </div>
 
         <div class="header">
@@ -141,6 +143,200 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                     <!-- Table content will be populated by JavaScript -->
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- About Us Modal -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>About WAVESIGHT</h2>
+                <button class="modal-close" onclick="closeModal('aboutModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="about-section">
+                    <h3>🌊 Mission</h3>
+                    <p>WAVESIGHT is the premier trending analytics platform that transforms how you understand and predict digital trends. We combine real-time data collection with advanced analytics to provide unprecedented insights into emerging patterns across social media and digital platforms.</p>
+                    
+                    <h3>🚀 Features</h3>
+                    <ul>
+                        <li><strong>Real-time Trend Analysis:</strong> Track trending topics as they emerge and evolve</li>
+                        <li><strong>Sentiment Analysis:</strong> Understand public sentiment and emotional responses</li>
+                        <li><strong>Predictive Insights:</strong> AI-powered trend forecasting and pattern recognition</li>
+                        <li><strong>Interactive Visualizations:</strong> Dynamic charts and dashboards for data exploration</li>
+                        <li><strong>Custom Alerts:</strong> Get notified when trends match your criteria</li>
+                    </ul>
+                    
+                    <h3>📊 Data Sources</h3>
+                    <p>We aggregate data from multiple sources including YouTube, social media platforms, and news outlets to provide comprehensive trend coverage.</p>
+                    
+                    <h3>💡 Innovation</h3>
+                    <p>Built with cutting-edge technology including Canvas-based visualizations, real-time data processing, and advanced machine learning algorithms for trend prediction.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Settings</h2>
+                <button class="modal-close" onclick="closeModal('settingsModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>📊 Dashboard Preferences</h3>
+                    <div class="setting-item">
+                        <label>Default Chart View:</label>
+                        <select id="defaultChartView" onchange="saveSettings()">
+                            <option value="all">All Trends</option>
+                            <option value="top5">Top 5 Trends</option>
+                            <option value="categories">By Categories</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label>Auto-refresh Interval:</label>
+                        <select id="refreshInterval" onchange="saveSettings()">
+                            <option value="never">Manual Only</option>
+                            <option value="5min">Every 5 minutes</option>
+                            <option value="15min">Every 15 minutes</option>
+                            <option value="1hour">Every hour</option>
+                        </select>
+                    </div>
+                    
+                    <h3>🎨 Appearance</h3>
+                    <div class="setting-item">
+                        <label>Theme:</label>
+                        <select id="themeSelect" onchange="changeTheme()">
+                            <option value="dark">Dark (Default)</option>
+                            <option value="light">Light</option>
+                            <option value="auto">Auto (System)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label>Chart Animation:</label>
+                        <input type="checkbox" id="chartAnimation" checked onchange="saveSettings()">
+                        <span>Enable smooth animations</span>
+                    </div>
+                    
+                    <h3>🔔 Notifications</h3>
+                    <div class="setting-item">
+                        <label>Browser Notifications:</label>
+                        <input type="checkbox" id="browserNotifications" onchange="toggleNotifications()">
+                        <span>Allow browser notifications for alerts</span>
+                    </div>
+                    
+                    <div class="setting-item">
+                        <label>Sound Alerts:</label>
+                        <input type="checkbox" id="soundAlerts" onchange="saveSettings()">
+                        <span>Play sound for trend alerts</span>
+                    </div>
+                    
+                    <h3>💾 Data Management</h3>
+                    <div class="setting-item">
+                        <button class="settings-btn" onclick="exportData()">📥 Export Data</button>
+                        <button class="settings-btn" onclick="clearCache()">🗑️ Clear Cache</button>
+                        <button class="settings-btn" onclick="resetSettings()">🔄 Reset Settings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- For Developers Modal -->
+    <div id="developersModal" class="modal">
+        <div class="modal-content large-modal">
+            <div class="modal-header">
+                <h2>👨‍💻 For Developers</h2>
+                <button class="modal-close" onclick="closeModal('developersModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="developers-section">
+                    <h3>🛠️ API Documentation</h3>
+                    <div class="api-section">
+                        <h4>Endpoints</h4>
+                        <div class="api-endpoint">
+                            <code>GET /api/youtube-data</code>
+                            <p>Fetch trending YouTube data with optional filters</p>
+                        </div>
+                        <div class="api-endpoint">
+                            <code>GET /api/fetch-youtube?q=search&maxResults=50</code>
+                            <p>Search for specific trending content</p>
+                        </div>
+                        <div class="api-endpoint">
+                            <code>GET /api/health</code>
+                            <p>Check API health and configuration status</p>
+                        </div>
+                        <div class="api-endpoint">
+                            <code>POST /api/process-trends</code>
+                            <p>Trigger cultural trend analysis processing</p>
+                        </div>
+                    </div>
+                    
+                    <h3>🔧 Configuration</h3>
+                    <div class="config-section">
+                        <h4>Required Environment Variables</h4>
+                        <div class="env-var">
+                            <code>YOUTUBE_API_KEY</code> - YouTube Data API v3 key
+                        </div>
+                        <div class="env-var">
+                            <code>SUPABASE_URL</code> - Supabase project URL
+                        </div>
+                        <div class="env-var">
+                            <code>SUPABASE_ANON_KEY</code> - Supabase anonymous key
+                        </div>
+                        <div class="env-var">
+                            <code>OPENAI_API_KEY</code> - OpenAI API key (optional)
+                        </div>
+                    </div>
+                    
+                    <h3>📊 Architecture</h3>
+                    <div class="architecture-section">
+                        <h4>Frontend Stack</h4>
+                        <ul>
+                            <li>HTML5 with semantic structure</li>
+                            <li>CSS3 with modern animations and gradients</li>
+                            <li>Vanilla JavaScript with Canvas API charts</li>
+                            <li>Responsive design for all devices</li>
+                        </ul>
+                        
+                        <h4>Backend Services</h4>
+                        <ul>
+                            <li>Node.js Express server (Port 5000)</li>
+                            <li>Python Flask sentiment server (Port 5001)</li>
+                            <li>Supabase PostgreSQL database</li>
+                            <li>YouTube Data API v3 integration</li>
+                        </ul>
+                    </div>
+                    
+                    <h3>🚀 Deployment</h3>
+                    <div class="deployment-section">
+                        <h4>Replit Workflows</h4>
+                        <ul>
+                            <li><strong>YouTube API Server:</strong> Main backend service</li>
+                            <li><strong>Sentiment Analysis Server:</strong> Text analysis service</li>
+                            <li><strong>Static Web Server:</strong> Frontend hosting</li>
+                            <li><strong>Cultural Trend Analysis:</strong> Advanced analytics</li>
+                        </ul>
+                        
+                        <h4>Database Schema</h4>
+                        <p>Check <code>supabase_schema.sql</code> for complete table structure and indexes.</p>
+                    </div>
+                    
+                    <h3>🔍 Debugging</h3>
+                    <div class="debug-section">
+                        <button class="debug-btn" onclick="runHealthCheck()">🏥 Health Check</button>
+                        <button class="debug-btn" onclick="testAPIConnection()">🔗 Test API</button>
+                        <button class="debug-btn" onclick="viewLogs()">📝 View Logs</button>
+                        <button class="debug-btn" onclick="checkDatabase()">🗄️ Check Database</button>
+                    </div>
+                    
+                    <div id="debugOutput" class="debug-output"></div>
+                </div>
+            </div>
         </div>
     </div>
 
