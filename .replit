@@ -43,6 +43,24 @@ mode = "sequential"
 task = "shell.exec"
 args = "python sentiment_server.py"
 
+[[workflows.workflow]]
+name = "YouTube Alert System"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python youtube_alert_system.py"
+
+[[workflows.workflow]]
+name = "Continuous Alert Monitoring"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python alert_scheduler.py"
+
 [[ports]]
 localPort = 80
 externalPort = 80

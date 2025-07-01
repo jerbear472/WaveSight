@@ -1,34 +1,33 @@
-
 -- Create YouTube trends table in your Supabase database
 -- Run this SQL in your Supabase SQL editor
 
 CREATE TABLE youtube_trends (
   id BIGSERIAL PRIMARY KEY,
-  
+
   -- Basic video info
   video_id VARCHAR(100) UNIQUE NOT NULL,
   title TEXT NOT NULL,
   description TEXT,
   published_at TIMESTAMPTZ,
-  
+
   -- Channel info
   channel_id VARCHAR(100),
   channel_title VARCHAR(200),
-  
+
   -- Thumbnails
   thumbnail_default VARCHAR(500),
   thumbnail_medium VARCHAR(500),
   thumbnail_high VARCHAR(500),
-  
+
   -- Engagement metrics (from videos API)
   view_count BIGINT DEFAULT 0,
   like_count INTEGER DEFAULT 0,
   comment_count INTEGER DEFAULT 0,
-  
+
   -- Trending analysis
   trend_category VARCHAR(100) DEFAULT 'General',
   trend_score INTEGER DEFAULT 0,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -64,26 +63,26 @@ CREATE TRIGGER update_youtube_trends_updated_at
 -- Create users table for authentication
 CREATE TABLE users (
   id BIGSERIAL PRIMARY KEY,
-  
+
   -- Replit user info
   replit_user_id VARCHAR(100) UNIQUE NOT NULL,
   replit_username VARCHAR(100) NOT NULL,
   replit_roles TEXT,
-  
+
   -- User preferences
   display_name VARCHAR(200),
   email VARCHAR(300),
   avatar_url VARCHAR(500),
-  
+
   -- User settings
   preferred_categories TEXT[], -- Array of preferred trend categories
   notification_settings JSONB DEFAULT '{"email": false, "dashboard": true}',
   dashboard_config JSONB DEFAULT '{"theme": "dark", "default_date_range": 180}',
-  
+
   -- Activity tracking
   last_login TIMESTAMPTZ DEFAULT NOW(),
   login_count INTEGER DEFAULT 1,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -110,28 +109,28 @@ CREATE TRIGGER update_users_updated_at
 -- Create sentiment forecasts table for sentiment analysis data
 CREATE TABLE sentiment_forecasts (
   id BIGSERIAL PRIMARY KEY,
-  
+
   -- Topic and platform info
   topic VARCHAR(200) NOT NULL,
   platform VARCHAR(100) DEFAULT 'Reddit',
-  
+
   -- Date of analysis
   date DATE NOT NULL,
-  
+
   -- Sentiment counts
   sentiment_yes INTEGER DEFAULT 0,
   sentiment_no INTEGER DEFAULT 0,
   sentiment_unclear INTEGER DEFAULT 0,
-  
+
   -- Calculated confidence percentage
   confidence DECIMAL(5,2) DEFAULT 0.00,
-  
+
   -- Cultural prediction metrics
   certainty_score DECIMAL(5,2) DEFAULT 0.00,
   prediction_outcome VARCHAR(50) DEFAULT 'Uncertain',
   cultural_momentum VARCHAR(50) DEFAULT 'Stable',
   total_responses INTEGER DEFAULT 0,
-  
+
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -154,3 +153,49 @@ CREATE TRIGGER update_sentiment_forecasts_updated_at
     BEFORE UPDATE ON sentiment_forecasts 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+
+-- YouTube Alerts Table for Alert System
+CREATE TABLE IF NOT EXISTS youtube_alerts (
+  id BIGSERIAL PRIMARY KEY,
+  alert_id TEXT UNIQUE NOT NULL,
+  alert_type TEXT NOT NULL DEFAULT 'TRENDING_VIDEO',
+  video_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  channel_title TEXT,
+  view_count BIGINT DEFAULT 0,
+  like_count BIGINT DEFAULT 0,
+  wave_score DECIMAL(10,3) DEFAULT 0,
+  growth_rate DECIMAL(10,3) DEFAULT 0,
+  sentiment_score DECIMAL(10,3) DEFAULT 0,
+  reason TEXT,
+  severity TEXT NOT NULL DEFAULT 'LOW',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  processed BOOLEAN DEFAULT FALSE,
+  notified BOOLEAN DEFAULT FALSE
+);
+
+-- Create indexes for youtube_alerts
+CREATE INDEX IF NOT EXISTS idx_youtube_alerts_created_at ON youtube_alerts(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_youtube_alerts_severity ON youtube_alerts(severity);
+CREATE INDEX IF NOT EXISTS idx_youtube_alerts_video_id ON youtube_alerts(video_id);
+CREATE INDEX IF NOT EXISTS idx_youtube_alerts_alert_type ON youtube_alerts(alert_type);
+
+-- Enable Row Level Security
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE youtube_trends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sentiment_forecasts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE youtube_alerts ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies (Allow public access for demo purposes)
+CREATE POLICY "Allow public access to youtube_trends" ON youtube_trends
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to sentiment_forecasts" ON sentiment_forecasts
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to users" ON users
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to youtube_alerts" ON youtube_alerts
+    FOR ALL USING (true);
