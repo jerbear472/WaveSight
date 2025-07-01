@@ -2691,7 +2691,7 @@ async function searchTrends() {
         const chartData = createSearchChartData(searchResults, searchTermDisplay, startDate, endDate);
 
         // Update UI
-        currentData = { chartData, tableData: searchResults };
+        currentData = { chartData, tableData: searchResults, allData: searchResults };
         trendData = dataToProcess; // Store for detailed analysis
         selectedTrends = searchTermDisplay;
 
@@ -2712,6 +2712,9 @@ async function searchTrends() {
         // Initialize detailed trends table
         populateDetailedTrendsTable(searchResults.slice(0, 25));
 
+        // Update status info for search results
+        updateStatusInfo({ allData: searchResults });
+
         console.log(`✅ Chart will show ONLY: "${searchTermDisplay}"`);
       } else {
         console.log(`⚠️ No results for "${searchTerm}"`);
@@ -2727,7 +2730,7 @@ async function searchTrends() {
       // DEFAULT MODE: Show all trends
       const chartData = processSupabaseDataForChart(dataToProcess);
 
-      currentData = { chartData, tableData: dataToProcess };
+      currentData = { chartData, tableData: dataToProcess, allData: dataToProcess };
       trendData = dataToProcess; // Store for detailed analysis
       selectedTrends = 'all';
 
@@ -2739,6 +2742,9 @@ async function searchTrends() {
 
       // Initialize detailed trends table
       populateDetailedTrendsTable(dataToProcess.slice(0, 25));
+
+      // Update status info for all data
+      updateStatusInfo({ allData: dataToProcess });
 
       console.log('📊 Showing all default trends');
     }
@@ -2874,6 +2880,63 @@ async function filterByDateRange() {
 let autoRefreshInterval = null;
 let autoRefreshEnabled = false;
 
+// Update status information tile
+function updateStatusInfo(data) {
+  if (!data || !data.allData) {
+    console.log('⚠️ No data available for status update');
+    return;
+  }
+
+  const allData = data.allData;
+  
+  // Calculate metrics
+  const totalRecords = allData.length;
+  const categories = [...new Set(allData.map(item => item.trend_category || 'General'))];
+  const totalViews = allData.reduce((sum, item) => sum + (item.view_count || 0), 0);
+  
+  // Get date range
+  const dates = allData.map(item => new Date(item.published_at)).sort((a, b) => a - b);
+  const earliestDate = dates[0];
+  const latestDate = dates[dates.length - 1];
+  
+  // Find top category by total views
+  const categoryViews = {};
+  allData.forEach(item => {
+    const category = item.trend_category || 'General';
+    categoryViews[category] = (categoryViews[category] || 0) + (item.view_count || 0);
+  });
+  const topCategory = Object.entries(categoryViews)
+    .sort(([,a], [,b]) => b - a)[0]?.[0] || 'General';
+  
+  // Get last updated time
+  const lastUpdated = new Date().toLocaleString();
+  
+  // Update UI elements
+  const elements = {
+    'totalRecords': totalRecords.toLocaleString(),
+    'totalCategories': categories.length,
+    'totalViews': formatNumber(totalViews),
+    'dateRange': `${earliestDate.toLocaleDateString()} - ${latestDate.toLocaleDateString()}`,
+    'lastUpdated': lastUpdated,
+    'topCategory': topCategory
+  };
+  
+  Object.entries(elements).forEach(([id, value]) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.textContent = value;
+      element.parentElement.parentElement.classList.remove('loading');
+    }
+  });
+  
+  console.log('📊 Status info updated:', {
+    records: totalRecords,
+    categories: categories.length,
+    views: formatNumber(totalViews),
+    topCategory
+  });
+}
+
 // Initialize dashboard with enhanced features
 async function initializeDashboard() {
   console.log('🚀 Initializing dashboard...');
@@ -2904,6 +2967,7 @@ async function initializeDashboard() {
     createChart(data.chartData);
     createTrendTable(data.tableData);
     updateTrendFilter(data.chartData);
+    updateStatusInfo(data); // Update status information tile
 
     // Set default filter to all trends
     const filterSelect = document.getElementById('trendFilter');
