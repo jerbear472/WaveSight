@@ -44,21 +44,28 @@ The code adds a link to charting-trends-table.html in the navigation bar.
 
         <div class="header">
             <div class="submit-bar">
-                <div class="filter-group-title">Filters & Controls</div>
+                <div class="filter-group-title">
+                    Filters & Controls
+                    <div class="status-indicators">
+                        <span id="liveStatus" class="status-indicator">🟢 Live</span>
+                        <span id="lastRefresh" class="last-refresh">Ready</span>
+                    </div>
+                </div>
                 <div class="filter-group">
                     <select id="trendFilter" onchange="filterChart()">
                         <option value="all">All Trends</option>
                     </select>
                     <input type="date" id="startDate" onchange="filterByDateRange()">
                     <input type="date" id="endDate" onchange="filterByDateRange()">
-                    <input type="text" placeholder="Search trends..." id="searchInput">
+                    <input type="text" placeholder="Search trends... (Ctrl+F)" id="searchInput">
                 </div>
                 <div class="button-group">
                     <button class="submit-btn" onclick="performComprehensiveSearch()">Search</button>
                     <button class="submit-btn" onclick="resetToDefaultView()" style="background: #374151;">Reset</button>
-                    <button class="submit-btn" onclick="fetchFreshYouTubeData()" style="background: #10B981;">Fetch Data</button>
+                    <button class="submit-btn" onclick="fetchFreshYouTubeData()" style="background: #10B981;" title="Ctrl+R">🔄 Fetch Data</button>
                     <button class="submit-btn" onclick="fetchBulkData('all', 50)" style="background: #8B5CF6;">Fetch More</button>
                     <button class="submit-btn" onclick="processCulturalTrends()" style="background: #06b6d4;">🧠 Analyze Trends</button>
+                    <button class="submit-btn" onclick="toggleAutoRefresh()" style="background: #7C3AED;" id="autoRefreshBtn">⏰ Auto-Refresh</button>
                 </div>
             </div>
         </div>

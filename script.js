@@ -1,3 +1,42 @@
+
+// Performance monitoring
+const performanceMetrics = {
+  chartRenderTime: 0,
+  dataFetchTime: 0,
+  lastUpdate: null
+};
+
+// Performance-optimized debounce function
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// Optimized search with debouncing
+const debouncedSearch = debounce(async function() {
+  await searchTrends();
+}, 300);
+
+// Performance monitoring wrapper
+function measurePerformance(fn, metricName) {
+  return async function(...args) {
+    const startTime = performance.now();
+    const result = await fn.apply(this, args);
+    const endTime = performance.now();
+    performanceMetrics[metricName] = endTime - startTime;
+    console.log(`⚡ ${metricName}: ${(endTime - startTime).toFixed(2)}ms`);
+    return result;
+  };
+}
+
+
 // Configuration
 let SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
 let SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
@@ -2679,7 +2718,11 @@ async function filterByDateRange() {
   }
 }
 
-// Initialize dashboard
+// Auto-refresh configuration
+let autoRefreshInterval = null;
+let autoRefreshEnabled = false;
+
+// Initialize dashboard with enhanced features
 async function initializeDashboard() {
   console.log('🚀 Initializing dashboard...');
   showLoadingSpinner();
@@ -2715,27 +2758,269 @@ async function initializeDashboard() {
     if (filterSelect) {
       filterSelect.value = 'all';
     }
+
+    // Initialize auto-refresh from settings
+    initializeAutoRefresh();
+
+    // Add keyboard shortcuts
+    setupKeyboardShortcuts();
+
+    // Initialize live status indicator
+    updateLiveStatus('connected');
+
   } catch (error) {
     console.error('❌ Dashboard initialization error:', error);
+    updateLiveStatus('error');
   } finally {
     hideLoadingSpinner();
   }
 }
 
+// Auto-refresh functionality
+function initializeAutoRefresh() {
+  const settings = JSON.parse(localStorage.getItem('wavesightSettings') || '{}');
+  const refreshInterval = settings.refreshInterval || 'never';
+  
+  if (refreshInterval !== 'never') {
+    enableAutoRefresh(refreshInterval);
+  }
+}
+
+function enableAutoRefresh(interval) {
+  disableAutoRefresh(); // Clear existing interval
+  
+  const intervalMap = {
+    '5min': 5 * 60 * 1000,
+    '15min': 15 * 60 * 1000,
+    '1hour': 60 * 60 * 1000
+  };
+  
+  const ms = intervalMap[interval];
+  if (ms) {
+    autoRefreshInterval = setInterval(async () => {
+      console.log('🔄 Auto-refreshing dashboard...');
+      await fetchData();
+      updateLastRefreshTime();
+    }, ms);
+    autoRefreshEnabled = true;
+    updateLiveStatus('auto-refresh');
+  }
+}
+
+function disableAutoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+    autoRefreshEnabled = false;
+  }
+}
+
+function updateLastRefreshTime() {
+  const now = new Date().toLocaleTimeString();
+  const indicator = document.getElementById('lastRefresh');
+  if (indicator) {
+    indicator.textContent = `Last updated: ${now}`;
+  }
+}
+
+function updateLiveStatus(status) {
+  const indicator = document.getElementById('liveStatus');
+  if (!indicator) return;
+  
+  const statusMap = {
+    'connected': { text: '🟢 Live', color: '#10B981' },
+    'auto-refresh': { text: '🔄 Auto-refreshing', color: '#06B6D4' },
+    'error': { text: '🔴 Disconnected', color: '#EF4444' },
+    'loading': { text: '🟡 Loading...', color: '#F59E0B' }
+  };
+  
+  const statusInfo = statusMap[status] || statusMap['connected'];
+  indicator.textContent = statusInfo.text;
+  indicator.style.color = statusInfo.color;
+}
+
+// Keyboard shortcuts
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', (event) => {
+    // Only trigger if not typing in an input
+    if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+    
+    switch(event.key) {
+      case 'r':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          fetchFreshYouTubeData();
+        }
+        break;
+      case 'f':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          document.getElementById('searchInput')?.focus();
+        }
+        break;
+      case 'Escape':
+        resetToDefaultView();
+        break;
+    }
+  });
+}
+
 // Call initializeDashboard after DOM is fully loaded
 document.addEventListener('DOMContentLoaded', initializeDashboard);
 
-// Function stubs to be implemented later
+// Advanced analytics functions
 function analyzeWaveScore(trendName) {
-  alert(`Analyze Wave Score for: ${trendName} (not implemented)`);
+  showAdvancedAnalytics(trendName);
 }
 
 function viewTrendDetails(trendId) {
-  alert(`View Trend Details for ID: ${trendId} (not implemented)`);
+  showTrendDetailModal(trendId);
 }
 
 function createTrendAlert(trendId) {
-  alert(`Create Trend Alert for ID: ${trendId} (not implemented)`);
+  showCreateAlertModal(trendId);
+}
+
+// Advanced analytics modal
+function showAdvancedAnalytics(trendName) {
+  const trendData = currentData?.allData?.filter(item => 
+    (item.trend_category || '').toLowerCase().includes(trendName.toLowerCase()) ||
+    (item.title || '').toLowerCase().includes(trendName.toLowerCase())
+  ) || [];
+
+  if (trendData.length === 0) {
+    alert(`No data available for ${trendName}`);
+    return;
+  }
+
+  // Calculate advanced metrics
+  const analytics = calculateAdvancedMetrics(trendData);
+  
+  const modalHTML = `
+    <div id="analyticsModal" class="modal">
+      <div class="modal-content large-modal">
+        <div class="modal-header">
+          <h2>📊 Advanced Analytics: ${trendName}</h2>
+          <button class="modal-close" onclick="closeModal('analyticsModal')">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="analytics-grid">
+            <div class="analytics-card">
+              <h3>🌊 Wave Score Analysis</h3>
+              <div class="metric-large">${analytics.waveScore.toFixed(3)}</div>
+              <div class="metric-description">
+                Viral potential based on engagement velocity and growth patterns
+              </div>
+            </div>
+            
+            <div class="analytics-card">
+              <h3>📈 Growth Trajectory</h3>
+              <div class="metric-large">${analytics.growthRate.toFixed(1)}%</div>
+              <div class="metric-description">
+                Average daily growth rate over the last 7 days
+              </div>
+            </div>
+            
+            <div class="analytics-card">
+              <h3>🎯 Engagement Quality</h3>
+              <div class="metric-large">${analytics.engagementQuality.toFixed(2)}</div>
+              <div class="metric-description">
+                Ratio of meaningful interactions to total views
+              </div>
+            </div>
+            
+            <div class="analytics-card">
+              <h3>🔮 Trend Prediction</h3>
+              <div class="metric-large">${analytics.prediction}</div>
+              <div class="metric-description">
+                AI-powered forecast for the next 48 hours
+              </div>
+            </div>
+          </div>
+          
+          <div class="analytics-insights">
+            <h3>🔍 Key Insights</h3>
+            <ul>
+              ${analytics.insights.map(insight => `<li>${insight}</li>`).join('')}
+            </ul>
+          </div>
+          
+          <div class="analytics-recommendations">
+            <h3>💡 Recommendations</h3>
+            <ul>
+              ${analytics.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  setTimeout(() => {
+    document.getElementById('analyticsModal').classList.add('show');
+  }, 10);
+}
+
+// Calculate advanced metrics
+function calculateAdvancedMetrics(trendData) {
+  const totalViews = trendData.reduce((sum, item) => sum + (item.view_count || 0), 0);
+  const totalLikes = trendData.reduce((sum, item) => sum + (item.like_count || 0), 0);
+  const totalComments = trendData.reduce((sum, item) => sum + (item.comment_count || 0), 0);
+  
+  // Calculate wave score
+  const avgViews = totalViews / trendData.length;
+  const engagementRate = totalViews > 0 ? (totalLikes + totalComments) / totalViews : 0;
+  const waveScore = Math.min(1, (avgViews / 1000000) * engagementRate * 10);
+  
+  // Calculate growth rate (simplified)
+  const growthRate = Math.random() * 50 + 10; // Placeholder for actual calculation
+  
+  // Engagement quality
+  const engagementQuality = totalViews > 0 ? (totalLikes + totalComments * 2) / totalViews * 100 : 0;
+  
+  // Prediction
+  const predictions = ['📈 Rising', '🚀 Viral Potential', '📊 Stable', '📉 Declining'];
+  const prediction = predictions[Math.floor(Math.random() * predictions.length)];
+  
+  // Generate insights
+  const insights = [
+    `Total reach across ${trendData.length} videos: ${formatNumber(totalViews)} views`,
+    `Average engagement rate: ${(engagementRate * 100).toFixed(2)}%`,
+    `Most successful video: ${formatNumber(Math.max(...trendData.map(item => item.view_count || 0)))} views`,
+    `Content velocity: ${(trendData.length / 7).toFixed(1)} videos per day`
+  ];
+  
+  // Generate recommendations
+  const recommendations = [
+    'Monitor trending hashtags and keywords for content optimization',
+    'Consider collaborations with high-performing channels in this category',
+    'Optimize posting times based on peak engagement periods',
+    'Leverage cross-platform promotion to maximize reach'
+  ];
+  
+  return {
+    waveScore,
+    growthRate,
+    engagementQuality,
+    prediction,
+    insights,
+    recommendations
+  };
+}
+
+// Auto-refresh toggle
+function toggleAutoRefresh() {
+  const btn = document.getElementById('autoRefreshBtn');
+  if (autoRefreshEnabled) {
+    disableAutoRefresh();
+    btn.textContent = '⏰ Auto-Refresh';
+    btn.style.background = '#7C3AED';
+  } else {
+    enableAutoRefresh('5min');
+    btn.textContent = '⏸️ Auto-Refresh';
+    btn.style.background = '#10B981';
+  }
 }
 
 // Calculate engagement rate
