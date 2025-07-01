@@ -225,71 +225,79 @@
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="nav-brand">
-                <img src="logo2.png" alt="WaveSight" class="logo">
-                <span class="brand-text">WAVESIGHT</span>
-            </div>
-            <div class="nav-links" id="navLinks">
-                <a href="index.html">Dashboard</a>
-                <a href="sentiment-dashboard.html">Sentiment</a>
-                <a href="cultural-compass.html" class="active">Cultural Compass</a>
-                <a href="#" onclick="showAboutModal()">About</a>
-            </div>
-            <button class="menu-toggle" onclick="toggleMobileMenu()">☰</button>
+    <div class="header-bar">
+        <div class="logo-group">
+            <img src="logo2.png" alt="WaveSight" class="logo-icon">
+            <div class="logo-text">WAVESIGHT</div>
         </div>
-    </nav>
+        <nav class="nav-links" id="navLinks">
+            <a href="index.html" class="nav-link">Dashboard</a>
+            <a href="sentiment-dashboard.html" class="nav-link">Sentiment</a>
+            <a href="cultural-compass.html" class="nav-link active">Cultural Compass</a>
+            <a href="#" class="nav-link" onclick="showAboutModal()">About</a>
+        </nav>
+        <button class="menu-btn" onclick="toggleMobileMenu()" id="menuBtn">☰</button>
+    </div>
 
     <div class="container">
-        <header class="page-header">
-            <h1>🧭 Cultural Compass</h1>
-            <p>Interactive mapping of cultural trends based on Reddit sentiment analysis</p>
-            <div id="serverStatus" style="margin-top: 1rem; padding: 8px 16px; border-radius: 6px; background: #2e2e45; color: #f1f1f1; font-size: 14px;">
+        <div class="hero-text">
+            <h1 class="hero-title">🧭 Cultural Compass</h1>
+            <div class="hero-subtitle">Interactive Cultural Trend Mapping</div>
+            <div class="hero-description">Map cultural trends on multi-dimensional axes based on Reddit sentiment analysis and social momentum</div>
+            <div id="serverStatus" style="margin-top: 1rem; padding: 12px 20px; border-radius: 12px; background: linear-gradient(135deg, #1a1a2e 0%, #252545 100%); border: 1px solid rgba(94, 227, 255, 0.2); color: #f1f1f1; font-size: 14px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);">
                 📊 Loading data sources...
             </div>
-        </header>
+        </div>
 
-        <div class="compass-controls">
-            <div class="control-group">
-                <label>X-Axis (Horizontal)</label>
-                <select id="xAxisSelect">
-                    <option value="mainstream">Mainstream ↔ Underground</option>
-                    <option value="appeal">Mass Appeal ↔ Subcultural Depth</option>
-                    <option value="adoption">Early Adopter ↔ Late Majority</option>
-                </select>
+        <div class="submit-bar" style="margin: 2rem 0; max-width: 100%; min-width: auto;">
+            <div class="filter-group-title">
+                🧭 Cultural Compass Controls
+                <div class="status-indicators">
+                    <span class="status-indicator">📊 Interactive</span>
+                    <span class="last-refresh">Real-time Analysis</span>
+                </div>
             </div>
-            <div class="control-group">
-                <label>Y-Axis (Vertical)</label>
-                <select id="yAxisSelect">
-                    <option value="traditional">Traditional ↔ Disruptive</option>
-                    <option value="sentiment">Sentimental ↔ Ironic/Detached</option>
-                    <option value="energy">High Energy ↔ Chill/Laid Back</option>
-                </select>
+            <div class="filter-group">
+                <div class="control-group">
+                    <label style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">X-Axis (Horizontal)</label>
+                    <select id="xAxisSelect">
+                        <option value="mainstream">Mainstream ↔ Underground</option>
+                        <option value="appeal">Mass Appeal ↔ Subcultural Depth</option>
+                        <option value="adoption">Early Adopter ↔ Late Majority</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">Y-Axis (Vertical)</label>
+                    <select id="yAxisSelect">
+                        <option value="traditional">Traditional ↔ Disruptive</option>
+                        <option value="sentiment">Sentimental ↔ Ironic/Detached</option>
+                        <option value="energy">High Energy ↔ Chill/Laid Back</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">Color Dimension</label>
+                    <select id="colorSelect">
+                        <option value="sentiment">Sentiment Score</option>
+                        <option value="velocity">Viral Velocity</option>
+                        <option value="momentum">Cultural Momentum</option>
+                    </select>
+                </div>
             </div>
-            <div class="control-group">
-                <label>Color Dimension</label>
-                <select id="colorSelect">
-                    <option value="sentiment">Sentiment Score</option>
-                    <option value="velocity">Viral Velocity</option>
-                    <option value="momentum">Cultural Momentum</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label>Topic Filter</label>
-                <input type="text" id="topicFilter" placeholder="Enter topic to analyze...">
-                <button class="analyze-btn" onclick="analyzeTopic()">Analyze</button>
-            </div>
-            <div class="control-group">
-                <label>Sentiment Integration</label>
-                <button class="analyze-btn" onclick="loadSentimentTrends(); updateCompass(); updateMetrics();" style="background: linear-gradient(45deg, #10B981, #059669);">
-                    🔄 Refresh from Sentiment
+            <div class="button-group">
+                <input type="text" id="topicFilter" placeholder="Enter topic to analyze..." style="flex: 2; min-width: 250px;">
+                <button class="submit-btn" onclick="analyzeTopic()" style="flex: 1;">
+                    🔍 Analyze Topic
+                </button>
+                <button class="submit-btn" onclick="loadSentimentTrends(); updateCompass(); updateMetrics();" style="background: linear-gradient(135deg, #10B981, #059669); flex: 1;">
+                    🔄 Refresh Data
                 </button>
             </div>
         </div>
 
-        <div class="compass-container">
-            <div class="compass-chart" id="compassChart">
+        <div class="chart-section">
+            <h2>🧭 Cultural Trend Positioning</h2>
+            <div class="chart-container">
+                <div class="compass-chart" id="compassChart">
                 <div class="compass-axes">
                     <div class="axis-line axis-horizontal"></div>
                     <div class="axis-line axis-vertical"></div>
@@ -314,30 +322,49 @@
                 </div>
 
                 <div class="trend-tooltip" id="trendTooltip"></div>
+                </div>
             </div>
         </div>
 
-        <div class="sentiment-metrics" id="sentimentMetrics">
-            <div class="metric-card">
-                <div class="metric-value" id="totalTrends">0</div>
-                <div class="metric-label">Cultural Trends Mapped</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="avgSentiment">0%</div>
-                <div class="metric-label">Average Sentiment Score</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="viralTrends">0</div>
-                <div class="metric-label">High Velocity Trends</div>
-            </div>
-            <div class="metric-card">
-                <div class="metric-value" id="emergingTrends">0</div>
-                <div class="metric-label">Emerging Underground</div>
+        <div class="status-info-section">
+            <h2>📊 Cultural Compass Metrics</h2>
+            <div class="status-info-grid">
+                <div class="status-card">
+                    <div class="status-icon">🎯</div>
+                    <div class="status-content">
+                        <div class="status-value" id="totalTrends">0</div>
+                        <div class="status-label">Cultural Trends Mapped</div>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">💫</div>
+                    <div class="status-content">
+                        <div class="status-value" id="avgSentiment">0%</div>
+                        <div class="status-label">Average Sentiment Score</div>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">🚀</div>
+                    <div class="status-content">
+                        <div class="status-value" id="viralTrends">0</div>
+                        <div class="status-label">High Velocity Trends</div>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">🌱</div>
+                    <div class="status-content">
+                        <div class="status-value" id="emergingTrends">0</div>
+                        <div class="status-label">Emerging Underground</div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="trend-legend" id="trendLegend">
-            <!-- Legend items will be populated by JavaScript -->
+        <div class="chart-section">
+            <h2>📈 Cultural Category Legend</h2>
+            <div class="trend-legend" id="trendLegend">
+                <!-- Legend items will be populated by JavaScript -->
+            </div>
         </div>
     </div>
 

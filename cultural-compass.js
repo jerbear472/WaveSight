@@ -605,6 +605,30 @@ window.showAboutModal = showAboutModal;
 window.toggleMobileMenu = toggleMobileMenu;
 window.loadSentimentTrends = loadSentimentTrends;
 
+// Mobile menu toggle function
+function toggleMobileMenu() {
+    const navLinks = document.getElementById('navLinks');
+    const menuBtn = document.getElementById('menuBtn');
+    
+    if (navLinks.classList.contains('show')) {
+        navLinks.classList.remove('show');
+        menuBtn.textContent = '☰';
+    } else {
+        navLinks.classList.add('show');
+        menuBtn.textContent = '✕';
+    }
+}
+
+// About modal function
+function showAboutModal() {
+    alert('🧭 WaveSight Cultural Compass\n\n' +
+          'Interactive mapping of cultural trends based on:\n' +
+          '• Reddit sentiment analysis\n' +
+          '• Social momentum tracking\n' +
+          '• Multi-dimensional cultural positioning\n\n' +
+          'Navigate trends across Mainstream ↔ Underground and Traditional ↔ Disruptive axes.');
+}
+
 // Load enhanced cultural trend data
 async function loadEnhancedData() {
     console.log('🚀 Loading enhanced cultural compass data...');
