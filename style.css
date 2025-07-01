@@ -911,7 +911,182 @@ h1, h2, h3, .logo, .header-title {
   overflow-x: auto;
 }
 
-/* Mobile Navigation */
+/* Advanced Menu Styles */
+.advanced-menu {
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(51, 65, 85, 0.95));
+  border: 1px solid rgba(94, 227, 255, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.advanced-menu-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(94, 227, 255, 0.2);
+}
+
+.advanced-menu-title span {
+  font-weight: 600;
+  color: #5ee3ff;
+  font-size: 1rem;
+}
+
+.close-advanced {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-advanced:hover {
+  color: #ef4444;
+}
+
+.advanced-button-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.advanced-btn {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.8), rgba(94, 227, 255, 0.6));
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  position: relative;
+  overflow: hidden;
+}
+
+.advanced-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.advanced-btn:active {
+  transform: translateY(0);
+}
+
+/* Specific advanced button colors */
+.advanced-btn.fetch {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.advanced-btn.fetch:hover {
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.advanced-btn.bulk {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.advanced-btn.bulk:hover {
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.advanced-btn.analyze {
+  background: linear-gradient(135deg, #06b6d4, #0891b2);
+}
+
+.advanced-btn.analyze:hover {
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+}
+
+.advanced-btn.auto-refresh {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+}
+
+.advanced-btn.auto-refresh:hover {
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+}
+
+.advanced-btn.export {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.advanced-btn.export:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.advanced-btn.settings {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.advanced-btn.settings:hover {
+  box-shadow: 0 6px 20px rgba(107, 114, 128, 0.4);
+}
+
+/* Improved basic controls */
+.basic-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.submit-btn.primary {
+  background: linear-gradient(135deg, #5ee3ff, #3b82f6);
+  font-weight: 600;
+}
+
+.submit-btn.primary:hover {
+  box-shadow: 0 4px 15px rgba(94, 227, 255, 0.4);
+}
+
+.submit-btn.secondary {
+  background: linear-gradient(135deg, #6b7280, #4b5563);
+}
+
+.submit-btn.secondary:hover {
+  box-shadow: 0 4px 15px rgba(107, 114, 128, 0.3);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  font-size: 1rem;
+  border: 2px solid rgba(94, 227, 255, 0.3);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: #5ee3ff;
+  box-shadow: 0 0 0 3px rgba(94, 227, 255, 0.1);
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .menu-btn {
     display: block;
@@ -1251,32 +1426,6 @@ h1, h2, h3, .logo, .header-title {
   background: rgba(239, 68, 68, 0.3);
   border-color: #ef4444;
   color: #ef4444;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .trends-table-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .control-group {
-    width: 100%;
-  }
-
-  .control-input {
-    min-width: auto;
-    width: 100%;
-  }
-
-  .detailed-trends-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .content-info {
-    max-width: 200px;
-  }
 }
 
 /* Trend table styles */

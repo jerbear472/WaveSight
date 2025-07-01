@@ -24,6 +24,20 @@ const debouncedSearch = debounce(async function() {
   await searchTrends();
 }, 300);
 
+// Add search input event listener
+function setupSearchListener() {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('input', debouncedSearch);
+    searchInput.addEventListener('keypress', function(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        searchTrends();
+      }
+    });
+  }
+}
+
 // Performance monitoring wrapper
 function measurePerformance(fn, metricName) {
   return async function(...args) {
@@ -1330,6 +1344,107 @@ async function checkDatabase() {
   }
 }
 
+// Reset to default view function
+async function resetToDefaultView() {
+  console.log('🔄 Resetting to default view...');
+  
+  // Clear search input
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  
+  // Reset date inputs
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  if (startDateInput) startDateInput.value = '';
+  if (endDateInput) endDateInput.value = '';
+  
+  // Reset filter
+  const filterSelect = document.getElementById('trendFilter');
+  if (filterSelect) filterSelect.value = 'all';
+  
+  // Reset global variables
+  selectedTrends = 'all';
+  startDate = null;
+  endDate = null;
+  
+  // Reload default data
+  await initializeDashboard();
+}
+
+// Fetch fresh YouTube data function
+async function fetchFreshYouTubeData() {
+  console.log('🔄 Fetching fresh YouTube data...');
+  showLoadingSpinner();
+  
+  try {
+    const data = await fetchData();
+    if (data) {
+      currentData = data;
+      if (data.allData) {
+        trendData = data.allData;
+        populateDetailedTrendsTable(trendData.slice(0, 25));
+      }
+      createChart(data.chartData);
+      createTrendTable(data.tableData);
+      updateTrendFilter(data.chartData);
+      console.log('✅ Fresh data loaded successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error fetching fresh data:', error);
+  } finally {
+    hideLoadingSpinner();
+  }
+}
+
+// Fetch bulk data function
+async function fetchBulkData(category = 'all', maxResults = 50) {
+  console.log(`🔄 Fetching bulk data: ${category}, max: ${maxResults}`);
+  showLoadingSpinner();
+  
+  try {
+    // This would typically call the YouTube API with larger result sets
+    const response = await fetch(`/api/fetch-youtube?q=trending&maxResults=${maxResults}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log(`✅ Fetched ${result.data?.length || 0} additional videos`);
+      // Refresh the dashboard with new data
+      await fetchFreshYouTubeData();
+    } else {
+      console.log('⚠️ Bulk fetch failed:', result.message);
+    }
+  } catch (error) {
+    console.error('❌ Error in bulk fetch:', error);
+  } finally {
+    hideLoadingSpinner();
+  }
+}
+
+// Process cultural trends function
+async function processCulturalTrends() {
+  console.log('🧠 Processing cultural trends...');
+  showLoadingSpinner();
+  
+  try {
+    const response = await fetch('/api/process-trends', { method: 'POST' });
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log('✅ Cultural trends processed successfully');
+      // Refresh data to show updated analysis
+      await fetchFreshYouTubeData();
+    } else {
+      console.log('⚠️ Cultural trend processing failed:', result.message);
+    }
+  } catch (error) {
+    console.error('❌ Error processing cultural trends:', error);
+  } finally {
+    hideLoadingSpinner();
+  }
+}
+
 // Make functions globally available
 window.showAboutModal = showAboutModal;
 window.showSettingsModal = showSettingsModal;
@@ -1346,6 +1461,37 @@ window.runHealthCheck = runHealthCheck;
 window.testAPIConnection = testAPIConnection;
 window.viewLogs = viewLogs;
 window.checkDatabase = checkDatabase;
+window.performComprehensiveSearch = performComprehensiveSearch;
+window.resetToDefaultView = resetToDefaultView;
+window.fetchFreshYouTubeData = fetchFreshYouTubeData;
+window.fetchBulkData = fetchBulkData;
+window.processCulturalTrends = processCulturalTrends;
+
+// Advanced menu functions
+function showAdvancedMenu() {
+  const menu = document.getElementById('advancedMenu');
+  const btn = document.getElementById('advancedMenuBtn');
+  
+  if (menu) {
+    menu.style.display = 'block';
+    btn.textContent = '⚙️ Hide Advanced';
+    btn.style.background = '#ef4444';
+  }
+}
+
+function hideAdvancedMenu() {
+  const menu = document.getElementById('advancedMenu');
+  const btn = document.getElementById('advancedMenuBtn');
+  
+  if (menu) {
+    menu.style.display = 'none';
+    btn.textContent = '⚙️ Advanced';
+    btn.style.background = '';
+  }
+}
+
+window.showAdvancedMenu = showAdvancedMenu;
+window.hideAdvancedMenu = hideAdvancedMenu;
 
 // Fetch data with YouTube integration
 async function fetchData() {
@@ -2478,6 +2624,12 @@ function hideLoadingSpinner() {
   }
 }
 
+// Comprehensive search function for the search button
+async function performComprehensiveSearch() {
+  console.log('🔍 Performing comprehensive search...');
+  await searchTrends();
+}
+
 // Simple and effective search function
 async function searchTrends() {
   const searchInput = document.getElementById('searchInput');
@@ -2764,6 +2916,9 @@ async function initializeDashboard() {
 
     // Add keyboard shortcuts
     setupKeyboardShortcuts();
+
+    // Setup search listener
+    setupSearchListener();
 
     // Initialize live status indicator
     updateLiveStatus('connected');
