@@ -48,10 +48,6 @@
             <div class="submit-bar">
                 <div class="filter-group-title">
                     Search & Filters
-                    <div class="status-indicators">
-                        <span id="liveStatus" class="status-indicator">🟢 Live</span>
-                        <span id="lastRefresh" class="last-refresh">Ready</span>
-                    </div>
                 </div>
                 
                 <!-- Basic Search and Filters -->
@@ -103,13 +99,34 @@
 
         <!-- Status Information Tile -->
         <div class="status-info-section">
-            <h2>📊 Dataset Status</h2>
+            <h2>📊 System Status & Predictions</h2>
             <div class="status-info-grid">
+                <div class="status-card">
+                    <div class="status-icon">🟢</div>
+                    <div class="status-content">
+                        <div class="status-value" id="liveStatus">🟢 Live</div>
+                        <div class="status-label">Connection Status</div>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">⏱️</div>
+                    <div class="status-content">
+                        <div class="status-value" id="lastRefresh">Ready</div>
+                        <div class="status-label">Last Refresh</div>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">🔮</div>
+                    <div class="status-content">
+                        <div class="status-value" id="nextTrend">Predicting...</div>
+                        <div class="status-label">Next Rising Trend</div>
+                    </div>
+                </div>
                 <div class="status-card">
                     <div class="status-icon">📈</div>
                     <div class="status-content">
                         <div class="status-value" id="totalRecords">Loading...</div>
-                        <div class="status-label">Total Records</div>
+                        <div class="status-label">Records</div>
                     </div>
                 </div>
                 <div class="status-card">
@@ -134,17 +151,17 @@
                     </div>
                 </div>
                 <div class="status-card">
-                    <div class="status-icon">🔄</div>
-                    <div class="status-content">
-                        <div class="status-value" id="lastUpdated">Loading...</div>
-                        <div class="status-label">Last Updated</div>
-                    </div>
-                </div>
-                <div class="status-card">
                     <div class="status-icon">🏆</div>
                     <div class="status-content">
                         <div class="status-value" id="topCategory">Loading...</div>
                         <div class="status-label">Top Category</div>
+                    </div>
+                </div>
+                <div class="status-card">
+                    <div class="status-icon">📊</div>
+                    <div class="status-content">
+                        <div class="status-value" id="trendMomentum">Calculating...</div>
+                        <div class="status-label">Trend Momentum</div>
                     </div>
                 </div>
             </div>

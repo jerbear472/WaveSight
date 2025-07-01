@@ -2883,12 +2883,58 @@ async function filterByDateRange() {
 let autoRefreshInterval = null;
 let autoRefreshEnabled = false;
 
+// Predictive analytics function
+function calculatePredictiveMetrics(data) {
+  if (!data || data.length === 0) return { nextTrend: 'N/A', momentum: 'Stable' };
+
+  // Calculate trend momentum based on recent activity
+  const recent = data.filter(item => {
+    const pubDate = new Date(item.published_at);
+    const daysDiff = (new Date() - pubDate) / (1000 * 60 * 60 * 24);
+    return daysDiff <= 7; // Last 7 days
+  });
+
+  // Group by categories and calculate growth
+  const categoryGrowth = {};
+  recent.forEach(item => {
+    const category = item.trend_category || 'General';
+    if (!categoryGrowth[category]) {
+      categoryGrowth[category] = { views: 0, count: 0, scores: [] };
+    }
+    categoryGrowth[category].views += item.view_count || 0;
+    categoryGrowth[category].count += 1;
+    categoryGrowth[category].scores.push(item.trend_score || 0);
+  });
+
+  // Find fastest growing category
+  let nextTrend = 'AI Tools';
+  let highestMomentum = 0;
+  
+  Object.entries(categoryGrowth).forEach(([category, data]) => {
+    const avgScore = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
+    const momentum = (data.views / 1000000) * (avgScore / 100) * data.count;
+    
+    if (momentum > highestMomentum) {
+      highestMomentum = momentum;
+      nextTrend = category;
+    }
+  });
+
+  // Calculate overall momentum
+  const totalRecentViews = recent.reduce((sum, item) => sum + (item.view_count || 0), 0);
+  const momentumIndicator = totalRecentViews > 50000000 ? '🚀 High' : 
+                           totalRecentViews > 10000000 ? '📈 Rising' : 
+                           '📊 Stable';
+
+  return { nextTrend, momentum: momentumIndicator };
+}
+
 // Update status information tile
 function updateStatusInfo(data) {
   if (!data || !data.allData) {
     console.log('⚠️ No data available for status update');
     // Set loading state for all status cards
-    const statusElements = ['totalRecords', 'totalCategories', 'totalViews', 'dateRange', 'lastUpdated', 'topCategory'];
+    const statusElements = ['totalRecords', 'totalCategories', 'totalViews', 'dateRange', 'topCategory', 'nextTrend', 'trendMomentum'];
     statusElements.forEach(id => {
       const element = document.getElementById(id);
       if (element) {
@@ -2921,8 +2967,11 @@ function updateStatusInfo(data) {
   const topCategory = Object.entries(categoryViews)
     .sort(([,a], [,b]) => b - a)[0]?.[0] || 'General';
   
+  // Calculate predictive metrics
+  const predictions = calculatePredictiveMetrics(allData);
+  
   // Get last updated time
-  const lastUpdated = new Date().toLocaleString();
+  const lastUpdated = new Date().toLocaleTimeString();
   
   // Update UI elements
   const elements = {
@@ -2930,8 +2979,9 @@ function updateStatusInfo(data) {
     'totalCategories': categories.length,
     'totalViews': formatNumber(totalViews),
     'dateRange': `${earliestDate.toLocaleDateString()} - ${latestDate.toLocaleDateString()}`,
-    'lastUpdated': lastUpdated,
-    'topCategory': topCategory
+    'topCategory': topCategory,
+    'nextTrend': predictions.nextTrend,
+    'trendMomentum': predictions.momentum
   };
   
   Object.entries(elements).forEach(([id, value]) => {
@@ -2942,11 +2992,19 @@ function updateStatusInfo(data) {
     }
   });
   
-  console.log('📊 Status info updated:', {
+  // Update last refresh in real-time
+  const lastRefreshElement = document.getElementById('lastRefresh');
+  if (lastRefreshElement) {
+    lastRefreshElement.textContent = `Updated ${lastUpdated}`;
+  }
+  
+  console.log('📊 Status info updated with predictions:', {
     records: totalRecords,
     categories: categories.length,
     views: formatNumber(totalViews),
-    topCategory
+    topCategory,
+    nextTrend: predictions.nextTrend,
+    momentum: predictions.momentum
   });
 }
 
@@ -3064,7 +3122,7 @@ function updateLiveStatus(status) {
   
   const statusMap = {
     'connected': { text: '🟢 Live', color: '#10B981' },
-    'auto-refresh': { text: '🔄 Auto-refreshing', color: '#06B6D4' },
+    'auto-refresh': { text: '🔄 Auto-refresh', color: '#06B6D4' },
     'error': { text: '🔴 Disconnected', color: '#EF4444' },
     'loading': { text: '🟡 Loading...', color: '#F59E0B' }
   };
