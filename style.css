@@ -64,6 +64,7 @@ h1, h2, h3, .logo, .header-title {
   flex: 2;
   max-width: 800px;
   padding-right: 40px;
+  margin-bottom: 0;
 }
 
 .hero-title {
@@ -338,12 +339,15 @@ h1, h2, h3, .logo, .header-title {
     0 20px 40px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(255, 255, 255, 0.05),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  margin-top: 2rem;
+  margin-bottom: 2rem;
   color: #fff;
-  margin-bottom: 48px;
   position: relative;
   overflow: hidden;
   transition: all 0.3s ease;
+}
+
+.chart-section:first-of-type {
+  margin-top: 2rem;
 }
 
 .chart-section::before {
@@ -947,8 +951,20 @@ h1, h2, h3, .logo, .header-title {
 
 .status-info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+  .status-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .status-info-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .status-card {

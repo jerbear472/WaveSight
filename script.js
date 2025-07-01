@@ -2492,9 +2492,12 @@ function createTrendTable(data) {
   console.log('📊 Final trending topics:', trendingTopics);
 
   if (trendingTopics.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="4">No trending topics found</td></tr>';
+    console.log('❌ No trending topics to display');
+    tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem; color: #9ca3af;">No trending topics available - data is being processed</td></tr>';
     return;
   }
+
+  console.log(`📊 Creating table for ${trendingTopics.length} trending topics`);
 
   // Calculate total reach for trending direction
   const totalReach = trendingTopics.reduce((sum, topic) => sum + topic.totalViews, 0);
@@ -2884,10 +2887,20 @@ let autoRefreshEnabled = false;
 function updateStatusInfo(data) {
   if (!data || !data.allData) {
     console.log('⚠️ No data available for status update');
+    // Set loading state for all status cards
+    const statusElements = ['totalRecords', 'totalCategories', 'totalViews', 'dateRange', 'lastUpdated', 'topCategory'];
+    statusElements.forEach(id => {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = 'Loading...';
+        element.parentElement.parentElement.classList.add('loading');
+      }
+    });
     return;
   }
 
   const allData = data.allData;
+  console.log(`📊 Updating status info with ${allData.length} records`);
   
   // Calculate metrics
   const totalRecords = allData.length;
@@ -2967,7 +2980,10 @@ async function initializeDashboard() {
     createChart(data.chartData);
     createTrendTable(data.tableData);
     updateTrendFilter(data.chartData);
-    updateStatusInfo(data); // Update status information tile
+    
+    // Force update status info with complete data
+    updateStatusInfo(data);
+    console.log('📊 Status info updated with complete dataset');
 
     // Set default filter to all trends
     const filterSelect = document.getElementById('trendFilter');
