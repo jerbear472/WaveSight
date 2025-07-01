@@ -1,4 +1,3 @@
-
 // Cultural Compass Configuration
 let compassData = [];
 let filteredData = [];
@@ -7,11 +6,12 @@ let currentTooltip = null;
 // Initialize Cultural Compass
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🧭 Initializing Cultural Compass...');
-    
+
     // Ensure compass always shows something
     try {
         initializeCompass();
-        loadCompassData();
+        loadEnhancedData();
+        updateMetrics();
     } catch (error) {
         console.error('❌ Error initializing compass:', error);
         // Fallback initialization
@@ -28,7 +28,7 @@ function initializeCompass() {
     document.getElementById('yAxisSelect').addEventListener('change', updateCompass);
     document.getElementById('colorSelect').addEventListener('change', updateCompass);
     document.getElementById('topicFilter').addEventListener('input', filterTrends);
-    
+
     // Initialize with sample data if no real data available
     createSampleCompassData();
 }
@@ -37,16 +37,16 @@ function initializeCompass() {
 async function loadCompassData() {
     try {
         console.log('📊 Loading sentiment data for Cultural Compass...');
-        
+
         // Always show sample data first for immediate visualization
         createSampleCompassData();
         updateCompass();
         updateMetrics();
-        
+
         // Try to fetch from sentiment analysis server
         try {
             const response = await fetch('http://0.0.0.0:5001/api/health');
-            
+
             if (response.ok) {
                 console.log('✅ Sentiment server available, fetching real data...');
                 document.getElementById('serverStatus').innerHTML = '✅ Connected to Reddit sentiment analysis server';
@@ -64,7 +64,7 @@ async function loadCompassData() {
             document.getElementById('serverStatus').innerHTML = '⚠️ Using sample data - Start "Sentiment Analysis Server" for live Reddit data';
             document.getElementById('serverStatus').style.background = '#D97706';
         }
-        
+
     } catch (error) {
         console.error('❌ Error loading compass data:', error);
         createSampleCompassData();
@@ -100,7 +100,7 @@ async function fetchRealSentimentData() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ topic, limit: 30 })
             });
-            
+
             if (response.ok) {
                 const result = await response.json();
                 if (result.success) {
@@ -115,7 +115,7 @@ async function fetchRealSentimentData() {
 
     const results = await Promise.all(sentimentPromises);
     compassData = results.filter(item => item !== null);
-    
+
     console.log(`📊 Loaded ${compassData.length} topics for Cultural Compass`);
 }
 
@@ -128,7 +128,7 @@ function processTopicForCompass(topic, sentimentData) {
 
     // Calculate positions based on topic characteristics
     const coordinates = calculateCulturalCoordinates(topic, sentimentData);
-    
+
     return {
         id: topic.replace(/\s+/g, '_'),
         name: formatTopicName(topic),
@@ -149,11 +149,11 @@ function processTopicForCompass(topic, sentimentData) {
 function calculateCulturalCoordinates(topic, sentimentData) {
     let x = 0; // mainstream (-1) to underground (+1)
     let y = 0; // traditional (-1) to disruptive (+1)
-    
+
     const topicLower = topic.toLowerCase();
     const confidence = sentimentData.confidence || 50;
     const momentum = (sentimentData.cultural_momentum || '').toLowerCase();
-    
+
     // X-axis: Mainstream vs Underground
     if (topicLower.includes('ai') || topicLower.includes('crypto')) {
         x = 0.3; // Somewhat mainstream but still emerging
@@ -166,7 +166,7 @@ function calculateCulturalCoordinates(topic, sentimentData) {
     } else {
         x = (Math.random() - 0.5) * 1.6; // Random between -0.8 and 0.8
     }
-    
+
     // Y-axis: Traditional vs Disruptive
     if (topicLower.includes('ai') || topicLower.includes('crypto') || topicLower.includes('digital nomad')) {
         y = 0.6; // Highly disruptive
@@ -179,24 +179,24 @@ function calculateCulturalCoordinates(topic, sentimentData) {
     } else {
         y = (Math.random() - 0.5) * 1.6; // Random between -0.8 and 0.8
     }
-    
+
     // Adjust based on sentiment confidence and momentum
     if (momentum.includes('rising')) {
         y += 0.2; // Rising trends are more disruptive
     } else if (momentum.includes('declining')) {
         y -= 0.2; // Declining trends become more traditional
     }
-    
+
     if (confidence > 70) {
         x -= 0.1; // High confidence suggests mainstream adoption
     } else if (confidence < 40) {
         x += 0.1; // Low confidence suggests niche/underground
     }
-    
+
     // Ensure values stay within bounds
     x = Math.max(-0.9, Math.min(0.9, x));
     y = Math.max(-0.9, Math.min(0.9, y));
-    
+
     return { x, y };
 }
 
@@ -210,7 +210,7 @@ function calculateVelocity(confidence, responses) {
 // Categorize topics
 function categorizeByTopic(topic) {
     const topicLower = topic.toLowerCase();
-    
+
     if (topicLower.includes('ai') || topicLower.includes('crypto') || topicLower.includes('digital')) {
         return 'Technology';
     } else if (topicLower.includes('fashion') || topicLower.includes('music') || topicLower.includes('indie')) {
@@ -245,7 +245,7 @@ function formatTopicName(topic) {
 // Create sample compass data for demonstration
 function createSampleCompassData() {
     console.log('🎭 Creating sample Cultural Compass data...');
-    
+
     compassData = [
         {
             id: 'ai_culture', name: 'AI Integration', topic: 'artificial intelligence',
@@ -298,7 +298,7 @@ function createSampleCompassData() {
             prediction: 'Likely', responses: 67, category: 'Creative', color: '#10B981'
         }
     ];
-    
+
     filteredData = [...compassData];
 }
 
@@ -308,7 +308,7 @@ function updateCompass() {
     const xAxis = document.getElementById('xAxisSelect').value;
     const yAxis = document.getElementById('yAxisSelect').value;
     const colorDimension = document.getElementById('colorSelect').value;
-    
+
     updateAxisLabels(xAxis, yAxis);
     clearTrendPoints();
     renderTrendPoints(colorDimension);
@@ -325,7 +325,7 @@ function updateAxisLabels(xAxis, yAxis) {
         sentiment: { top: 'Ironic/Detached', bottom: 'Sentimental' },
         energy: { top: 'High Energy', bottom: 'Chill/Laid Back' }
     };
-    
+
     document.getElementById('leftLabel').textContent = labels[xAxis].left;
     document.getElementById('rightLabel').textContent = labels[xAxis].right;
     document.getElementById('topLabel').textContent = labels[yAxis].top;
@@ -342,24 +342,24 @@ function clearTrendPoints() {
 function renderTrendPoints(colorDimension) {
     const chart = document.getElementById('compassChart');
     const chartRect = chart.getBoundingClientRect();
-    
+
     filteredData.forEach(trend => {
         const point = document.createElement('div');
         point.className = 'trend-point';
         point.style.backgroundColor = getPointColor(trend, colorDimension);
-        
+
         // Convert coordinates to pixel positions
         const x = ((trend.x + 1) / 2) * (chartRect.width - 32) + 16;
         const y = ((1 - trend.y) / 2) * (chartRect.height - 32) + 16;
-        
+
         point.style.left = `${x}px`;
         point.style.top = `${y}px`;
-        
+
         // Add event listeners
         point.addEventListener('mouseenter', (e) => showTooltip(e, trend));
         point.addEventListener('mouseleave', hideTooltip);
         point.addEventListener('click', () => showTrendDetail(trend));
-        
+
         chart.appendChild(point);
     });
 }
@@ -388,7 +388,7 @@ function getPointColor(trend, dimension) {
 function showTooltip(event, trend) {
     const tooltip = document.getElementById('trendTooltip');
     const colorDimension = document.getElementById('colorSelect').value;
-    
+
     tooltip.innerHTML = `
         <div style="font-weight: 600; margin-bottom: 8px; color: #5ee3ff;">
             ${trend.name}
@@ -412,7 +412,7 @@ function showTooltip(event, trend) {
             Click for detailed analysis
         </div>
     `;
-    
+
     tooltip.style.left = `${event.pageX + 15}px`;
     tooltip.style.top = `${event.pageY - 10}px`;
     tooltip.classList.add('show');
@@ -440,7 +440,7 @@ function showTrendDetail(trend) {
 // Filter trends based on search
 function filterTrends() {
     const filter = document.getElementById('topicFilter').value.toLowerCase();
-    
+
     if (!filter) {
         filteredData = [...compassData];
     } else {
@@ -450,7 +450,7 @@ function filterTrends() {
             trend.category.toLowerCase().includes(filter)
         );
     }
-    
+
     updateCompass();
     updateMetrics();
 }
@@ -459,50 +459,50 @@ function filterTrends() {
 async function analyzeTopic() {
     const topicInput = document.getElementById('topicFilter');
     const topic = topicInput.value.trim();
-    
+
     if (!topic) {
         alert('Please enter a topic to analyze');
         return;
     }
-    
+
     console.log(`🔍 Analyzing cultural position for: ${topic}`);
-    
+
     try {
         // Check if sentiment server is available
         const healthResponse = await fetch('http://0.0.0.0:5001/api/health');
-        
+
         if (!healthResponse.ok) {
             alert('Sentiment analysis server not available. Please start the "Sentiment Analysis Server" workflow.');
             return;
         }
-        
+
         // Analyze topic sentiment
         const response = await fetch('http://0.0.0.0:5001/api/analyze-sentiment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ topic, limit: 50 })
         });
-        
+
         if (response.ok) {
             const result = await response.json();
             if (result.success) {
                 const newTrend = processTopicForCompass(topic, result.data);
-                
+
                 // Remove existing trend with same topic if exists
                 compassData = compassData.filter(trend => trend.topic !== topic);
-                
+
                 // Add new trend
                 compassData.push(newTrend);
                 filteredData = [...compassData];
-                
+
                 updateCompass();
                 updateMetrics();
-                
+
                 alert(`✅ Added "${formatTopicName(topic)}" to Cultural Compass!\n\n` +
                       `Position: ${newTrend.x > 0 ? 'Underground' : 'Mainstream'} & ${newTrend.y > 0 ? 'Disruptive' : 'Traditional'}\n` +
                       `Sentiment: ${newTrend.sentiment}%\n` +
                       `Velocity: ${(newTrend.velocity * 100).toFixed(1)}%`);
-                
+
                 topicInput.value = '';
             } else {
                 alert('Failed to analyze topic sentiment');
@@ -510,7 +510,7 @@ async function analyzeTopic() {
         } else {
             alert('Error connecting to sentiment analysis service');
         }
-        
+
     } catch (error) {
         console.error('❌ Error analyzing topic:', error);
         alert('Error analyzing topic. Please check that the sentiment server is running.');
@@ -524,7 +524,7 @@ function updateMetrics() {
         Math.round(filteredData.reduce((sum, trend) => sum + trend.sentiment, 0) / totalTrends) : 0;
     const viralTrends = filteredData.filter(trend => trend.velocity >= 0.7).length;
     const emergingTrends = filteredData.filter(trend => trend.x > 0.3 && trend.velocity >= 0.5).length;
-    
+
     document.getElementById('totalTrends').textContent = totalTrends;
     document.getElementById('avgSentiment').textContent = `${avgSentiment}%`;
     document.getElementById('viralTrends').textContent = viralTrends;
@@ -535,12 +535,12 @@ function updateMetrics() {
 function updateLegend() {
     const legend = document.getElementById('trendLegend');
     const categories = [...new Set(filteredData.map(trend => trend.category))];
-    
+
     legend.innerHTML = categories.map(category => {
         const categoryTrends = filteredData.filter(trend => trend.category === category);
         const avgSentiment = categoryTrends.reduce((sum, trend) => sum + trend.sentiment, 0) / categoryTrends.length;
         const color = getColorBySentiment(avgSentiment);
-        
+
         return `
             <div class="legend-item">
                 <div class="legend-color" style="background-color: ${color};"></div>
@@ -554,3 +554,159 @@ function updateLegend() {
 window.analyzeTopic = analyzeTopic;
 window.showAboutModal = showAboutModal;
 window.toggleMobileMenu = toggleMobileMenu;
+
+// Load enhanced cultural trend data
+async function loadEnhancedData() {
+    console.log('🚀 Loading enhanced cultural compass data...');
+
+    try {
+        // Mock function - replace with actual data fetching from Reddit API
+        async function fetchEnhancedCulturalTrends() {
+            // Simulate fetching data from Reddit API
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const mockData = [
+                        {
+                            id: 'ai_revolution',
+                            name: 'AI Revolution',
+                            engagement: 5200000,
+                            sentiment: 0.85,
+                            subredditSpread: 120,
+                            momentum: 'Rising',
+                            disruptionScore: 0.9,
+                            mainstreamScore: 0.6,
+                            velocity: 0.78
+                        },
+                        {
+                            id: 'crypto_winter',
+                            name: 'Crypto Winter',
+                            engagement: 3800000,
+                            sentiment: 0.35,
+                            subredditSpread: 95,
+                            momentum: 'Declining',
+                            disruptionScore: 0.7,
+                            mainstreamScore: 0.8,
+                            velocity: 0.45
+                        },
+                        {
+                            id: 'sustainable_living',
+                            name: 'Sustainable Living',
+                            engagement: 4500000,
+                            sentiment: 0.75,
+                            subredditSpread: 110,
+                            momentum: 'Stable',
+                            disruptionScore: 0.5,
+                            mainstreamScore: 0.9,
+                            velocity: 0.62
+                        }
+                    ];
+                    resolve(mockData);
+                }, 1000);
+            });
+        }
+
+        const culturalTrends = await fetchEnhancedCulturalTrends();
+
+        if (culturalTrends && culturalTrends.length > 0) {
+            // Store the enhanced data globally
+            window.culturalTrendsData = culturalTrends;
+
+            // Mock function - replace with actual drawing logic
+            function drawCompass(trends) {
+                console.log('Drawing compass with enhanced data:', trends);
+            }
+
+            // Render the compass with enhanced data
+            drawCompass(culturalTrends);
+
+            // Update metrics with real data
+            updateEnhancedMetrics(culturalTrends);
+
+            console.log('✅ Enhanced cultural compass loaded successfully');
+        } else {
+            console.log('⚠️ No cultural trend data available');
+        }
+
+    } catch (error) {
+        console.error('❌ Error loading enhanced data:', error);
+    }
+}
+
+// Update metrics with enhanced cultural trend data
+function updateEnhancedMetrics(trends) {
+    if (!trends || trends.length === 0) return;
+
+    // Calculate aggregate metrics
+    const totalEngagement = trends.reduce((sum, trend) => sum + (trend.engagement || 0), 0);
+    const avgSentiment = trends.reduce((sum, trend) => sum + (trend.sentiment || 0.5), 0) / trends.length;
+    const totalSubreddits = trends.reduce((sum, trend) => sum + (trend.subredditSpread || 0), 0);
+    const avgVelocity = trends.reduce((sum, trend) => sum + (trend.velocity || 0), 0) / trends.length;
+
+    // Count trends by momentum
+    const risingTrends = trends.filter(t => t.momentum === 'Rising').length;
+    const stableTrends = trends.filter(t => t.momentum === 'Stable').length;
+    const decliningTrends = trends.filter(t => t.momentum === 'Declining').length;
+
+    // Find most disruptive and mainstream trends
+    const mostDisruptive = trends.reduce((max, trend) => 
+        (trend.disruptionScore || 0) > (max.disruptionScore || 0) ? trend : max, trends[0]);
+    const mostMainstream = trends.reduce((max, trend) => 
+        (trend.mainstreamScore || 0) > (max.mainstreamScore || 0) ? trend : max, trends[0]);
+
+    // Update DOM elements
+    const metricsContainer = document.querySelector('.metrics-container');
+    if (metricsContainer) {
+        metricsContainer.innerHTML = `
+            <div class="metric-card">
+                <div class="metric-value">${trends.length}</div>
+                <div class="metric-label">Cultural Trends</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${(totalEngagement / 1000000).toFixed(1)}M</div>
+                <div class="metric-label">Total Engagement</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${(avgSentiment * 100).toFixed(0)}%</div>
+                <div class="metric-label">Avg Sentiment</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${totalSubreddits}</div>
+                <div class="metric-label">Communities</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value">${avgVelocity.toFixed(2)}</div>
+                <div class="metric-label">Avg Velocity</div>
+            </div>
+            <div class="metric-card momentum-card">
+                <div class="momentum-stats">
+                    <div class="momentum-item rising">↗ ${risingTrends}</div>
+                    <div class="momentum-item stable">→ ${stableTrends}</div>
+                    <div class="momentum-item declining">↘ ${decliningTrends}</div>
+                </div>
+                <div class="metric-label">Momentum</div>
+            </div>
+        `;
+    }
+
+    // Update insights
+    const insightsContainer = document.querySelector('.insights-container');
+    if (insightsContainer) {
+        insightsContainer.innerHTML = `
+            <div class="insight-card">
+                <h4>🚀 Most Disruptive</h4>
+                <p><strong>${mostDisruptive.name}</strong></p>
+                <p>Disruption Score: ${(mostDisruptive.disruptionScore * 100)?.toFixed(0) || 'N/A'}%</p>
+            </div>
+            <div class="insight-card">
+                <h4>📈 Most Mainstream</h4>
+                <p><strong>${mostMainstream.name}</strong></p>
+                <p>Mainstream Score: ${(mostMainstream.mainstreamScore * 100)?.toFixed(0) || 'N/A'}%</p>
+            </div>
+            <div class="insight-card">
+                <h4>🔥 Highest Velocity</h4>
+                <p><strong>${trends.reduce((max, trend) => (trend.velocity || 0) > (max.velocity || 0) ? trend : max, trends[0]).name}</strong></p>
+                <p>Cultural momentum building rapidly</p>
+            </div>
+        `;
+    }
+}

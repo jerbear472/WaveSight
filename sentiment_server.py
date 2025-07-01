@@ -222,115 +222,295 @@ def classify_sentiment(comment: str) -> str:
         print(f"Error classifying sentiment with OpenAI: {e}")
         return "Unclear"
 
-def analyze_reddit_sentiment(topic, limit_posts=50, limit_comments=20):
-    """Analyze sentiment from Reddit posts and comments with robust error handling"""
+def analyze_reddit_cultural_trends(topic, limit_posts=50, limit_comments=20):
+    """Analyze Reddit data to create cultural trend objects with compass coordinates"""
 
     if not reddit:
-        print("❌ Reddit not configured - using mock data for demonstration")
-        return create_mock_sentiment_data(topic)
+        print("❌ Reddit not configured - creating enhanced mock cultural trend data")
+        return create_enhanced_cultural_trend_data(topic)
 
-    yes, no, unclear = 0, 0, 0
-    total_comments_analyzed = 0
-
+    print(f"🧭 Creating cultural trend object for: '{topic}'")
+    
+    # Collect comprehensive data
+    posts_data = []
+    sentiment_scores = []
+    engagement_metrics = []
+    subreddit_distribution = {}
+    temporal_data = []
+    
     try:
-        print(f"🔍 Fetching Reddit data for topic: '{topic}'")
-        print(f"📊 Searching across multiple subreddits...")
-
-        # Search across multiple relevant subreddits
-        subreddits = ['all', 'technology', 'futurology', 'artificial', 'MachineLearning', 
-                     'crypto', 'gaming', 'movies', 'television', 'news']
-
-        for subreddit_name in subreddits[:3]:  # Limit to 3 subreddits to avoid rate limits
+        # Search across diverse subreddits for cultural context
+        cultural_subreddits = [
+            'all', 'technology', 'futurology', 'artificial', 'MachineLearning',
+            'crypto', 'gaming', 'movies', 'television', 'news', 'streetwear',
+            'fashion', 'Music', 'Art', 'Design', 'WeAreTheMusicMakers',
+            'meirl', 'GenZ', 'millennials', 'unpopularopinion', 'TikTokCringe',
+            'NoStupidQuestions', 'explainlikeimfive', 'changemyview'
+        ]
+        
+        for subreddit_name in cultural_subreddits[:5]:  # Process top 5 for comprehensive data
             try:
-                print(f"📡 Searching r/{subreddit_name}...")
+                print(f"🔍 Analyzing cultural context in r/{subreddit_name}...")
                 subreddit = reddit.subreddit(subreddit_name)
-
-                # Search for posts related to the topic
-                search_results = list(subreddit.search(topic, limit=limit_posts//3, time_filter='month'))
-                print(f"📋 Found {len(search_results)} posts in r/{subreddit_name}")
-
+                
+                # Get recent posts about the topic
+                search_results = list(subreddit.search(topic, limit=limit_posts//5, time_filter='month'))
+                print(f"📋 Found {len(search_results)} cultural posts in r/{subreddit_name}")
+                
+                subreddit_distribution[subreddit_name] = len(search_results)
+                
                 for submission in search_results:
                     try:
+                        # Collect post metadata
+                        post_data = {
+                            'title': submission.title,
+                            'score': submission.score,
+                            'upvote_ratio': submission.upvote_ratio,
+                            'num_comments': submission.num_comments,
+                            'created_utc': submission.created_utc,
+                            'subreddit': subreddit_name,
+                            'url': submission.url,
+                            'selftext': submission.selftext[:500] if submission.selftext else ""
+                        }
+                        posts_data.append(post_data)
+                        
+                        # Analyze comments for cultural sentiment
                         submission.comments.replace_more(limit=0)
-                        comments_processed = 0
-
-                        for comment in submission.comments:
-                            if comments_processed >= limit_comments:
-                                break
-
+                        comment_sentiments = []
+                        
+                        for comment in submission.comments[:limit_comments//5]:
                             if hasattr(comment, 'body') and len(comment.body) > 10:
-                                label = classify_sentiment(comment.body)
-                                total_comments_analyzed += 1
-                                comments_processed += 1
-
-                                if "positive" in label.lower() or "yes" in label.lower():
-                                    yes += 1
-                                elif "negative" in label.lower() or "no" in label.lower():
-                                    no += 1
-                                else:
-                                    unclear += 1
-
-                                # Add delay to respect rate limits
-                                time.sleep(0.1)
-
-                    except Exception as comment_error:
-                        print(f"⚠️ Error processing submission: {comment_error}")
+                                sentiment = analyze_sentiment_from_comments([comment.body])
+                                comment_sentiments.append(sentiment)
+                                time.sleep(0.05)  # Rate limit respect
+                        
+                        if comment_sentiments:
+                            avg_sentiment = sum(comment_sentiments) / len(comment_sentiments)
+                            sentiment_scores.append(avg_sentiment)
+                        
+                        # Track engagement metrics
+                        engagement_metrics.append({
+                            'score': submission.score,
+                            'comments': submission.num_comments,
+                            'ratio': submission.upvote_ratio
+                        })
+                        
+                    except Exception as post_error:
+                        print(f"⚠️ Error processing post: {post_error}")
                         continue
-
+                        
             except Exception as subreddit_error:
                 print(f"⚠️ Error accessing r/{subreddit_name}: {subreddit_error}")
                 continue
-
-        # If no data collected, use mock data
-        if total_comments_analyzed == 0:
-            print("⚠️ No Reddit data collected, using mock data")
-            return create_mock_sentiment_data(topic)
-
-        total = max(yes + no + unclear, 1)
-        confidence = round((yes / total) * 100, 2)
-
-        print(f"✅ Analysis complete!")
-        print(f"📊 Comments analyzed: {total_comments_analyzed}")
-        print(f"📈 Results — Positive: {yes}, Negative: {no}, Unclear: {unclear}")
-        print(f"🎯 Confidence: {confidence}%")
-
-        # Calculate cultural prediction metrics
-        total_responses = yes + no + unclear
-        certainty_score = ((yes + no) / total_responses) * 100 if total_responses > 0 else 0
-
-        # Determine prediction outcome
-        prediction_outcome = "Likely" if confidence > 65 else "Uncertain" if confidence > 45 else "Unlikely"
-        cultural_momentum = "Rising" if yes > no * 1.5 else "Declining" if no > yes * 1.5 else "Stable"
-
-        # Save to Supabase with enhanced metrics
-        sentiment_data = {
-            "topic": topic,
-            "platform": "Reddit",
-            "date": datetime.now().date().isoformat(),
-            "sentiment_yes": yes,
-            "sentiment_no": no,
-            "sentiment_unclear": unclear,
-            "confidence": confidence,
-            "certainty_score": round(certainty_score, 2),
-            "prediction_outcome": prediction_outcome,
-            "cultural_momentum": cultural_momentum,
-            "total_responses": total_responses
-        }
-
-        if supabase:
-            try:
-                result = supabase.table("sentiment_forecasts").insert(sentiment_data).execute()
-                print("✅ Data saved to Supabase.")
-            except Exception as e:
-                print(f"❌ Failed to save to Supabase: {e}")
-        else:
-            print("⚠️ Supabase not configured")
-
-        return sentiment_data
-
+        
+        # Create comprehensive cultural trend object
+        cultural_trend = create_cultural_trend_object(
+            topic, posts_data, sentiment_scores, engagement_metrics, 
+            subreddit_distribution, temporal_data
+        )
+        
+        return cultural_trend
+        
     except Exception as e:
-        print(f"❌ Error analyzing Reddit sentiment: {e}")
-        return create_mock_sentiment_data(topic)
+        print(f"❌ Error in cultural trend analysis: {e}")
+        return create_enhanced_cultural_trend_data(topic)
+
+def create_cultural_trend_object(topic, posts_data, sentiment_scores, engagement_metrics, subreddit_distribution, temporal_data):
+    """Create a comprehensive cultural trend object with compass coordinates"""
+    
+    # Calculate aggregate metrics
+    total_posts = len(posts_data)
+    total_engagement = sum(m['score'] + m['comments'] for m in engagement_metrics) if engagement_metrics else 0
+    avg_sentiment = sum(sentiment_scores) / len(sentiment_scores) if sentiment_scores else 0.5
+    
+    # Calculate cultural compass coordinates
+    coordinates = calculate_enhanced_cultural_coordinates(
+        topic, posts_data, subreddit_distribution, engagement_metrics, avg_sentiment
+    )
+    
+    # Determine cultural velocity and momentum
+    velocity = calculate_cultural_velocity(engagement_metrics, sentiment_scores)
+    momentum = assess_cultural_momentum(posts_data, engagement_metrics)
+    
+    # Create trend object
+    cultural_trend = {
+        'topic': topic,
+        'name': format_topic_name(topic),
+        'coordinates': coordinates,
+        'sentiment_score': round(avg_sentiment, 3),
+        'total_posts': total_posts,
+        'total_engagement': total_engagement,
+        'avg_engagement': total_engagement / max(total_posts, 1),
+        'subreddit_spread': len(subreddit_distribution),
+        'dominant_subreddits': sorted(subreddit_distribution.items(), key=lambda x: x[1], reverse=True)[:3],
+        'cultural_velocity': velocity,
+        'cultural_momentum': momentum,
+        'category': categorize_by_cultural_context(topic, subreddit_distribution),
+        'mainstream_score': calculate_mainstream_score(subreddit_distribution, engagement_metrics),
+        'disruption_score': calculate_disruption_score(topic, posts_data, sentiment_scores),
+        'cultural_impact': assess_enhanced_cultural_impact(total_posts, total_engagement, len(subreddit_distribution)),
+        'temporal_trend': analyze_temporal_pattern(posts_data),
+        'platform': 'Reddit Cultural Analysis',
+        'analysis_date': datetime.now().isoformat(),
+        'confidence': calculate_analysis_confidence(total_posts, len(sentiment_scores), len(subreddit_distribution))
+    }
+    
+    print(f"🧭 Cultural Trend Created:")
+    print(f"   📍 Coordinates: ({coordinates['x']}, {coordinates['y']})")
+    print(f"   📊 Posts: {total_posts}, Engagement: {total_engagement:,}")
+    print(f"   🌐 Subreddit Spread: {len(subreddit_distribution)}")
+    print(f"   🎯 Sentiment: {avg_sentiment:.3f}, Velocity: {velocity:.3f}")
+    
+    # Save to Supabase
+    if supabase:
+        try:
+            result = supabase.table("cultural_trends").upsert(cultural_trend, on_conflict='topic,analysis_date').execute()
+            print("✅ Cultural trend saved to Supabase")
+        except Exception as e:
+            print(f"❌ Failed to save cultural trend: {e}")
+    
+    return cultural_trend
+
+def calculate_enhanced_cultural_coordinates(topic, posts_data, subreddit_distribution, engagement_metrics, avg_sentiment):
+    """Calculate precise cultural compass coordinates based on Reddit data"""
+    
+    # X-axis: Mainstream (-1) to Underground (+1)
+    x = 0
+    
+    # Mainstream indicators
+    mainstream_subreddits = ['all', 'news', 'television', 'movies', 'Music']
+    underground_subreddits = ['streetwear', 'WeAreTheMusicMakers', 'experimentalmusic', 'cyberpunk']
+    
+    mainstream_posts = sum(subreddit_distribution.get(sub, 0) for sub in mainstream_subreddits)
+    underground_posts = sum(subreddit_distribution.get(sub, 0) for sub in underground_subreddits)
+    total_posts = max(sum(subreddit_distribution.values()), 1)
+    
+    # High engagement in mainstream = more mainstream
+    if engagement_metrics:
+        avg_engagement = sum(m['score'] + m['comments'] for m in engagement_metrics) / len(engagement_metrics)
+        if avg_engagement > 1000:  # High mainstream engagement
+            x -= 0.3
+        elif avg_engagement < 50:  # Low niche engagement
+            x += 0.4
+    
+    # Subreddit distribution influence
+    if mainstream_posts > underground_posts:
+        x -= (mainstream_posts / total_posts) * 0.6
+    else:
+        x += (underground_posts / total_posts) * 0.6
+    
+    # Topic-based adjustments
+    topic_lower = topic.lower()
+    if any(term in topic_lower for term in ['viral', 'trending', 'mainstream', 'popular']):
+        x -= 0.2
+    elif any(term in topic_lower for term in ['underground', 'niche', 'indie', 'alternative', 'experimental']):
+        x += 0.3
+    
+    # Y-axis: Traditional (-1) to Disruptive (+1)
+    y = 0
+    
+    # Disruptive content indicators
+    disruptive_keywords = ['ai', 'crypto', 'blockchain', 'revolution', 'change', 'disruption', 'innovation']
+    traditional_keywords = ['classic', 'traditional', 'vintage', 'heritage', 'conservative', 'established']
+    
+    # Analyze post content for disruption signals
+    disruptive_score = 0
+    traditional_score = 0
+    
+    for post in posts_data:
+        content = f"{post.get('title', '')} {post.get('selftext', '')}".lower()
+        disruptive_score += sum(1 for keyword in disruptive_keywords if keyword in content)
+        traditional_score += sum(1 for keyword in traditional_keywords if keyword in content)
+    
+    if disruptive_score > traditional_score:
+        y += min(disruptive_score / max(len(posts_data), 1), 0.8)
+    elif traditional_score > disruptive_score:
+        y -= min(traditional_score / max(len(posts_data), 1), 0.8)
+    
+    # Sentiment influence on disruption
+    if avg_sentiment > 0.7:  # High positive sentiment often indicates acceptance of change
+        y += 0.1
+    elif avg_sentiment < 0.3:  # Low sentiment might indicate resistance to change
+        y -= 0.1
+    
+    # Technology and innovation topics
+    if any(term in topic_lower for term in ['ai', 'technology', 'crypto', 'digital', 'virtual', 'automation']):
+        y += 0.4
+    elif any(term in topic_lower for term in ['traditional', 'vintage', 'classic', 'heritage']):
+        y -= 0.4
+    
+    # Ensure bounds
+    x = max(-0.95, min(0.95, x))
+    y = max(-0.95, min(0.95, y))
+    
+    return {'x': round(x, 3), 'y': round(y, 3)}
+
+def create_enhanced_cultural_trend_data(topic):
+    """Create enhanced mock cultural trend data when Reddit API is unavailable"""
+    print(f"🎭 Creating enhanced cultural trend data for: {topic}")
+    
+    # Generate realistic cultural metrics
+    posts_count = random.randint(15, 200)
+    engagement_total = random.randint(1000, 50000)
+    subreddit_spread = random.randint(3, 12)
+    sentiment = random.uniform(0.3, 0.8)
+    
+    # Calculate coordinates based on topic characteristics
+    coordinates = calculate_mock_cultural_coordinates(topic)
+    
+    cultural_trend = {
+        'topic': topic,
+        'name': format_topic_name(topic),
+        'coordinates': coordinates,
+        'sentiment_score': round(sentiment, 3),
+        'total_posts': posts_count,
+        'total_engagement': engagement_total,
+        'avg_engagement': engagement_total / posts_count,
+        'subreddit_spread': subreddit_spread,
+        'dominant_subreddits': [('technology', posts_count//3), ('futurology', posts_count//4), ('all', posts_count//5)],
+        'cultural_velocity': random.uniform(0.2, 0.9),
+        'cultural_momentum': random.choice(['Rising', 'Stable', 'Declining']),
+        'category': categorize_by_topic(topic),
+        'mainstream_score': round(random.uniform(0.2, 0.8), 3),
+        'disruption_score': round(random.uniform(0.1, 0.9), 3),
+        'cultural_impact': 'High Impact' if engagement_total > 30000 else 'Moderate Impact',
+        'temporal_trend': random.choice(['Accelerating', 'Steady', 'Peaking', 'Declining']),
+        'platform': 'Reddit Cultural Analysis (Mock)',
+        'analysis_date': datetime.now().isoformat(),
+        'confidence': round(random.uniform(0.6, 0.9), 3)
+    }
+    
+    print(f"🧭 Mock Cultural Trend: ({coordinates['x']}, {coordinates['y']}) - {cultural_trend['category']}")
+    
+    return cultural_trend
+
+def calculate_mock_cultural_coordinates(topic):
+    """Calculate mock coordinates based on topic analysis"""
+    topic_lower = topic.lower()
+    
+    # X-axis: Mainstream to Underground
+    x = 0
+    if any(term in topic_lower for term in ['ai', 'crypto', 'blockchain', 'tech']):
+        x = random.uniform(0.1, 0.6)  # Emerging/tech = somewhat underground
+    elif any(term in topic_lower for term in ['fashion', 'music', 'entertainment']):
+        x = random.uniform(-0.4, 0.2)  # Can be mainstream or underground
+    elif any(term in topic_lower for term in ['politics', 'news', 'climate']):
+        x = random.uniform(-0.6, -0.1)  # Mainstream topics
+    else:
+        x = random.uniform(-0.3, 0.3)
+    
+    # Y-axis: Traditional to Disruptive
+    y = 0
+    if any(term in topic_lower for term in ['ai', 'crypto', 'digital', 'innovation', 'automation']):
+        y = random.uniform(0.3, 0.8)  # Highly disruptive
+    elif any(term in topic_lower for term in ['wellness', 'sustainability', 'remote work']):
+        y = random.uniform(0.1, 0.5)  # Moderately disruptive
+    elif any(term in topic_lower for term in ['traditional', 'vintage', 'classic']):
+        y = random.uniform(-0.6, -0.2)  # Traditional
+    else:
+        y = random.uniform(-0.2, 0.4)
+    
+    return {'x': round(x, 3), 'y': round(y, 3)}
 
 def create_mock_sentiment_data(topic):
     """Create realistic mock sentiment data when Reddit API is unavailable"""
@@ -457,7 +637,7 @@ def calculate_wave_score_endpoint():
 
 @app.route('/api/cultural-compass', methods=['POST'])
 def cultural_compass_analysis():
-    """Analyze multiple topics for Cultural Compass mapping"""
+    """Analyze multiple topics for Cultural Compass mapping using enhanced Reddit analysis"""
     try:
         data = request.get_json()
         topics = data.get('topics', [])
@@ -468,48 +648,49 @@ def cultural_compass_analysis():
                 'message': 'No topics provided for analysis'
             }), 400
         
-        print(f"🧭 Cultural Compass analysis requested for {len(topics)} topics")
+        print(f"🧭 Enhanced Cultural Compass analysis requested for {len(topics)} topics")
         
-        results = []
-        for topic in topics[:10]:  # Limit to 10 topics to prevent overload
+        cultural_trends = []
+        for topic in topics[:8]:  # Limit to 8 topics for detailed analysis
             try:
-                print(f"🔍 Analyzing cultural sentiment for: {topic}")
-                sentiment_result = analyze_reddit_sentiment(topic, limit_posts=20, limit_comments=15)
+                print(f"🔍 Creating cultural trend object for: {topic}")
                 
-                if sentiment_result:
-                    # Calculate cultural coordinates
-                    coordinates = calculate_cultural_coordinates(topic, sentiment_result)
-                    
-                    cultural_analysis = {
-                        'topic': topic,
-                        'name': format_topic_name(topic),
-                        'sentiment_data': sentiment_result,
-                        'coordinates': coordinates,
-                        'category': categorize_by_topic(topic),
-                        'velocity': calculate_velocity_score(sentiment_result),
-                        'cultural_impact': assess_cultural_impact(sentiment_result)
-                    }
-                    
-                    results.append(cultural_analysis)
+                # Use enhanced Reddit cultural analysis
+                cultural_trend = analyze_reddit_cultural_trends(topic, limit_posts=30, limit_comments=25)
+                
+                if cultural_trend:
+                    cultural_trends.append(cultural_trend)
+                    print(f"✅ Cultural trend created for {topic}")
                     
             except Exception as topic_error:
                 print(f"⚠️ Error analyzing {topic}: {topic_error}")
                 continue
         
-        print(f"✅ Cultural Compass analysis complete: {len(results)} topics processed")
+        print(f"✅ Enhanced Cultural Compass analysis complete: {len(cultural_trends)} trends processed")
+        
+        # Store all trends in database for persistence
+        if supabase and cultural_trends:
+            try:
+                batch_result = supabase.table("cultural_compass_data").upsert(cultural_trends, on_conflict='topic').execute()
+                print(f"💾 Stored {len(cultural_trends)} cultural trends in database")
+            except Exception as db_error:
+                print(f"⚠️ Database storage error: {db_error}")
         
         return jsonify({
             'success': True,
-            'data': results,
-            'total_analyzed': len(results),
-            'message': f'Successfully analyzed {len(results)} topics for Cultural Compass'
+            'data': cultural_trends,
+            'total_analyzed': len(cultural_trends),
+            'reddit_connected': reddit is not None,
+            'analysis_depth': 'Enhanced Reddit Cultural Analysis',
+            'message': f'Successfully created {len(cultural_trends)} cultural trend objects for Cultural Compass'
         })
         
     except Exception as e:
-        print(f"❌ Cultural Compass API Error: {e}")
+        print(f"❌ Enhanced Cultural Compass API Error: {e}")
         return jsonify({
             'success': False,
-            'message': str(e)
+            'message': str(e),
+            'reddit_connected': reddit is not None
         }), 500
 
 def calculate_cultural_coordinates(topic, sentiment_data):
@@ -619,6 +800,138 @@ def assess_cultural_impact(sentiment_data):
         return 'Emerging Impact'
     else:
         return 'Low Impact'
+
+def calculate_cultural_velocity(engagement_metrics, sentiment_scores):
+    """Calculate cultural velocity based on engagement and sentiment trends"""
+    if not engagement_metrics or not sentiment_scores:
+        return random.uniform(0.3, 0.7)
+    
+    # Base velocity on average engagement
+    avg_engagement = sum(m['score'] + m['comments'] for m in engagement_metrics) / len(engagement_metrics)
+    base_velocity = min(avg_engagement / 1000, 1.0)  # Normalize to 0-1
+    
+    # Sentiment consistency boost
+    sentiment_variance = sum((s - 0.5) ** 2 for s in sentiment_scores) / len(sentiment_scores)
+    consistency_boost = max(0, 0.5 - sentiment_variance)
+    
+    velocity = min(base_velocity + consistency_boost, 1.0)
+    return round(velocity, 3)
+
+def assess_cultural_momentum(posts_data, engagement_metrics):
+    """Assess cultural momentum direction"""
+    if not posts_data or not engagement_metrics:
+        return random.choice(['Rising', 'Stable', 'Declining'])
+    
+    # Simple heuristic based on engagement levels
+    total_engagement = sum(m['score'] + m['comments'] for m in engagement_metrics)
+    avg_engagement = total_engagement / len(engagement_metrics)
+    
+    if avg_engagement > 500:
+        return 'Rising'
+    elif avg_engagement > 100:
+        return 'Stable'
+    else:
+        return 'Declining'
+
+def categorize_by_cultural_context(topic, subreddit_distribution):
+    """Enhanced categorization based on subreddit context"""
+    tech_subs = ['technology', 'futurology', 'artificial', 'MachineLearning']
+    creative_subs = ['Art', 'Design', 'Music', 'WeAreTheMusicMakers', 'streetwear']
+    lifestyle_subs = ['fitness', 'wellness', 'meditation', 'nutrition']
+    
+    tech_count = sum(subreddit_distribution.get(sub, 0) for sub in tech_subs)
+    creative_count = sum(subreddit_distribution.get(sub, 0) for sub in creative_subs)
+    lifestyle_count = sum(subreddit_distribution.get(sub, 0) for sub in lifestyle_subs)
+    
+    if tech_count > creative_count and tech_count > lifestyle_count:
+        return 'Technology'
+    elif creative_count > lifestyle_count:
+        return 'Creative'
+    elif lifestyle_count > 0:
+        return 'Lifestyle'
+    else:
+        return categorize_by_topic(topic)  # Fallback to keyword-based
+
+def calculate_mainstream_score(subreddit_distribution, engagement_metrics):
+    """Calculate how mainstream a trend is"""
+    mainstream_subs = ['all', 'news', 'television', 'movies', 'Music']
+    mainstream_posts = sum(subreddit_distribution.get(sub, 0) for sub in mainstream_subs)
+    total_posts = max(sum(subreddit_distribution.values()), 1)
+    
+    base_score = mainstream_posts / total_posts
+    
+    # High engagement also indicates mainstream appeal
+    if engagement_metrics:
+        avg_engagement = sum(m['score'] + m['comments'] for m in engagement_metrics) / len(engagement_metrics)
+        engagement_boost = min(avg_engagement / 2000, 0.3)  # Max 0.3 boost
+        base_score += engagement_boost
+    
+    return min(round(base_score, 3), 1.0)
+
+def calculate_disruption_score(topic, posts_data, sentiment_scores):
+    """Calculate how disruptive a trend is"""
+    disruptive_keywords = ['ai', 'crypto', 'blockchain', 'revolution', 'change', 'disruption', 'innovation', 'breakthrough']
+    
+    disruption_mentions = 0
+    total_content = 0
+    
+    for post in posts_data:
+        content = f"{post.get('title', '')} {post.get('selftext', '')}".lower()
+        total_content += 1
+        disruption_mentions += sum(1 for keyword in disruptive_keywords if keyword in content)
+    
+    base_score = disruption_mentions / max(total_content, 1) if total_content > 0 else 0
+    
+    # High positive sentiment around disruptive topics indicates acceptance
+    if sentiment_scores:
+        avg_sentiment = sum(sentiment_scores) / len(sentiment_scores)
+        if avg_sentiment > 0.6:  # Positive sentiment
+            base_score += 0.2
+    
+    # Topic-based boost
+    topic_lower = topic.lower()
+    if any(term in topic_lower for term in disruptive_keywords):
+        base_score += 0.3
+    
+    return min(round(base_score, 3), 1.0)
+
+def assess_enhanced_cultural_impact(total_posts, total_engagement, subreddit_spread):
+    """Enhanced cultural impact assessment"""
+    if total_posts >= 50 and total_engagement >= 10000 and subreddit_spread >= 5:
+        return 'High Impact'
+    elif total_posts >= 20 and total_engagement >= 2000 and subreddit_spread >= 3:
+        return 'Moderate Impact'
+    elif total_posts >= 5 and total_engagement >= 500:
+        return 'Emerging Impact'
+    else:
+        return 'Low Impact'
+
+def analyze_temporal_pattern(posts_data):
+    """Analyze temporal posting patterns"""
+    if not posts_data or len(posts_data) < 3:
+        return random.choice(['Accelerating', 'Steady', 'Peaking', 'Declining'])
+    
+    # Simple pattern analysis based on post timing
+    recent_posts = len([p for p in posts_data if p.get('created_utc', 0) > time.time() - 604800])  # Last week
+    total_posts = len(posts_data)
+    
+    if recent_posts / total_posts > 0.5:
+        return 'Accelerating'
+    elif recent_posts / total_posts > 0.3:
+        return 'Steady'
+    elif recent_posts / total_posts > 0.1:
+        return 'Peaking'
+    else:
+        return 'Declining'
+
+def calculate_analysis_confidence(total_posts, sentiment_count, subreddit_spread):
+    """Calculate confidence in the analysis"""
+    post_confidence = min(total_posts / 50, 1.0)  # Max confidence at 50+ posts
+    sentiment_confidence = min(sentiment_count / 30, 1.0)  # Max confidence at 30+ sentiments
+    spread_confidence = min(subreddit_spread / 8, 1.0)  # Max confidence at 8+ subreddits
+    
+    overall_confidence = (post_confidence + sentiment_confidence + spread_confidence) / 3
+    return round(overall_confidence, 3)
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
