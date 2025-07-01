@@ -2365,26 +2365,62 @@ async function filterByDateRange() {
 
 // Reset date filter function
 async function resetDateFilter() {
-  document.getElementById('startDate').value = '';
-  document.getElementById('endDate').value = '';
+  console.log('🔄 Resetting all filters to show default trends...');
+
+  // Clear all inputs and filters
+  const searchInput = document.getElementById('searchInput');
+  const filterSelect = document.getElementById('trendFilter');
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+
+  if (searchInput) searchInput.value = '';
+  if (startDateInput) startDateInput.value = '';
+  if (endDateInput) endDateInput.value = '';
+
+  // Reset global state
+  selectedTrends = 'all';
   startDate = null;
   endDate = null;
   filteredData = null;
 
-  console.log('🔄 Resetting date filter, fetching all data...');
-
   try {
-    // Fetch fresh unfiltered data
-    const data = await fetchData();
-    currentData = data;
-    updateTrendFilter(data.chartData);
-    createChart(data.chartData, selectedTrends);
-    createTrendTable(data.tableData);
-  } catch (error) {
-    console.error('❌ Error resetting filter:', error);
-    if (currentData) {
-      createChart(currentData.chartData, selectedTrends);
+    // Fetch fresh unfiltered data from Supabase
+    console.log('📊 Fetching fresh default data...');
+    const allData = await fetchYouTubeDataFromSupabase();
+
+    if (allData && allData.length > 0) {
+      console.log(`✅ Got ${allData.length} videos for default view`);
+      
+      // Process data to show all default trends
+      const chartData = processSupabaseDataForChart(allData);
+      currentData = { chartData, tableData: allData };
+
+      // Update filter dropdown with all available trends
+      updateTrendFilter(chartData);
+      if (filterSelect) filterSelect.value = 'all';
+
+      // Display everything with 'all' filter to show multiple trend lines
+      createChart(chartData, 'all');
+      createTrendTable(allData.slice(0, 25));
+
+      console.log('✅ Reset complete - showing all default trends');
+    } else {
+      console.log('⚠️ No data available, using fallback');
+      currentData = fallbackData;
+      updateTrendFilter(fallbackData.chartData);
+      if (filterSelect) filterSelect.value = 'all';
+      createChart(fallbackData.chartData, 'all');
+      createTrendTable(fallbackData.tableData);
     }
+  } catch (error) {
+    console.error('❌ Error resetting to default:', error);
+    // Use fallback data on error
+    currentData = fallbackData;
+    selectedTrends = 'all';
+    updateTrendFilter(fallbackData.chartData);
+    if (filterSelect) filterSelect.value = 'all';
+    createChart(fallbackData.chartData, 'all');
+    createTrendTable(fallbackData.tableData);
   }
 }
 
@@ -2515,30 +2551,59 @@ window.performComprehensiveSearch = performComprehensiveSearch;
 
 // Function to reset to default view
 async function resetToDefaultView() {
-  console.log('🔄 Resetting to default view...');
+  console.log('🔄 Resetting to default view with all trends...');
 
-  // Clear search input
+  // Clear all inputs
   const searchInput = document.getElementById('searchInput');
-  if (searchInput) searchInput.value = '';
-
-  // Reset filter to 'all'
   const filterSelect = document.getElementById('trendFilter');
-  if (filterSelect) filterSelect.value = 'all';
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
 
-  // Reset selected trends
+  if (searchInput) searchInput.value = '';
+  if (startDateInput) startDateInput.value = '';
+  if (endDateInput) endDateInput.value = '';
+
+  // Reset all global state
   selectedTrends = 'all';
+  startDate = null;
+  endDate = null;
   filteredData = null;
 
-  // Fetch and display default data
   try {
-    const data = await fetchData();
-    currentData = data;
-    updateTrendFilter(data.chartData);
-    createChart(data.chartData, 'all');
-    createTrendTable(data.tableData);
-    console.log('✅ Reset to default view completed');
+    // Get all data from Supabase to show default trends
+    const allData = await fetchYouTubeDataFromSupabase();
+
+    if (allData && allData.length > 0) {
+      // Process to show multiple default trend categories
+      const chartData = processSupabaseDataForChart(allData);
+      currentData = { chartData, tableData: allData };
+
+      // Update UI to show all available trends
+      updateTrendFilter(chartData);
+      if (filterSelect) filterSelect.value = 'all';
+
+      // Create chart showing ALL trends (not filtered)
+      createChart(chartData, 'all');
+      createTrendTable(allData.slice(0, 25));
+
+      console.log('✅ Default view reset - showing multiple trend categories');
+      console.log('📊 Available trends:', Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
+    } else {
+      // Fallback to default data
+      currentData = fallbackData;
+      updateTrendFilter(fallbackData.chartData);
+      if (filterSelect) filterSelect.value = 'all';
+      createChart(fallbackData.chartData, 'all');
+      createTrendTable(fallbackData.tableData);
+      console.log('📊 Using fallback default trends');
+    }
   } catch (error) {
     console.error('❌ Error resetting to default view:', error);
+    // Always show something, even on error
+    if (currentData) {
+      createChart(currentData.chartData, 'all');
+      createTrendTable(currentData.tableData);
+    }
   }
 }
 
