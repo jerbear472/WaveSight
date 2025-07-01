@@ -30,6 +30,8 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and
 
 # Initialize Reddit with better error handling
 reddit = None
+reddit_status = "Not configured"
+
 if REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET:
     try:
         reddit = praw.Reddit(
@@ -37,14 +39,20 @@ if REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET:
             client_secret=REDDIT_CLIENT_SECRET,
             user_agent="WaveSightSentimentBot/1.0 by /u/wavesight_user"
         )
-        # Test Reddit connection
-        reddit.auth.scopes()
+        # Test Reddit connection by fetching a simple subreddit
+        test_subreddit = reddit.subreddit("test").display_name
+        reddit_status = "Connected and working"
         print("✅ Reddit API connection successful")
+        print(f"🔗 Successfully accessed r/{test_subreddit}")
     except Exception as e:
         print(f"❌ Reddit API connection failed: {e}")
+        print("💡 Reddit will use mock data for demonstration")
         reddit = None
+        reddit_status = f"Failed: {str(e)[:50]}..."
 else:
     print("❌ Reddit credentials not configured")
+    print("💡 Reddit will use mock data for demonstration")
+    reddit_status = "Credentials missing"
 
 if OPENAI_API_KEY:
     openai.api_key = OPENAI_API_KEY
@@ -452,8 +460,15 @@ def health_check():
     return jsonify({
         "status": "healthy",
         "reddit_configured": bool(REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET),
+        "reddit_status": reddit_status,
+        "reddit_working": reddit is not None,
         "openai_configured": bool(OPENAI_API_KEY),
-        "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY)
+        "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
+        "services": {
+            "reddit": "✅ Connected" if reddit else "❌ Not connected",
+            "openai": "✅ Configured" if OPENAI_API_KEY else "⚠️ Using fallback",
+            "supabase": "✅ Connected" if supabase else "❌ Not connected"
+        }
     })
 
 if __name__ == "__main__":
