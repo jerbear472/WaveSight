@@ -178,6 +178,44 @@
             </div>
         </div>
 
+        <!-- Reddit Trends Analysis Section -->
+        <div class="chart-section">
+            <h2>🧠 Reddit Sentiment Trends</h2>
+            <div class="reddit-controls">
+                <div class="control-group">
+                    <input type="text" id="redditTopicInput" placeholder="Enter topic for Reddit analysis..." class="control-input">
+                    <button class="control-btn" onclick="analyzeRedditTopic()">🔍 Analyze Reddit</button>
+                    <button class="control-btn" onclick="refreshRedditTrends()">🔄 Refresh</button>
+                </div>
+            </div>
+            
+            <div class="reddit-trends-container">
+                <div id="redditTrendsChart" class="reddit-chart"></div>
+                <div id="redditSentimentTable" class="reddit-table-container">
+                    <table class="trend-table">
+                        <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Positive</th>
+                                <th>Negative</th>
+                                <th>Neutral</th>
+                                <th>Confidence</th>
+                                <th>Momentum</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="redditSentimentTableBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 2rem; color: #9ca3af;">
+                                    Enter a topic above to analyze Reddit sentiment trends
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div class="chart-section">
             <h2>📊 Detailed Trends Analysis</h2>
             <div class="trends-table-controls">

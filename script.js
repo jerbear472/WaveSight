@@ -1,4 +1,3 @@
-
 // Performance monitoring
 const performanceMetrics = {
   chartRenderTime: 0,

@@ -1158,6 +1158,40 @@ async function generateSyntheticTrendData(count = 5000) {
   return syntheticRecords;
 }
 
+// Get sentiment forecasts from Supabase
+app.get('/api/sentiment-forecasts', async (req, res) => {
+  try {
+    console.log('📊 API: Fetching sentiment forecasts from Supabase...');
+
+    const { data, error } = await supabase
+      .from('sentiment_forecasts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error) {
+      throw error;
+    }
+
+    console.log(`✅ Retrieved ${data?.length || 0} sentiment records from Supabase`);
+
+    res.json({
+      success: true,
+      data: data || [],
+      count: data?.length || 0,
+      message: 'Successfully retrieved sentiment forecasts'
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching sentiment forecasts:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      data: []
+    });
+  }
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
