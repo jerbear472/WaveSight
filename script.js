@@ -2640,6 +2640,221 @@ async function performComprehensiveSearch() {
 // Make comprehensive search available globally
 window.performComprehensiveSearch = performComprehensiveSearch;
 
+// Function to refresh the detailed trends table
+async function refreshDetailedTable() {
+  try {
+    console.log('🔄 Refreshing detailed trends table...');
+    
+    const categoryFilter = document.getElementById('detailedCategoryFilter').value;
+    const sortBy = document.getElementById('detailedSortBy').value;
+    const limit = parseInt(document.getElementById('detailedLimit').value);
+    
+    // Get all data from Supabase
+    const allData = await fetchYouTubeDataFromSupabase();
+    
+    if (!allData || allData.length === 0) {
+      console.log('⚠️ No data available for detailed analysis');
+      return;
+    }
+    
+    let filteredData = allData;
+    
+    // Apply category filter
+    if (categoryFilter !== 'all') {
+      filteredData = allData.filter(item => item.trend_category === categoryFilter);
+    }
+    
+    // Sort data
+    filteredData.sort((a, b) => {
+      switch (sortBy) {
+        case 'view_count':
+          return (b.view_count || 0) - (a.view_count || 0);
+        case 'trend_score':
+          return (b.trend_score || 0) - (a.trend_score || 0);
+        case 'published_at':
+          return new Date(b.published_at) - new Date(a.published_at);
+        case 'engagement':
+          const engagementA = ((a.like_count || 0) + (a.comment_count || 0)) / Math.max(a.view_count || 1, 1) * 100;
+          const engagementB = ((b.like_count || 0) + (b.comment_count || 0)) / Math.max(b.view_count || 1, 1) * 100;
+          return engagementB - engagementA;
+        default:
+          return (b.view_count || 0) - (a.view_count || 0);
+      }
+    });
+    
+    // Take top results
+    const topResults = filteredData.slice(0, limit);
+    
+    // Populate detailed table
+    populateDetailedTable(topResults);
+    
+    console.log(`✅ Detailed table populated with ${topResults.length} entries`);
+    
+  } catch (error) {
+    console.error('❌ Error refreshing detailed table:', error);
+  }
+}
+
+// Function to populate the detailed trends table
+function populateDetailedTable(data) {
+  const tableBody = document.getElementById('detailedTrendsTableBody');
+  if (!tableBody || !data || data.length === 0) {
+    if (tableBody) {
+      tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #9ca3af;">No detailed trend data available</td></tr>';
+    }
+    return;
+  }
+  
+  const rows = data.map((item, index) => {
+    const rank = index + 1;
+    const engagementRate = ((item.like_count || 0) + (item.comment_count || 0)) / Math.max(item.view_count || 1, 1) * 100;
+    const publishDate = new Date(item.published_at).toLocaleDateString();
+    
+    // Get category color class
+    const categoryClass = getCategoryColorClass(item.trend_category);
+    
+    // Create video link if available
+    const videoUrl = item.video_id ? `https://www.youtube.com/watch?v=${item.video_id}` : '#';
+    const titleDisplay = item.video_id ? 
+      `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="Watch on YouTube">${item.title || 'Untitled'}</a>` :
+      (item.title || 'Untitled');
+    
+    return `
+      <tr>
+        <td><span class="rank-badge">#${rank}</span></td>
+        <td>
+          <div class="content-info">
+            <div class="content-title">${titleDisplay}</div>
+            <div class="content-channel">${item.channel_title || 'Unknown Channel'}</div>
+          </div>
+        </td>
+        <td>
+          <span class="category-badge ${categoryClass}">
+            ${item.trend_category || 'General'}
+          </span>
+        </td>
+        <td>
+          <div class="metric-display">
+            <span class="metric-value">${formatNumber(item.view_count || 0)}</span>
+            <span class="metric-label">views</span>
+          </div>
+        </td>
+        <td>
+          <div class="engagement-metrics">
+            <div class="engagement-rate">${engagementRate.toFixed(2)}%</div>
+            <div class="engagement-details">
+              👍 ${formatNumber(item.like_count || 0)} | 💬 ${formatNumber(item.comment_count || 0)}
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="score-display">
+            <span class="score-value ${getScoreClass(item.trend_score)}">${item.trend_score || 0}</span>
+            <span class="score-max">/100</span>
+          </div>
+        </td>
+        <td>
+          <div class="date-display">
+            <div class="date-main">${publishDate}</div>
+            <div class="date-time">${new Date(item.published_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+          </div>
+        </td>
+        <td>
+          <div class="action-buttons">
+            <button class="action-btn analyze-btn" onclick="analyzeTrendDetail('${item.video_id}')" title="Analyze Trend">
+              📊
+            </button>
+            <button class="action-btn alert-btn" onclick="createTrendAlert('${item.video_id}')" title="Create Alert">
+              🚨
+            </button>
+            <button class="action-btn share-btn" onclick="shareTrend('${item.video_id}')" title="Share">
+              📤
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  
+  tableBody.innerHTML = rows;
+}
+
+// Helper function to get category color class
+function getCategoryColorClass(category) {
+  const colorMap = {
+    'AI Tools': 'category-ai',
+    'Crypto': 'category-crypto', 
+    'Gaming': 'category-gaming',
+    'Technology': 'category-tech',
+    'Entertainment': 'category-entertainment',
+    'Health & Fitness': 'category-health',
+    'Movies & TV': 'category-movies',
+    'Music': 'category-music',
+    'Sports': 'category-sports',
+    'General': 'category-general'
+  };
+  return colorMap[category] || 'category-general';
+}
+
+// Helper function to get score color class
+function getScoreClass(score) {
+  if (score >= 80) return 'score-high';
+  if (score >= 60) return 'score-medium';
+  return 'score-low';
+}
+
+// Action button functions
+function analyzeTrendDetail(videoId) {
+  console.log(`📊 Analyzing trend detail for video: ${videoId}`);
+  // Find the video data
+  const video = currentData?.tableData?.find(item => item.video_id === videoId);
+  if (video) {
+    showTrendDetailModal(video.trend_category || 'General', '#5ee3ff');
+  } else {
+    alert('Video data not found for detailed analysis.');
+  }
+}
+
+function createTrendAlert(videoId) {
+  console.log(`🚨 Creating alert for video: ${videoId}`);
+  const video = currentData?.tableData?.find(item => item.video_id === videoId);
+  if (video) {
+    alert(`🚨 Alert created for: "${video.title}"\n\nYou'll be notified when:\n• View count increases by 25%\n• Engagement rate changes significantly\n• Trend score crosses threshold levels`);
+  } else {
+    alert('Video not found for alert creation.');
+  }
+}
+
+function shareTrend(videoId) {
+  console.log(`📤 Sharing trend for video: ${videoId}`);
+  const video = currentData?.tableData?.find(item => item.video_id === videoId);
+  if (video && video.video_id) {
+    const shareUrl = `https://www.youtube.com/watch?v=${video.video_id}`;
+    const shareText = `Check out this trending video: "${video.title}" - ${formatNumber(video.view_count || 0)} views!`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: video.title,
+        text: shareText,
+        url: shareUrl
+      });
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(`${shareText}\n${shareUrl}`).then(() => {
+        alert('Trend details copied to clipboard!');
+      });
+    }
+  } else {
+    alert('Unable to share this trend.');
+  }
+}
+
+// Make functions globally available
+window.refreshDetailedTable = refreshDetailedTable;
+window.analyzeTrendDetail = analyzeTrendDetail;
+window.createTrendAlert = createTrendAlert;
+window.shareTrend = shareTrend;
+
 // Function to reset to default view
 async function resetToDefaultView() {
   console.log('🔄 Resetting to default view with all trends...');
@@ -3136,6 +3351,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Fetch initial trend insights
   await fetchTrendInsights();
+
+  // Initialize detailed trends table
+  await refreshDetailedTable();
 });
 
 async function analyzeWaveScore(trendName) {

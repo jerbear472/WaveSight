@@ -506,17 +506,272 @@ h1, h2, h3, .logo, .header-title {
   display: none;
 }
 
+/* Detailed trends table styles */
+.trends-table-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #1a1a2e;
+    border-radius: 8px;
+    flex-wrap: wrap;
+    align-items: end;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.control-label {
+    font-size: 0.875rem;
+    color: #9ca3af;
+    font-weight: 500;
+}
+
+.control-input {
+    padding: 0.5rem;
+    background: #0f0f1a;
+    border: 1px solid #2e2e45;
+    border-radius: 6px;
+    color: #f1f1f1;
+    font-size: 0.875rem;
+    min-width: 120px;
+}
+
+.control-input:focus {
+    outline: none;
+    border-color: #5ee3ff;
+    box-shadow: 0 0 0 2px rgba(94, 227, 255, 0.1);
+}
+
+.control-btn {
+    padding: 0.5rem 1rem;
+    background: #5ee3ff;
+    color: #0f0f1a;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+    background: #38bdf8;
+    transform: translateY(-1px);
+}
+
+.detailed-trends-container {
+    background: #1a1a2e;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.detailed-trends-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: transparent;
+}
+
+.detailed-trends-table th {
+    background: #0f0f1a;
+    color: #f1f1f1;
+    padding: 1rem 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #2e2e45;
+}
+
+.detailed-trends-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #2e2e45;
+    color: #e5e7eb;
+    vertical-align: middle;
+}
+
+.detailed-trends-table tr:hover {
+    background: rgba(94, 227, 255, 0.05);
+}
+
+.rank-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #5ee3ff, #38bdf8);
+    color: #0f0f1a;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.875rem;
+}
+
+.content-info {
+    max-width: 300px;
+}
+
+.content-title {
+    font-weight: 600;
+    color: #f1f1f1;
+    line-height: 1.4;
+    margin-bottom: 0.25rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.content-channel {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.category-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.category-ai { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+.category-crypto { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.category-gaming { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.category-tech { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+.category-entertainment { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
+.category-health { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+.category-movies { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.category-music { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+.category-sports { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+.category-general { background: rgba(107, 114, 128, 0.2); color: #6b7280; }
+
+.metric-display {
+    text-align: center;
+}
+
+.metric-value {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #5ee3ff;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+}
+
+.engagement-metrics {
+    text-align: center;
+}
+
+.engagement-rate {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #10b981;
+    margin-bottom: 0.25rem;
+}
+
+.engagement-details {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.score-display {
+    text-align: center;
+}
+
+.score-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.score-high { color: #10b981; }
+.score-medium { color: #f59e0b; }
+.score-low { color: #ef4444; }
+
+.score-max {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.date-display {
+    text-align: center;
+}
+
+.date-main {
+    font-weight: 600;
+    color: #f1f1f1;
+    margin-bottom: 0.25rem;
+}
+
+.date-time {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.analyze-btn {
+    background: rgba(94, 227, 255, 0.2);
+    color: #5ee3ff;
+}
+
+.analyze-btn:hover {
+    background: rgba(94, 227, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.alert-btn {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.alert-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    transform: scale(1.1);
+}
+
+.share-btn {
+    background: rgba(34, 197, 94, 0.2);
+    color: #22c55e;
+}
+
+.share-btn:hover {
+    background: rgba(34, 197, 94, 0.3);
+    transform: scale(1.1);
+}
+
+/* Trend table styles */
 .trend-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 24px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(94, 227, 255, 0.1);
-  backdrop-filter: blur(10px);
-  table-layout: fixed;
+    width: 100%;
+    border-collapse: collapse;
+    background: #1a1a2e;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-top: 1rem;
 }
 
 .trend-table th,
