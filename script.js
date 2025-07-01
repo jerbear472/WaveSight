@@ -1492,6 +1492,9 @@ function hideAdvancedMenu() {
 
 window.showAdvancedMenu = showAdvancedMenu;
 window.hideAdvancedMenu = hideAdvancedMenu;
+window.addTrendToComparison = addTrendToComparison;
+window.removeTrendFromComparison = removeTrendFromComparison;
+window.resetTrendComparison = resetTrendComparison;
 
 // Fetch data with YouTube integration
 async function fetchData() {
@@ -2630,10 +2633,30 @@ function hideLoadingSpinner() {
 // Comprehensive search function for the search button
 async function performComprehensiveSearch() {
   console.log('🔍 Performing comprehensive search...');
+  const searchInput = document.getElementById('searchInput');
+  const searchTerm = searchInput.value.toLowerCase().trim();
+  
+  if (!searchTerm) {
+    alert('Please enter a search term to search for trends.');
+    return;
+  }
+  
+  // Check if we should add to comparison or search fresh
+  if (comparedTrends.length > 0 && comparedTrends.length < maxComparedTrends) {
+    const addToComparison = confirm(`You have ${comparedTrends.length} trend(s) selected for comparison. Do you want to add "${searchTerm}" to the comparison?`);
+    if (!addToComparison) {
+      resetTrendComparison();
+    }
+  }
+  
   await searchTrends();
 }
 
-// Simple and effective search function
+// Global variable to track selected trends for comparison
+let comparedTrends = [];
+let maxComparedTrends = 3;
+
+// Enhanced search function with trend comparison
 async function searchTrends() {
   const searchInput = document.getElementById('searchInput');
   const filterSelect = document.getElementById('trendFilter');
@@ -2688,53 +2711,35 @@ async function searchTrends() {
 
       if (searchResults.length > 0) {
         console.log(`📊 Found ${searchResults.length} videos for "${searchTerm}"`);
-        console.log(`📊 Creating single trend chart for "${searchTermDisplay}"`);
 
-        // Create chart data with ONLY the searched trend - use simple monthly aggregation
-        const chartData = createSearchChartData(searchResults, searchTermDisplay, startDate, endDate);
-
-        // Update UI
-        currentData = { chartData, tableData: searchResults, allData: searchResults };
-        trendData = dataToProcess; // Store for detailed analysis
-        selectedTrends = searchTermDisplay;
-
-        // Update filter dropdown to show ONLY the search result
-        if (filterSelect) {
-          filterSelect.innerHTML = '<option value="all">All Trends</option>';
-          const option = document.createElement('option');
-          option.value = searchTermDisplay;
-          option.textContent = searchTermDisplay;
-          option.selected = true;
-          filterSelect.appendChild(option);
+        // If we have compared trends, add this search to comparison
+        if (comparedTrends.length > 0) {
+          addTrendToComparison(searchTermDisplay, searchResults, startDate, endDate);
+        } else {
+          // Show single trend
+          displaySingleTrend(searchTermDisplay, searchResults, startDate, endDate);
         }
 
-        // Create chart showing ONLY the searched trend
-        createChart(chartData, searchTermDisplay);
+        // Update UI components
+        currentData = { chartData: [], tableData: searchResults, allData: searchResults };
+        trendData = dataToProcess;
+
         createTrendTable(searchResults.slice(0, 25));
-
-        // Initialize detailed trends table
         populateDetailedTrendsTable(searchResults.slice(0, 25));
-
-        // Update status info for search results
         updateStatusInfo({ allData: searchResults });
 
-        console.log(`✅ Chart will show ONLY: "${searchTermDisplay}"`);
+        console.log(`✅ Search completed for: "${searchTermDisplay}"`);
       } else {
         console.log(`⚠️ No results for "${searchTerm}"`);
-        const tableBody = document.getElementById('trendTableBody');
-        if (tableBody) {
-          tableBody.innerHTML = `<tr><td colspan="4">No data found for "${searchTerm}"</td></tr>`;
-        }
-        // Show empty chart with search term
-        const emptyChart = createEmptySearchChart(searchTermDisplay);
-        createChart(emptyChart, searchTermDisplay);
+        showNoResultsMessage(searchTerm);
       }
     } else {
-      // DEFAULT MODE: Show all trends
+      // DEFAULT MODE: Show all trends or reset comparison
+      resetTrendComparison();
       const chartData = processSupabaseDataForChart(dataToProcess);
 
       currentData = { chartData, tableData: dataToProcess, allData: dataToProcess };
-      trendData = dataToProcess; // Store for detailed analysis
+      trendData = dataToProcess;
       selectedTrends = 'all';
 
       updateTrendFilter(chartData);
@@ -2742,11 +2747,7 @@ async function searchTrends() {
 
       createChart(chartData, 'all');
       createTrendTable(dataToProcess.slice(0, 25));
-
-      // Initialize detailed trends table
       populateDetailedTrendsTable(dataToProcess.slice(0, 25));
-
-      // Update status info for all data
       updateStatusInfo({ allData: dataToProcess });
 
       console.log('📊 Showing all default trends');
@@ -2758,6 +2759,202 @@ async function searchTrends() {
     console.error('❌ Search error:', error);
     hideLoadingSpinner();
   }
+}
+
+// Display single trend results
+function displaySingleTrend(trendName, searchResults, startDate, endDate) {
+  console.log(`📊 Displaying single trend: "${trendName}"`);
+  
+  const chartData = createSearchChartData(searchResults, trendName, startDate, endDate);
+  
+  // Store this trend for potential comparison
+  comparedTrends = [{
+    name: trendName,
+    data: searchResults,
+    chartData: chartData
+  }];
+
+  selectedTrends = trendName;
+  createChart(chartData, trendName);
+  
+  // Update filter dropdown
+  const filterSelect = document.getElementById('trendFilter');
+  if (filterSelect) {
+    filterSelect.innerHTML = '<option value="all">All Trends</option>';
+    const option = document.createElement('option');
+    option.value = trendName;
+    option.textContent = trendName;
+    option.selected = true;
+    filterSelect.appendChild(option);
+  }
+
+  updateTrendComparisonUI();
+}
+
+// Add trend to comparison (max 3 trends)
+function addTrendToComparison(trendName, searchResults, startDate, endDate) {
+  console.log(`📊 Adding trend to comparison: "${trendName}"`);
+
+  // Check if trend already exists in comparison
+  const existingIndex = comparedTrends.findIndex(trend => trend.name === trendName);
+  if (existingIndex !== -1) {
+    console.log(`⚠️ Trend "${trendName}" already in comparison`);
+    return;
+  }
+
+  // Check max limit
+  if (comparedTrends.length >= maxComparedTrends) {
+    alert(`Maximum of ${maxComparedTrends} trends can be compared. Remove a trend to add a new one.`);
+    return;
+  }
+
+  // Add new trend to comparison
+  const chartData = createSearchChartData(searchResults, trendName, startDate, endDate);
+  comparedTrends.push({
+    name: trendName,
+    data: searchResults,
+    chartData: chartData
+  });
+
+  // Create combined chart data
+  const combinedChartData = createCombinedChartData(comparedTrends, startDate, endDate);
+  createChart(combinedChartData, 'comparison');
+
+  selectedTrends = comparedTrends.map(t => t.name).join(' vs ');
+  updateTrendComparisonUI();
+}
+
+// Create combined chart data for multiple trends
+function createCombinedChartData(trends, startDate, endDate) {
+  console.log(`📊 Creating combined chart for ${trends.length} trends`);
+
+  // Determine date range
+  const dates = [];
+  const dateMap = new Map();
+
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      const monthStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
+      if (!dates.includes(monthStr)) {
+        dates.push(monthStr);
+        const dataPoint = { date: monthStr };
+        trends.forEach(trend => {
+          dataPoint[trend.name] = 0;
+        });
+        dateMap.set(monthStr, dataPoint);
+      }
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+  } else {
+    // Default to last 12 months
+    const currentDate = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate);
+      date.setMonth(date.getMonth() - i);
+      const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      dates.push(monthStr);
+      
+      const dataPoint = { date: monthStr };
+      trends.forEach(trend => {
+        dataPoint[trend.name] = 0;
+      });
+      dateMap.set(monthStr, dataPoint);
+    }
+  }
+
+  // Aggregate data for each trend
+  trends.forEach(trend => {
+    trend.data.forEach(item => {
+      const pubDate = new Date(item.published_at);
+      const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+      
+      if (dateMap.has(monthStr)) {
+        const dataPoint = dateMap.get(monthStr);
+        dataPoint[trend.name] = (dataPoint[trend.name] || 0) + (item.view_count || 0);
+        dateMap.set(monthStr, dataPoint);
+      }
+    });
+  });
+
+  const chartData = dates.map(date => dateMap.get(date));
+  console.log(`📊 Combined chart data created with trends: ${trends.map(t => t.name).join(', ')}`);
+  
+  return chartData;
+}
+
+// Remove trend from comparison
+function removeTrendFromComparison(trendName) {
+  console.log(`🗑️ Removing trend from comparison: "${trendName}"`);
+  
+  comparedTrends = comparedTrends.filter(trend => trend.name !== trendName);
+  
+  if (comparedTrends.length === 0) {
+    resetTrendComparison();
+  } else if (comparedTrends.length === 1) {
+    // Show single trend
+    const remainingTrend = comparedTrends[0];
+    createChart(remainingTrend.chartData, remainingTrend.name);
+    selectedTrends = remainingTrend.name;
+  } else {
+    // Update combined chart
+    const combinedChartData = createCombinedChartData(comparedTrends);
+    createChart(combinedChartData, 'comparison');
+    selectedTrends = comparedTrends.map(t => t.name).join(' vs ');
+  }
+  
+  updateTrendComparisonUI();
+}
+
+// Reset trend comparison
+function resetTrendComparison() {
+  console.log('🔄 Resetting trend comparison');
+  comparedTrends = [];
+  updateTrendComparisonUI();
+}
+
+// Update trend comparison UI
+function updateTrendComparisonUI() {
+  const comparisonContainer = document.getElementById('trendComparison');
+  if (!comparisonContainer) return;
+
+  if (comparedTrends.length === 0) {
+    comparisonContainer.style.display = 'none';
+    return;
+  }
+
+  comparisonContainer.style.display = 'block';
+  
+  const comparisonList = comparedTrends.map(trend => `
+    <div class="compared-trend">
+      <span class="trend-name">${trend.name}</span>
+      <button class="remove-trend-btn" onclick="removeTrendFromComparison('${trend.name}')">×</button>
+    </div>
+  `).join('');
+
+  comparisonContainer.innerHTML = `
+    <div class="comparison-header">
+      <span class="comparison-title">📊 Comparing Trends (${comparedTrends.length}/${maxComparedTrends})</span>
+      <button class="clear-comparison-btn" onclick="resetTrendComparison()">Clear All</button>
+    </div>
+    <div class="comparison-trends">
+      ${comparisonList}
+    </div>
+  `;
+}
+
+// Show no results message
+function showNoResultsMessage(searchTerm) {
+  const tableBody = document.getElementById('trendTableBody');
+  if (tableBody) {
+    tableBody.innerHTML = `<tr><td colspan="4">No data found for "${searchTerm}"</td></tr>`;
+  }
+  
+  const emptyChart = createEmptySearchChart(searchTerm);
+  createChart(emptyChart, searchTerm);
 }
 
 // Enhanced date range filter function that works with search
