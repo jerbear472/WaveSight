@@ -1,7 +1,7 @@
 -- Create YouTube trends table in your Supabase database
 -- Run this SQL in your Supabase SQL editor
 
-CREATE TABLE youtube_trends (
+CREATE TABLE IF NOT EXISTS youtube_trends (
   id BIGSERIAL PRIMARY KEY,
 
   -- Basic video info
@@ -27,6 +27,10 @@ CREATE TABLE youtube_trends (
   -- Trending analysis
   trend_category VARCHAR(100) DEFAULT 'General',
   trend_score INTEGER DEFAULT 0,
+  
+  -- Wave analysis
+  wave_score DECIMAL(10, 6) DEFAULT 0,
+  sentiment_score DECIMAL(5, 4) DEFAULT 0,
 
   -- Metadata
   created_at TIMESTAMPTZ DEFAULT NOW(),
