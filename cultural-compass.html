@@ -280,6 +280,12 @@
                 <input type="text" id="topicFilter" placeholder="Enter topic to analyze...">
                 <button class="analyze-btn" onclick="analyzeTopic()">Analyze</button>
             </div>
+            <div class="control-group">
+                <label>Sentiment Integration</label>
+                <button class="analyze-btn" onclick="loadSentimentTrends(); updateCompass(); updateMetrics();" style="background: linear-gradient(45deg, #10B981, #059669);">
+                    🔄 Refresh from Sentiment
+                </button>
+            </div>
         </div>
 
         <div class="compass-container">

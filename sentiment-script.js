@@ -12,7 +12,7 @@ function initSupabase() {
     console.log('✅ Supabase reused existing client');
     return true;
   }
-  
+
   if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -777,8 +777,7 @@ function createSentimentTable(data) {
     return;
   }
 
-  // Sort by date (most recent first)
-  const sortedData = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Sort by date    const sortedData = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const tableHTML = sortedData.slice(0, 10).map(item => {
     const confidenceClass = item.confidence >= 70 ? 'high-confidence' : 
@@ -890,11 +889,11 @@ async function analyzeSentiment() {
   // Show loading state
   const results = document.getElementById('sentimentResults');
   const analyzeBtn = document.querySelector('button[onclick="analyzeSentiment()"]');
-  
+
   if (results) {
     results.innerHTML = '<div class="loading">🔍 Fetching Reddit data and analyzing sentiment...</div>';
   }
-  
+
   if (analyzeBtn) {
     analyzeBtn.disabled = true;
     analyzeBtn.textContent = 'Analyzing...';
@@ -902,16 +901,16 @@ async function analyzeSentiment() {
 
   try {
     console.log(`🔍 Analyzing sentiment for topic: ${topic}`);
-    
+
     // Check if sentiment server is running with timeout
     const healthController = new AbortController();
     const healthTimeout = setTimeout(() => healthController.abort(), 5000);
-    
+
     const healthResponse = await fetch('http://0.0.0.0:5001/api/health', {
       signal: healthController.signal
     });
     clearTimeout(healthTimeout);
-    
+
     if (!healthResponse.ok) {
       throw new Error('Sentiment analysis server is not running. Please start the "Sentiment Analysis Server" workflow.');
     }
@@ -919,7 +918,7 @@ async function analyzeSentiment() {
     // Analyze sentiment with timeout
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
-    
+
     const response = await fetch('http://0.0.0.0:5001/api/analyze-sentiment', {
       method: 'POST',
       headers: {
@@ -931,7 +930,7 @@ async function analyzeSentiment() {
       }),
       signal: controller.signal
     });
-    
+
     clearTimeout(timeout);
 
     if (!response.ok) {
@@ -942,51 +941,91 @@ async function analyzeSentiment() {
     const result = await response.json();
 
     if (result.success) {
-      console.log('✅ Reddit sentiment analysis completed:', result);
-      console.log(`📊 Analyzed ${result.total_comments || 0} Reddit comments`);
+            displayResults(result.data);
+            updateMetrics(result.data);
 
-      showNotification(`Analysis complete! Analyzed ${result.total_comments || 0} comments`, 'success');
-      
-      // Refresh dashboard with new data
-      await refreshSentimentData();
-      
-      // Clear input
-      topicInput.value = '';
-    } else {
-      throw new Error(result.message || 'Analysis failed');
+            // Send to Cultural Compass if successful
+            sendToCompass(topic, result.data);
+        } else {
+            showError('Failed to analyze sentiment: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error analyzing sentiment:', error);
+        showError('Error connecting to sentiment analysis service');
+    } finally {
+        toggleLoading(false);
     }
+}
 
-  } catch (error) {
-    console.error('❌ Error analyzing Reddit sentiment:', error);
-    
-    let errorMessage = error.message;
-    if (error.name === 'AbortError') {
-      errorMessage = 'Analysis timeout - server took too long to respond';
+// Send analyzed trend to Cultural Compass
+async function sendToCompass(topic, sentimentData) {
+    try {
+        console.log(`🧭 Sending ${topic} to Cultural Compass...`);
+
+        // Request Cultural Compass analysis for this specific topic
+        const compassResponse = await fetch('http://0.0.0.0:5001/api/cultural-compass', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topics: [topic] })
+        });
+
+        if (compassResponse.ok) {
+            const compassResult = await compassResponse.json();
+            if (compassResult.success && compassResult.data.length > 0) {
+                const culturalTrend = compassResult.data[0];
+
+                // Store in localStorage for Cultural Compass to pick up
+                const existingTrends = JSON.parse(localStorage.getItem('compassTrends') || '[]');
+                const updatedTrends = existingTrends.filter(trend => trend.topic !== topic);
+                updatedTrends.push(culturalTrend);
+                localStorage.setItem('compassTrends', JSON.stringify(updatedTrends));
+
+                // Show success message with link to Cultural Compass
+                const compassLink = `<a href="cultural-compass.html" style="color: #5ee3ff; text-decoration: underline;">View in Cultural Compass →</a>`;
+                showSuccess(`✅ "${topic}" analyzed and added to Cultural Compass! ${compassLink}`);
+
+                console.log(`✅ ${topic} sent to Cultural Compass at coordinates (${culturalTrend.coordinates?.x}, ${culturalTrend.coordinates?.y})`);
+            }
+        }
+    } catch (error) {
+        console.log(`⚠️ Could not send to Cultural Compass: ${error.message}`);
+        // Don't show error to user as this is a bonus feature
     }
-    
-    showNotification(`Analysis failed: ${errorMessage}`, 'error');
-    
-    if (results) {
-      results.innerHTML = `
-        <div class="error">
-          <h3>Analysis Error</h3>
-          <p>${errorMessage}</p>
-          <small>
-            <strong>To fix this:</strong><br>
-            1. Start the "Sentiment Analysis Server" workflow<br>
-            2. Ensure Reddit API credentials are configured<br>
-            3. Check that port 5001 is accessible
-          </small>
-        </div>
-      `;
-    }
-  } finally {
-    // Restore button state
-    if (analyzeBtn) {
-      analyzeBtn.disabled = false;
-      analyzeBtn.textContent = 'Analyze Sentiment';
-    }
-  }
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+function showSuccess(message) {
+    const successDiv = document.getElementById('successMessage') || createSuccessDiv();
+    successDiv.innerHTML = message;
+    successDiv.style.display = 'block';
+    setTimeout(() => {
+        successDiv.style.display = 'none';
+    }, 8000);
+}
+
+function createSuccessDiv() {
+    const successDiv = document.createElement('div');
+    successDiv.id = 'successMessage';
+    successDiv.style.cssText = `
+        display: none;
+        background: linear-gradient(45deg, #10B981, #059669);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        margin: 1rem 0;
+        border-left: 4px solid #34D399;
+        font-weight: 500;
+    `;
+    document.querySelector('.container').insertBefore(successDiv, document.querySelector('.analysis-form'));
+    return successDiv;
 }
 
 // Add notification system
@@ -1006,9 +1045,9 @@ function showNotification(message, type = 'info') {
     animation: slideIn 0.3s ease;
     background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
   `;
-  
+
   document.body.appendChild(notification);
-  
+
   setTimeout(() => {
     notification.style.animation = 'slideOut 0.3s ease';
     setTimeout(() => notification.remove(), 300);
@@ -1019,11 +1058,11 @@ function showNotification(message, type = 'info') {
 function displaySentimentResults(data) {
   const results = document.getElementById('sentimentResults');
   if (!results || !data) return;
-  
+
   const confidence = Math.round(data.confidence || 0);
   const prediction = data.prediction_outcome || 'Uncertain';
   const momentum = data.cultural_momentum || 'Stable';
-  
+
   results.innerHTML = `
     <div class="sentiment-results">
       <h3>Analysis Results for "${data.topic}"</h3>

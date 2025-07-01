@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Ensure compass always shows something
     try {
         initializeCompass();
+        loadSentimentTrends(); // Load trends from sentiment analysis
         loadEnhancedData();
         updateMetrics();
     } catch (error) {
@@ -531,6 +532,18 @@ function updateMetrics() {
     document.getElementById('emergingTrends').textContent = emergingTrends;
 }
 
+// Check for new sentiment trends every 10 seconds
+setInterval(() => {
+    const currentCount = compassData.length;
+    loadSentimentTrends();
+    
+    if (compassData.length > currentCount) {
+        console.log(`🔄 Found ${compassData.length - currentCount} new trends from sentiment analysis`);
+        updateCompass();
+        updateMetrics();
+    }
+}, 10000);
+
 // Update legend
 function updateLegend() {
     const legend = document.getElementById('trendLegend');
@@ -550,10 +563,47 @@ function updateLegend() {
     }).join('');
 }
 
+// Load trends from sentiment analysis (localStorage)
+function loadSentimentTrends() {
+    try {
+        const sentimentTrends = JSON.parse(localStorage.getItem('compassTrends') || '[]');
+        
+        if (sentimentTrends.length > 0) {
+            console.log(`🧭 Loading ${sentimentTrends.length} trends from sentiment analysis...`);
+            
+            // Merge with existing compass data, avoiding duplicates
+            sentimentTrends.forEach(trend => {
+                const existingIndex = compassData.findIndex(existing => existing.topic === trend.topic);
+                if (existingIndex >= 0) {
+                    // Update existing trend
+                    compassData[existingIndex] = trend;
+                } else {
+                    // Add new trend
+                    compassData.push(trend);
+                }
+            });
+            
+            filteredData = [...compassData];
+            
+            // Update status message
+            const serverStatus = document.getElementById('serverStatus');
+            if (serverStatus) {
+                serverStatus.innerHTML = `✅ Loaded ${sentimentTrends.length} trends from Reddit sentiment analysis + sample data`;
+                serverStatus.style.background = '#059669';
+            }
+            
+            console.log(`✅ Integrated ${sentimentTrends.length} sentiment trends with compass data`);
+        }
+    } catch (error) {
+        console.log('⚠️ Could not load sentiment trends:', error);
+    }
+}
+
 // Make functions globally available
 window.analyzeTopic = analyzeTopic;
 window.showAboutModal = showAboutModal;
 window.toggleMobileMenu = toggleMobileMenu;
+window.loadSentimentTrends = loadSentimentTrends;
 
 // Load enhanced cultural trend data
 async function loadEnhancedData() {
