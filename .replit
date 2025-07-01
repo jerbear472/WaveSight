@@ -32,6 +32,10 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "export PATH=\"/nix/store/$(ls /nix/store | grep nodejs | head -1)/bin:$PATH\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "npm install"
 
 [[workflows.workflow.tasks]]
@@ -129,6 +133,10 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "echo \"🚀 Starting WaveSight services...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "export PATH=\"/nix/store/$(ls /nix/store | grep nodejs | head -1)/bin:$PATH\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

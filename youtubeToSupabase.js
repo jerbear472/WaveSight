@@ -781,7 +781,7 @@ app.get('/api/bulk-fetch', async (req, res) => {
         'investing finance stocks crypto',
         'marketingdigital social media',
         'career advice job interview',
-        'real estate investment property',
+        'realestate investment property',
         'e-commerce online business',
         'leadership management skills',
         'passive income side hustle',
