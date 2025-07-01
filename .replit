@@ -79,6 +79,19 @@ mode = "sequential"
 task = "shell.exec"
 args = "python cultural_trend_processor.py"
 
+[[workflows.workflow]]
+name = "All Services"
+author = 44347283
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node youtubeToSupabase.js"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python sentiment_server.py"
+
 [[ports]]
 localPort = 80
 externalPort = 80

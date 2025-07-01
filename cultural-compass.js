@@ -7,8 +7,18 @@ let currentTooltip = null;
 // Initialize Cultural Compass
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🧭 Initializing Cultural Compass...');
-    initializeCompass();
-    loadCompassData();
+    
+    // Ensure compass always shows something
+    try {
+        initializeCompass();
+        loadCompassData();
+    } catch (error) {
+        console.error('❌ Error initializing compass:', error);
+        // Fallback initialization
+        createSampleCompassData();
+        updateCompass();
+        updateMetrics();
+    }
 });
 
 // Initialize compass with default settings
@@ -28,18 +38,32 @@ async function loadCompassData() {
     try {
         console.log('📊 Loading sentiment data for Cultural Compass...');
         
-        // Try to fetch from sentiment analysis server
-        const response = await fetch('http://0.0.0.0:5001/api/health');
-        
-        if (response.ok) {
-            await fetchRealSentimentData();
-        } else {
-            console.log('⚠️ Sentiment server not available, using sample data');
-            createSampleCompassData();
-        }
-        
+        // Always show sample data first for immediate visualization
+        createSampleCompassData();
         updateCompass();
         updateMetrics();
+        
+        // Try to fetch from sentiment analysis server
+        try {
+            const response = await fetch('http://0.0.0.0:5001/api/health');
+            
+            if (response.ok) {
+                console.log('✅ Sentiment server available, fetching real data...');
+                document.getElementById('serverStatus').innerHTML = '✅ Connected to Reddit sentiment analysis server';
+                document.getElementById('serverStatus').style.background = '#059669';
+                await fetchRealSentimentData();
+                updateCompass();
+                updateMetrics();
+            } else {
+                console.log('⚠️ Sentiment server not available, keeping sample data');
+                document.getElementById('serverStatus').innerHTML = '⚠️ Using sample data - Start "Sentiment Analysis Server" for live Reddit data';
+                document.getElementById('serverStatus').style.background = '#D97706';
+            }
+        } catch (serverError) {
+            console.log('⚠️ Sentiment server not running, using sample data');
+            document.getElementById('serverStatus').innerHTML = '⚠️ Using sample data - Start "Sentiment Analysis Server" for live Reddit data';
+            document.getElementById('serverStatus').style.background = '#D97706';
+        }
         
     } catch (error) {
         console.error('❌ Error loading compass data:', error);

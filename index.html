@@ -49,7 +49,7 @@
                 <div class="filter-group-title">
                     Search & Filters
                 </div>
-                
+
                 <!-- Basic Search and Filters -->
                 <div class="filter-group">
                     <input type="text" placeholder="Search trends... (Type to search)" id="searchInput" class="search-input">
@@ -59,14 +59,14 @@
                     <input type="date" id="startDate" onchange="filterByDateRange()" placeholder="Start Date">
                     <input type="date" id="endDate" onchange="filterByDateRange()" placeholder="End Date">
                 </div>
-                
+
                 <!-- Basic Controls -->
                 <div class="button-group basic-controls">
                     <button class="submit-btn primary" onclick="performComprehensiveSearch()">🔍 Search</button>
                     <button class="submit-btn secondary" onclick="resetToDefaultView()">🔄 Reset</button>
                     <button class="submit-btn" onclick="showAdvancedMenu()" id="advancedMenuBtn">⚙️ Advanced</button>
                 </div>
-                
+
                 <!-- Advanced Functions Menu (Initially Hidden) -->
                 <div class="advanced-menu" id="advancedMenu" style="display: none;">
                     <div class="advanced-menu-title">
@@ -99,12 +99,12 @@
 
         <div class="chart-section">
             <h2>WaveScope Timeline</h2>
-            
+
             <!-- Trend Comparison UI -->
             <div id="trendComparison" class="trend-comparison-section" style="display: none;">
                 <!-- Comparison UI will be populated by JavaScript -->
             </div>
-            
+
             <div id="trendChart"></div>
         </div>
 
@@ -188,7 +188,7 @@
                     <button class="control-btn" onclick="refreshRedditTrends()">🔄 Refresh</button>
                 </div>
             </div>
-            
+
             <div class="reddit-trends-container">
                 <div id="redditTrendsChart" class="reddit-chart"></div>
                 <div id="redditSentimentTable" class="reddit-table-container">
