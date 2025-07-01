@@ -32,6 +32,10 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "node youtubeToSupabase.js"
 
 [[workflows.workflow]]
@@ -128,6 +132,10 @@ args = "echo \"🚀 Starting WaveSight services...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "echo \"📊 Starting YouTube API Server on port 5000...\""
 
 [[workflows.workflow.tasks]]
@@ -153,6 +161,19 @@ args = "echo \"✅ All services started successfully!\""
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "wait"
+
+[[workflows.workflow]]
+name = "Serve Frontend"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"📱 Starting frontend server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -m http.server 8080 --bind 0.0.0.0"
 
 [[ports]]
 localPort = 80
