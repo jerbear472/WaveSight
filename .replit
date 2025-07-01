@@ -10,7 +10,7 @@ publicDir = "/"
 deploymentTarget = "static"
 
 [workflows]
-runButton = "YouTube API Server"
+runButton = "All Services - Fixed"
 
 [[workflows.workflow]]
 name = "Serve static"
@@ -87,6 +87,31 @@ mode = "parallel"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node youtubeToSupabase.js"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python sentiment_server.py"
+
+[[workflows.workflow]]
+name = "All Services - Fixed"
+author = 44347283
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"node youtubeToSupabase.js\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pkill -f \"python sentiment_server.py\" || true"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 2"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node youtubeToSupabase.js &"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
