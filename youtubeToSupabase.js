@@ -408,6 +408,91 @@ app.get('/api/config', (req, res) => {
   });
 });
 
+// Get alerts from database
+app.get('/api/alerts', async (req, res) => {
+  try {
+    console.log('📥 API: Fetching alerts from Supabase...');
+
+    const { data, error } = await supabase
+      .from('youtube_alerts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      alerts: data || [],
+      count: data?.length || 0
+    });
+
+  } catch (error) {
+    console.error('❌ API Error fetching alerts:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      error: error.toString()
+    });
+  }
+});
+
+// Dismiss an alert
+app.post('/api/alerts/:alertId/dismiss', async (req, res) => {
+  try {
+    const { alertId } = req.params;
+    console.log(`📝 API: Dismissing alert ${alertId}...`);
+
+    const { data, error } = await supabase
+      .from('youtube_alerts')
+      .update({ processed: true, notified: true })
+      .eq('alert_id', alertId);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      message: 'Alert dismissed successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ API Error dismissing alert:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      error: error.toString()
+    });
+  }
+});
+
+// Run alert scan manually
+app.post('/api/run-alert-scan', async (req, res) => {
+  try {
+    console.log('🔍 API: Running manual alert scan...');
+    
+    // This would typically trigger your Python alert system
+    // For now, we'll return a mock response
+    res.json({
+      success: true,
+      message: 'Alert scan initiated',
+      alertsGenerated: 0,
+      note: 'Start the "YouTube Alert System" workflow to run actual scans'
+    });
+
+  } catch (error) {
+    console.error('❌ API Error running alert scan:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+      error: error.toString()
+    });
+  }
+});
+
 // YouTube API validation endpoint
 app.get('/api/validate-youtube', async (req, res) => {
   try {
