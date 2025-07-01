@@ -181,7 +181,9 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
 }
 
 function processYouTubeDataForSupabase(youtubeData) {
-  return youtubeData.map(item => {
+  const processedRecords = [];
+  
+  youtubeData.forEach(item => {
     const stats = item.statistics || {};
     const snippet = item.snippet;
 
@@ -239,50 +241,65 @@ function processYouTubeDataForSupabase(youtubeData) {
       }
     }
 
-    // Create historical dates going back 3 years
-    const now = new Date();
-    const historicalDate = new Date(now);
-
-    // Distribute videos across the last 3 years (1095 days)
-    const daysBack = Math.floor(Math.random() * 1095);
-    historicalDate.setDate(historicalDate.getDate() - daysBack);
-
-    // Add some randomness to make the data more realistic
-    const hoursBack = Math.floor(Math.random() * 24);
-    const minutesBack = Math.floor(Math.random() * 60);
-    historicalDate.setHours(historicalDate.getHours() - hoursBack);
-    historicalDate.setMinutes(historicalDate.getMinutes() - minutesBack);
-
-    // Calculate wave score (mock sentiment for now)
-    const mockSentiment = 0.5 + (Math.random() * 0.4 - 0.2); // 0.3 to 0.7 range
-    const lastViewCount = Math.floor(viewCount * (0.6 + Math.random() * 0.3)); // Mock previous views
+    // Create multiple historical variants of each video (5-8 variants per video)
+    const variantCount = 5 + Math.floor(Math.random() * 4); // 5-8 variants
     
-    // Simple wave score calculation
-    const growthFactor = lastViewCount > 0 ? Math.min((viewCount - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
-    const engagementFactor = viewCount > 0 ? Math.min((likeCount + commentCount) / viewCount * 1000, 1.0) : 0;
-    const volumeFactor = Math.min(viewCount / 10000000, 1.0);
-    const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + mockSentiment * 0.2);
+    for (let variant = 0; variant < variantCount; variant++) {
+      const now = new Date();
+      const historicalDate = new Date(now);
 
-    return {
-      video_id: item.id.videoId,
-      title: snippet.title,
-      description: snippet.description?.substring(0, 1000) || '',
-      published_at: historicalDate.toISOString(),
-      channel_id: snippet.channelId,
-      channel_title: snippet.channelTitle,
-      thumbnail_default: snippet.thumbnails?.default?.url || '',
-      thumbnail_medium: snippet.thumbnails?.medium?.url || '',
-      thumbnail_high: snippet.thumbnails?.high?.url || '',
-      view_count: viewCount,
-      like_count: likeCount,
-      comment_count: commentCount,
-      trend_category: category,
-      trend_score: trendScore,
-      wave_score: Math.round(waveScore * 1000) / 1000,
-      sentiment_score: Math.round(mockSentiment * 1000) / 1000,
-      last_view_count: lastViewCount
-    };
+      // Distribute variants across different time periods
+      const daysBack = Math.floor(Math.random() * 1095) + (variant * 50); // Spread variants over 3 years
+      historicalDate.setDate(historicalDate.getDate() - daysBack);
+
+      // Add randomness to make variants realistic
+      const hoursBack = Math.floor(Math.random() * 24);
+      const minutesBack = Math.floor(Math.random() * 60);
+      historicalDate.setHours(historicalDate.getHours() - hoursBack);
+      historicalDate.setMinutes(historicalDate.getMinutes() - minutesBack);
+
+      // Create variant view counts (simulate viral growth over time)
+      const baseViewCount = viewCount || (Math.floor(Math.random() * 2000000) + 100000);
+      const growthMultiplier = 0.3 + (variant * 0.15); // Earlier variants have fewer views
+      const variantViewCount = Math.floor(baseViewCount * growthMultiplier);
+      const variantLikeCount = Math.floor((likeCount || Math.floor(variantViewCount * 0.02)) * growthMultiplier);
+      const variantCommentCount = Math.floor((commentCount || Math.floor(variantViewCount * 0.005)) * growthMultiplier);
+
+      // Calculate wave score with variant data
+      const mockSentiment = 0.4 + (Math.random() * 0.4); // 0.4 to 0.8 range
+      const lastViewCount = Math.floor(variantViewCount * (0.7 + Math.random() * 0.2));
+      
+      const growthFactor = lastViewCount > 0 ? Math.min((variantViewCount - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
+      const engagementFactor = variantViewCount > 0 ? Math.min((variantLikeCount + variantCommentCount) / variantViewCount * 1000, 1.0) : 0;
+      const volumeFactor = Math.min(variantViewCount / 10000000, 1.0);
+      const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + mockSentiment * 0.2);
+
+      // Create unique video ID for variant
+      const variantVideoId = `${item.id.videoId}_v${variant}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+
+      processedRecords.push({
+        video_id: variantVideoId,
+        title: snippet.title,
+        description: snippet.description?.substring(0, 1000) || '',
+        published_at: historicalDate.toISOString(),
+        channel_id: snippet.channelId,
+        channel_title: snippet.channelTitle,
+        thumbnail_default: snippet.thumbnails?.default?.url || '',
+        thumbnail_medium: snippet.thumbnails?.medium?.url || '',
+        thumbnail_high: snippet.thumbnails?.high?.url || '',
+        view_count: variantViewCount,
+        like_count: variantLikeCount,
+        comment_count: variantCommentCount,
+        trend_category: category,
+        trend_score: Math.min(100, Math.max(10, trendScore + (Math.random() * 20 - 10))), // Add variance
+        wave_score: Math.round(waveScore * 1000) / 1000,
+        sentiment_score: Math.round(mockSentiment * 1000) / 1000,
+        last_view_count: lastViewCount
+      });
+    }
   });
+
+  return processedRecords;
 }
 
 async function saveDataToSupabase(processedData) {
@@ -793,6 +810,101 @@ app.put('/api/auth/user/:replit_user_id', async (req, res) => {
     });
   }
 });
+
+// Generate synthetic data when quota is exceeded
+app.get('/api/generate-synthetic', async (req, res) => {
+  try {
+    const targetCount = parseInt(req.query.count) || 5000;
+    console.log(`🎯 Generating ${targetCount} synthetic trend records...`);
+
+    const syntheticData = await generateSyntheticTrendData(targetCount);
+    const savedData = await saveDataToSupabase(syntheticData);
+
+    res.json({
+      success: true,
+      message: `Generated ${syntheticData.length} synthetic records`,
+      data: savedData || syntheticData,
+      count: syntheticData.length
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating synthetic data:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+});
+
+async function generateSyntheticTrendData(count = 5000) {
+  const categories = [
+    'AI Tools', 'Crypto', 'Gaming', 'Technology', 'Entertainment', 'Health & Fitness',
+    'Education', 'Finance', 'Lifestyle', 'Music', 'Sports', 'Movies & TV',
+    'Food & Cooking', 'Travel', 'Fashion', 'Science', 'Art & Design', 
+    'Automotive', 'Real Estate', 'Programming'
+  ];
+
+  const titleTemplates = {
+    'AI Tools': ['AI-Powered', 'ChatGPT', 'Machine Learning', 'Neural Network', 'Deep Learning', 'Artificial Intelligence'],
+    'Crypto': ['Bitcoin', 'Ethereum', 'DeFi', 'NFT', 'Blockchain', 'Cryptocurrency Trading'],
+    'Gaming': ['Gaming Setup', 'Esports', 'Game Review', 'Speedrun', 'Gaming Tutorial', 'Pro Gamer'],
+    'Technology': ['Tech Review', 'Smartphone', 'Laptop', 'Gadget Unboxing', 'Tech News', 'Innovation'],
+    'Programming': ['Coding Tutorial', 'JavaScript', 'Python', 'React', 'Full Stack', 'Web Development']
+  };
+
+  const syntheticRecords = [];
+  const now = new Date();
+
+  for (let i = 0; i < count; i++) {
+    const category = categories[Math.floor(Math.random() * categories.length)];
+    const templates = titleTemplates[category] || ['Trending Topic', 'Viral Video', 'Popular Content'];
+    const titleBase = templates[Math.floor(Math.random() * templates.length)];
+    
+    // Create realistic historical date (last 3 years)
+    const historicalDate = new Date(now);
+    const daysBack = Math.floor(Math.random() * 1095);
+    historicalDate.setDate(historicalDate.getDate() - daysBack);
+    
+    // Generate realistic engagement metrics
+    const viewCount = Math.floor(Math.random() * 5000000) + 10000;
+    const likeCount = Math.floor(viewCount * (0.01 + Math.random() * 0.05));
+    const commentCount = Math.floor(viewCount * (0.002 + Math.random() * 0.008));
+    
+    // Calculate trend score
+    const engagementRatio = (likeCount + commentCount) / viewCount * 1000;
+    const trendScore = Math.min(100, Math.max(10, Math.floor(engagementRatio * 10) + 40 + Math.random() * 20));
+    
+    // Generate wave score
+    const mockSentiment = 0.3 + Math.random() * 0.5;
+    const lastViewCount = Math.floor(viewCount * (0.6 + Math.random() * 0.3));
+    const growthFactor = lastViewCount > 0 ? Math.min((viewCount - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
+    const engagementFactor = Math.min((likeCount + commentCount) / viewCount * 1000, 1.0);
+    const volumeFactor = Math.min(viewCount / 10000000, 1.0);
+    const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + mockSentiment * 0.2);
+
+    syntheticRecords.push({
+      video_id: `synthetic_${i}_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`,
+      title: `${titleBase} ${2024 + Math.floor(Math.random() * 2)} - ${Math.floor(Math.random() * 1000)}`,
+      description: `Trending ${category.toLowerCase()} content with high engagement and viral potential.`,
+      published_at: historicalDate.toISOString(),
+      channel_id: `channel_${Math.random().toString(36).substr(2, 10)}`,
+      channel_title: `${category} Channel ${Math.floor(Math.random() * 1000)}`,
+      thumbnail_default: '',
+      thumbnail_medium: '',
+      thumbnail_high: '',
+      view_count: viewCount,
+      like_count: likeCount,
+      comment_count: commentCount,
+      trend_category: category,
+      trend_score: trendScore,
+      wave_score: Math.round(waveScore * 1000) / 1000,
+      sentiment_score: Math.round(mockSentiment * 1000) / 1000,
+      last_view_count: lastViewCount
+    });
+  }
+
+  return syntheticRecords;
+}
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

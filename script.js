@@ -2778,6 +2778,62 @@ async function searchExistingDataOnly() {
 // Make offline search available globally
 window.searchExistingDataOnly = searchExistingDataOnly;
 
+// Generate synthetic data when quota is exceeded
+async function generateSyntheticData(count = 5000) {
+  try {
+    console.log(`🎯 Generating ${count} synthetic trend records...`);
+    
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'syntheticLoadingOverlay';
+    loadingOverlay.innerHTML = `
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Generating ${count.toLocaleString()} synthetic trend records...</div>
+        <div class="progress-info">Creating realistic historical data...</div>
+      </div>
+    `;
+    document.body.appendChild(loadingOverlay);
+
+    const response = await fetch(`/api/generate-synthetic?count=${count}`);
+    const result = await response.json();
+
+    if (result.success) {
+      console.log(`✅ Generated ${result.count} synthetic records`);
+      
+      // Clean up loading overlay
+      const overlay = document.getElementById('syntheticLoadingOverlay');
+      if (overlay) overlay.remove();
+
+      // Show success message
+      const successDiv = document.createElement('div');
+      successDiv.innerHTML = `
+        <div style="position: fixed; top: 20px; right: 20px; background: #10B981; color: white; padding: 15px; border-radius: 8px; z-index: 10000;">
+          ✅ Generated ${result.count.toLocaleString()} synthetic records!<br>
+          <small>Refreshing dashboard...</small>
+        </div>
+      `;
+      document.body.appendChild(successDiv);
+
+      // Refresh after 2 seconds
+      setTimeout(() => {
+        location.reload();
+      }, 2000);
+
+      return result;
+    } else {
+      throw new Error(result.message);
+    }
+  } catch (error) {
+    console.error('❌ Error generating synthetic data:', error);
+    const overlay = document.getElementById('syntheticLoadingOverlay');
+    if (overlay) overlay.remove();
+    alert(`Error generating synthetic data: ${error.message}`);
+  }
+}
+
+// Make function globally available
+window.generateSyntheticData = generateSyntheticData;
+
 // Authentication functions
 async function handleAuthSuccess(user) {
   try {
