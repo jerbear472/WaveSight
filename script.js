@@ -775,8 +775,7 @@ function showTrendDetailModal(trendName, trendColor) {
                 </div>
                 <div class="summary-stat">
                   <span class="stat-label">Total Views:</span>
-                  <span class="stat-value">${formatNumber(detailData.```tool_code
-reduce((sum, item) => sum + (item.view_count || 0), 0))}</span>
+                  <span class="stat-value">${formatNumber(detailData.reduce((sum, item) => sum + (item.view_count || 0), 0))}</span>
                 </div>
                 <div class="summary-stat">
                   <span class="stat-label">Avg Trend Score:</span>
@@ -1053,7 +1052,8 @@ async function fetchData() {
 
               return {
                 chartData: chartData,
-                tableData: supabaseData.slice(0, 10)
+                tableData: supabaseData.slice(0, 10),
+                allData: supabaseData
               };
             }
           } else {
@@ -1077,7 +1077,8 @@ async function fetchData() {
       const chartData = processSupabaseDataForChart(existingData);
       return {
         chartData: chartData,
-        tableData: existingData.slice(0, 10)
+        tableData: existingData.slice(0, 10),
+        allData: existingData
       };
     }
   } else {
@@ -1444,7 +1445,6 @@ function createSearchChartData(searchResults, searchTerm, startDate, endDate) {
     const pubDate = new Date(item.published_at);
     const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
 
-```tool_code
     if (dateMap.has(monthStr)) {
       const dataPoint = dateMap.get(monthStr);
       const viewCount = item.view_count || item.reach_count || 0;
@@ -2204,6 +2204,7 @@ async function searchTrends() {
 
         // Update UI
         currentData = { chartData, tableData: searchResults };
+        trendData = dataToProcess; // Store for detailed analysis
         selectedTrends = searchTermDisplay;
 
         // Update filter dropdown to show ONLY the search result
@@ -2219,6 +2220,9 @@ async function searchTrends() {
         // Create chart showing ONLY the searched trend
         createChart(chartData, searchTermDisplay);
         createTrendTable(searchResults.slice(0, 25));
+
+        // Initialize detailed trends table
+        populateDetailedTrendsTable(searchResults.slice(0, 25));
 
         console.log(`✅ Chart will show ONLY: "${searchTermDisplay}"`);
       } else {
@@ -2236,6 +2240,7 @@ async function searchTrends() {
       const chartData = processSupabaseDataForChart(dataToProcess);
 
       currentData = { chartData, tableData: dataToProcess };
+      trendData = dataToProcess; // Store for detailed analysis
       selectedTrends = 'all';
 
       updateTrendFilter(chartData);
@@ -2243,6 +2248,9 @@ async function searchTrends() {
 
       createChart(chartData, 'all');
       createTrendTable(dataToProcess.slice(0, 25));
+
+      // Initialize detailed trends table
+      populateDetailedTrendsTable(dataToProcess.slice(0, 25));
 
       console.log('📊 Showing all default trends');
     }
@@ -2267,8 +2275,172 @@ async function filterByDateRange() {
   const searchTerm = searchInput.value.toLowerCase().trim();
   const selectedTrend = filterSelect.value;
 
-  console.log(`🗓️ Filtering data from ${A detailed trends analysis will now display the view count rising percentage for a more comprehensive understanding of content virality.
-```tool_code
+  console.log(`🗓️ Filtering data from ${startDate} to ${endDate}, search term: "${searchTerm}", selected trend: "${selectedTrend}"`);
+
+  try {
+    showLoadingSpinner();
+
+    // Get all data from Supabase
+    const allData = await fetchYouTubeDataFromSupabase();
+
+    if (!allData || allData.length === 0) {
+      console.log('⚠️ No data available');
+      hideLoadingSpinner();
+      return;
+    }
+
+    let dataToProcess = allData;
+
+    // Apply date filter
+    if (startDate || endDate) {
+      dataToProcess = dataToProcess.filter(item => {
+        const itemDate = new Date(item.published_at);
+        const start = startDate ? new Date(startDate) : new Date('1900-01-01');
+        const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
+        return itemDate >= start && itemDate <= end;
+      });
+
+      console.log(`✅ Filtered data to date range: ${dataToProcess.length} items`);
+    }
+
+    if (searchTerm && searchTerm !== '') {
+      // SEARCH MODE with date range
+      const searchResults = dataToProcess.filter(item => {
+        const title = (item.title || '').toLowerCase();
+        const category = (item.trend_category || '').toLowerCase();
+        const channel = (item.channel_title || '').toLowerCase();
+        const description = (item.description || '').toLowerCase();
+
+        return title.includes(searchTerm) ||
+               category.includes(searchTerm) ||
+               channel.includes(searchTerm) ||
+               description.includes(searchTerm);
+      });
+
+      const searchTermDisplay = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+
+      if (searchResults.length > 0) {
+        console.log(`📊 Found ${searchResults.length} videos for "${searchTerm}" in date range`);
+
+        // Create chart with ONLY the searched term
+        const chartData = createSearchChartData(searchResults, searchTermDisplay, startDate, endDate);
+
+        // Update UI
+        currentData = { chartData, tableData: searchResults };
+        trendData = dataToProcess; // Store for detailed analysis
+        selectedTrends = searchTermDisplay;
+
+        // Update filter dropdown
+        if (filterSelect) {
+          filterSelect.innerHTML = '<option value="all">All Trends</option>';
+          const option = document.createElement('option');
+          option.value = searchTermDisplay;
+          option.textContent = searchTermDisplay;
+          option.selected = true;
+          filterSelect.appendChild(option);
+        }
+
+        createChart(chartData, searchTermDisplay);
+        createTrendTable(searchResults.slice(0, 25));
+        populateDetailedTrendsTable(searchResults.slice(0, 25));
+
+        console.log(`✅ Chart will show ONLY: "${searchTermDisplay}"`);
+      } else {
+        console.log(`⚠️ No results for "${searchTerm}" in date range`);
+        const tableBody = document.getElementById('trendTableBody');
+        if (tableBody) {
+          tableBody.innerHTML = `<tr><td colspan="4">No data found for "${searchTerm}" in the selected date range</td></tr>`;
+        }
+
+        // Show empty chart with search term
+        const emptyChart = createEmptySearchChart(searchTermDisplay);
+        createChart(emptyChart, searchTermDisplay);
+      }
+    } else {
+      // DEFAULT MODE: Show all trends with date range
+      const chartData = processSupabaseDataForChartWithDateRange(dataToProcess, startDate, endDate);
+
+      currentData = { chartData, tableData: dataToProcess };
+      trendData = dataToProcess; // Store for detailed analysis
+      selectedTrends = 'all';
+
+      updateTrendFilter(chartData);
+      if (filterSelect) filterSelect.value = 'all';
+
+      createChart(chartData, 'all');
+      createTrendTable(dataToProcess.slice(0, 25));
+      populateDetailedTrendsTable(dataToProcess.slice(0, 25));
+
+      console.log('📊 Showing all default trends with date range');
+    }
+
+    hideLoadingSpinner();
+
+  } catch (error) {
+    console.error('❌ Date range filter error:', error);
+    hideLoadingSpinner();
+  }
+}
+
+// Initialize dashboard
+async function initializeDashboard() {
+  console.log('🚀 Initializing dashboard...');
+  showLoadingSpinner();
+
+  try {
+    const data = await fetchData();
+
+    if (!data) {
+      console.log('❌ No initial data, using fallback...');
+      hideLoadingSpinner();
+      return;
+    }
+
+    // Store all data for detailed analysis
+    if (data.allData) {
+      trendData = data.allData;
+      console.log(`📊 Stored ${trendData.length} items for detailed analysis`);
+
+      // Initialize detailed trends table
+      populateDetailedTrendsTable(trendData.slice(0, 25));
+    }
+
+    console.log('✅ Dashboard initialized with REAL DATA successfully');
+    console.log('📊 Chart shows multiple trends:', Object.keys(data.chartData[0] || {}).filter(key => key !== 'date'));
+
+    currentData = data;
+    createChart(data.chartData);
+    createTrendTable(data.tableData);
+    updateTrendFilter(data.chartData);
+
+    // Set default filter to all trends
+    const filterSelect = document.getElementById('trendFilter');
+    if (filterSelect) {
+      filterSelect.value = 'all';
+    }
+  } catch (error) {
+    console.error('❌ Dashboard initialization error:', error);
+  } finally {
+    hideLoadingSpinner();
+  }
+}
+
+// Call initializeDashboard after DOM is fully loaded
+document.addEventListener('DOMContentLoaded', initializeDashboard);
+
+// Function stubs to be implemented later
+function analyzeWaveScore(trendName) {
+  alert(`Analyze Wave Score for: ${trendName} (not implemented)`);
+}
+
+function viewTrendDetails(trendId) {
+  alert(`View Trend Details for ID: ${trendId} (not implemented)`);
+}
+
+function createTrendAlert(trendId) {
+  alert(`Create Trend Alert for ID: ${trendId} (not implemented)`);
+}
+
 // Calculate engagement rate
 function calculateEngagementRate(item) {
   const viewCount = item.view_count || 0;
@@ -2307,7 +2479,7 @@ function calculateViewGrowth(item) {
   }
 
   const estimatedPreviousViews = Math.floor(currentViews / growthFactor);
-  const growthPercentage = estimatedPreviousViews > 0 
+  const growthPercentage = estimatedPreviousViews > 0
     ? ((currentViews - estimatedPreviousViews) / estimatedPreviousViews * 100)
     : 0;
 
@@ -2342,7 +2514,7 @@ function refreshDetailedTable() {
   // Filter by category
   let filteredData = trendData;
   if (categoryFilter !== 'all') {
-    filteredData = trendData.filter(item => 
+    filteredData = trendData.filter(item =>
       (item.trend_category || item.category || 'General') === categoryFilter
     );
   }
@@ -2462,3 +2634,5 @@ function populateDetailedTrendsTable(data) {
 
   tableBody.innerHTML = rows;
 }
+
+// A detailed trends analysis will now display the view count rising percentage for a more comprehensive understanding of content virality.
