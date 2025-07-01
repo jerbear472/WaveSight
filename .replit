@@ -32,14 +32,6 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "export PATH=\"/nix/store/$(ls /nix/store | grep nodejs | head -1)/bin:$PATH\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "node youtubeToSupabase.js"
 
 [[workflows.workflow]]
