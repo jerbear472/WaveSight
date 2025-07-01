@@ -254,8 +254,8 @@
                 </div>
 
                 <div id="loadingIndicator" style="text-align: center; padding: 40px; display: none;">
-                    <div class="loading-spinner"></div>
-                    <p style="color: #9ca3af;">Loading alerts...</p>
+                    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(0, 212, 255, 0.3); border-top: 4px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                    <p style="color: #00d4ff; font-size: 16px;">Loading alerts...</p>
                 </div>
 
                 <div id="noAlertsMessage" style="text-align: center; padding: 40px; display: none;">
@@ -282,6 +282,7 @@
             try {
                 document.getElementById('loadingIndicator').style.display = 'block';
                 document.getElementById('noAlertsMessage').style.display = 'none';
+                document.getElementById('alertsContainer').innerHTML = '';
 
                 const response = await fetch('/api/alerts');
                 const data = await response.json();
@@ -290,13 +291,21 @@
                     allAlerts = data.alerts || [];
                     updateStats();
                     displayAlerts(allAlerts);
+
+                    if (allAlerts.length === 0) {
+                        showNoAlertsMessage('No alerts generated yet. Run the alert system to start monitoring.');
+                    }
                 } else {
                     console.error('Failed to load alerts:', data.error);
-                    showNoAlertsMessage();
+                    if (data.error && data.error.includes('does not exist')) {
+                        showNoAlertsMessage('Alert system not yet initialized. Run the database schema setup first.');
+                    } else {
+                        showNoAlertsMessage('Failed to load alerts: ' + data.message);
+                    }
                 }
             } catch (error) {
                 console.error('Error loading alerts:', error);
-                showNoAlertsMessage();
+                showNoAlertsMessage('Connection error. Make sure the API server is running.');
             } finally {
                 document.getElementById('loadingIndicator').style.display = 'none';
             }
@@ -412,37 +421,72 @@
             return num.toString();
         }
 
-        function showNoAlertsMessage() {
+        function showNoAlertsMessage(message) {
             document.getElementById('alertsContainer').innerHTML = '';
             document.getElementById('noAlertsMessage').style.display = 'block';
+            document.querySelector('#noAlertsMessage h3').textContent = '📭 No alerts found';
+            document.querySelector('#noAlertsMessage p').textContent = message;
+            document.querySelector('#noAlertsMessage button').style.display = (message.includes('initialized')) ? 'none' : 'inline-block';
         }
 
         async function refreshAlerts() {
             await loadAlerts();
         }
 
+        async function setupAlertSystem() {
+            try {
+                const button = event.target;
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = '🛠️ Setting up...';
+                }
+
+                // This would typically run the database schema setup
+                alert('Alert system setup requires running the Supabase schema.\n\nPlease ensure you have:\n1. Created the youtube_alerts table in Supabase\n2. Started the "YouTube Alert System" workflow');
+
+                await loadAlerts(); // Try to reload after setup
+            } catch (error) {
+                console.error('Error setting up alert system:', error);
+                alert('Error setting up alert system: ' + error.message);
+            } finally {
+                const button = event.target;
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = '🛠️ Setup Alert System';
+                }
+            }
+        }
+
         async function runAlertScan() {
             try {
                 const button = event.target;
-                button.disabled = true;
-                button.textContent = '🔄 Scanning...';
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = '🔄 Scanning...';
+                }
+
+                // Show immediate feedback
+                const alertsContainer = document.getElementById('alertsContainer');
+                alertsContainer.innerHTML = '<div style="text-align: center; padding: 20px; color: #00d4ff;">🔄 Running alert scan... This may take a few moments.</div>';
 
                 const response = await fetch('/api/run-alert-scan', { method: 'POST' });
                 const data = await response.json();
 
                 if (data.success) {
-                    alert(`Alert scan completed! Generated ${data.alertsGenerated} new alerts.`);
+                    alert(`Alert scan initiated!\n\nTo generate actual alerts:\n1. Start the "YouTube Alert System" workflow\n2. Wait for alerts to be generated\n3. Refresh this page`);
                     await loadAlerts(); // Refresh the alerts
                 } else {
-                    alert('Failed to run alert scan: ' + data.error);
+                    alert('Alert scan status: ' + data.message);
                 }
             } catch (error) {
                 console.error('Error running alert scan:', error);
                 alert('Error running alert scan: ' + error.message);
             } finally {
                 const button = event.target;
-                button.disabled = false;
-                button.textContent = '🔍 Run Scan';
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = '🔍 Run Scan';
+                }
             }
         }
 
@@ -465,5 +509,12 @@
             }
         }
     </script>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        </style>
 </body>
 </html>
