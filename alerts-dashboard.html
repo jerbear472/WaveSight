@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,7 +11,7 @@
             margin: 0 auto;
             padding: 20px;
         }
-        
+
         .alert-card {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
@@ -21,39 +20,39 @@
             border-left: 4px solid;
             transition: all 0.3s ease;
         }
-        
+
         .alert-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
         }
-        
+
         .alert-critical {
             border-left-color: #ff4757;
             background: rgba(255, 71, 87, 0.1);
         }
-        
+
         .alert-high {
             border-left-color: #ff6b35;
             background: rgba(255, 107, 53, 0.1);
         }
-        
+
         .alert-medium {
             border-left-color: #ffa502;
             background: rgba(255, 165, 2, 0.1);
         }
-        
+
         .alert-low {
             border-left-color: #2ed573;
             background: rgba(46, 213, 115, 0.1);
         }
-        
+
         .alert-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         }
-        
+
         .severity-badge {
             padding: 4px 12px;
             border-radius: 20px;
@@ -61,60 +60,60 @@
             font-weight: bold;
             text-transform: uppercase;
         }
-        
+
         .severity-critical {
             background: #ff4757;
             color: white;
         }
-        
+
         .severity-high {
             background: #ff6b35;
             color: white;
         }
-        
+
         .severity-medium {
             background: #ffa502;
             color: white;
         }
-        
+
         .severity-low {
             background: #2ed573;
             color: white;
         }
-        
+
         .alert-title {
             font-size: 18px;
             font-weight: bold;
             margin: 10px 0;
             color: #fff;
         }
-        
+
         .alert-metrics {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
             margin: 15px 0;
         }
-        
+
         .metric {
             text-align: center;
             padding: 10px;
             background: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
         }
-        
+
         .metric-value {
             font-size: 20px;
             font-weight: bold;
             color: #00d4ff;
         }
-        
+
         .metric-label {
             font-size: 12px;
             color: #ccc;
             text-transform: uppercase;
         }
-        
+
         .alert-reason {
             background: rgba(0, 0, 0, 0.3);
             padding: 10px;
@@ -122,13 +121,13 @@
             margin: 10px 0;
             font-style: italic;
         }
-        
+
         .alert-actions {
             display: flex;
             gap: 10px;
             margin-top: 15px;
         }
-        
+
         .btn-watch {
             background: #ff0000;
             color: white;
@@ -139,7 +138,7 @@
             text-decoration: none;
             font-size: 14px;
         }
-        
+
         .btn-dismiss {
             background: rgba(255, 255, 255, 0.1);
             color: white;
@@ -149,14 +148,14 @@
             cursor: pointer;
             font-size: 14px;
         }
-        
+
         .filters {
             display: flex;
             gap: 15px;
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
-        
+
         .filter-select {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.3);
@@ -164,27 +163,27 @@
             padding: 8px 12px;
             border-radius: 6px;
         }
-        
+
         .stats-bar {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
-        
+
         .stat-card {
             background: rgba(255, 255, 255, 0.1);
             padding: 20px;
             border-radius: 12px;
             text-align: center;
         }
-        
+
         .stat-number {
             font-size: 32px;
             font-weight: bold;
             color: #00d4ff;
         }
-        
+
         .stat-label {
             color: #ccc;
             margin-top: 5px;
@@ -237,54 +236,56 @@
                 <option value="MEDIUM">Medium</option>
                 <option value="LOW">Low</option>
             </select>
-            
+
             <select class="filter-select" id="timeFilter">
                 <option value="24">Last 24 hours</option>
                 <option value="72">Last 3 days</option>
                 <option value="168">Last week</option>
                 <option value="720">Last 30 days</option>
             </select>
-            
+
             <button class="btn-primary" onclick="refreshAlerts()">🔄 Refresh</button>
             <button class="btn-primary" onclick="runAlertScan()">🔍 Run Scan</button>
         </div>
 
-        <div id="alertsContainer">
-            <!-- Alerts will be populated here -->
-        </div>
+        <div style="padding: 0 20px;">
+                <div id="alertsContainer">
+                    <!-- Alerts will be populated here -->
+                </div>
 
-        <div id="loadingIndicator" style="text-align: center; padding: 40px; display: none;">
-            <div class="loading-spinner"></div>
-            <p>Loading alerts...</p>
-        </div>
+                <div id="loadingIndicator" style="text-align: center; padding: 40px; display: none;">
+                    <div class="loading-spinner"></div>
+                    <p style="color: #9ca3af;">Loading alerts...</p>
+                </div>
 
-        <div id="noAlertsMessage" style="text-align: center; padding: 40px; display: none;">
-            <h3>📭 No alerts found</h3>
-            <p>Run the alert system to start monitoring YouTube trends</p>
-            <button class="btn-primary" onclick="runAlertScan()">Start Monitoring</button>
-        </div>
+                <div id="noAlertsMessage" style="text-align: center; padding: 40px; display: none;">
+                    <h3 style="color: #9ca3af;">📭 No alerts found</h3>
+                    <p style="color: #6b7280;">Run the alert system to start monitoring YouTube trends</p>
+                    <button class="submit-btn" onclick="runAlertScan()">Start Monitoring</button>
+                </div>
+            </div>
     </main>
 
     <script>
         let allAlerts = [];
-        
+
         // Load alerts on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAlerts();
-            
+
             // Set up filter listeners
             document.getElementById('severityFilter').addEventListener('change', filterAlerts);
             document.getElementById('timeFilter').addEventListener('change', filterAlerts);
         });
-        
+
         async function loadAlerts() {
             try {
                 document.getElementById('loadingIndicator').style.display = 'block';
                 document.getElementById('noAlertsMessage').style.display = 'none';
-                
+
                 const response = await fetch('/api/alerts');
                 const data = await response.json();
-                
+
                 if (data.success) {
                     allAlerts = data.alerts || [];
                     updateStats();
@@ -300,47 +301,47 @@
                 document.getElementById('loadingIndicator').style.display = 'none';
             }
         }
-        
+
         function updateStats() {
             const now = new Date();
             const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-            
+
             const total = allAlerts.length;
             const critical = allAlerts.filter(a => a.severity === 'CRITICAL').length;
             const high = allAlerts.filter(a => a.severity === 'HIGH').length;
             const recent = allAlerts.filter(a => new Date(a.created_at) > last24h).length;
-            
+
             document.getElementById('totalAlerts').textContent = total;
             document.getElementById('criticalAlerts').textContent = critical;
             document.getElementById('highAlerts').textContent = high;
             document.getElementById('recentAlerts').textContent = recent;
         }
-        
+
         function displayAlerts(alerts) {
             const container = document.getElementById('alertsContainer');
-            
+
             if (alerts.length === 0) {
                 showNoAlertsMessage();
                 return;
             }
-            
+
             container.innerHTML = alerts.map(alert => createAlertCard(alert)).join('');
         }
-        
+
         function createAlertCard(alert) {
             const severityClass = `alert-${alert.severity.toLowerCase()}`;
             const severityBadgeClass = `severity-${alert.severity.toLowerCase()}`;
             const createdAt = new Date(alert.created_at).toLocaleString();
-            
+
             return `
                 <div class="alert-card ${severityClass}">
                     <div class="alert-header">
                         <span class="severity-badge ${severityBadgeClass}">${alert.severity}</span>
                         <span style="color: #ccc; font-size: 14px;">${createdAt}</span>
                     </div>
-                    
+
                     <div class="alert-title">${alert.title}</div>
-                    
+
                     <div class="alert-metrics">
                         <div class="metric">
                             <div class="metric-value">${formatNumber(alert.view_count)}</div>
@@ -363,15 +364,15 @@
                             <div class="metric-label">Sentiment</div>
                         </div>
                     </div>
-                    
+
                     <div class="alert-reason">
                         <strong>Trigger Reason:</strong> ${alert.reason}
                     </div>
-                    
+
                     <div style="color: #ccc; font-size: 14px; margin: 10px 0;">
                         <strong>Channel:</strong> ${alert.channel_title}
                     </div>
-                    
+
                     <div class="alert-actions">
                         <a href="https://youtube.com/watch?v=${alert.video_id}" target="_blank" class="btn-watch">
                             📺 Watch Video
@@ -383,25 +384,25 @@
                 </div>
             `;
         }
-        
+
         function filterAlerts() {
             const severityFilter = document.getElementById('severityFilter').value;
             const timeFilter = parseInt(document.getElementById('timeFilter').value);
-            
+
             let filtered = allAlerts;
-            
+
             // Filter by severity
             if (severityFilter) {
                 filtered = filtered.filter(alert => alert.severity === severityFilter);
             }
-            
+
             // Filter by time
             const cutoffTime = new Date(Date.now() - timeFilter * 60 * 60 * 1000);
             filtered = filtered.filter(alert => new Date(alert.created_at) > cutoffTime);
-            
+
             displayAlerts(filtered);
         }
-        
+
         function formatNumber(num) {
             if (num >= 1000000) {
                 return (num / 1000000).toFixed(1) + 'M';
@@ -410,25 +411,25 @@
             }
             return num.toString();
         }
-        
+
         function showNoAlertsMessage() {
             document.getElementById('alertsContainer').innerHTML = '';
             document.getElementById('noAlertsMessage').style.display = 'block';
         }
-        
+
         async function refreshAlerts() {
             await loadAlerts();
         }
-        
+
         async function runAlertScan() {
             try {
                 const button = event.target;
                 button.disabled = true;
                 button.textContent = '🔄 Scanning...';
-                
+
                 const response = await fetch('/api/run-alert-scan', { method: 'POST' });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     alert(`Alert scan completed! Generated ${data.alertsGenerated} new alerts.`);
                     await loadAlerts(); // Refresh the alerts
@@ -444,12 +445,12 @@
                 button.textContent = '🔍 Run Scan';
             }
         }
-        
+
         async function dismissAlert(alertId) {
             try {
                 const response = await fetch(`/api/alerts/${alertId}/dismiss`, { method: 'POST' });
                 const data = await response.json();
-                
+
                 if (data.success) {
                     // Remove the alert from the display
                     allAlerts = allAlerts.filter(alert => alert.alert_id !== alertId);

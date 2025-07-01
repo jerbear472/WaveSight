@@ -154,32 +154,37 @@ CREATE TRIGGER update_sentiment_forecasts_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
--- YouTube Alerts Table for Alert System
+-- YouTube Alerts Table
 CREATE TABLE IF NOT EXISTS youtube_alerts (
-  id BIGSERIAL PRIMARY KEY,
-  alert_id TEXT UNIQUE NOT NULL,
-  alert_type TEXT NOT NULL DEFAULT 'TRENDING_VIDEO',
-  video_id TEXT NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  channel_title TEXT,
-  view_count BIGINT DEFAULT 0,
-  like_count BIGINT DEFAULT 0,
-  wave_score DECIMAL(10,3) DEFAULT 0,
-  growth_rate DECIMAL(10,3) DEFAULT 0,
-  sentiment_score DECIMAL(10,3) DEFAULT 0,
-  reason TEXT,
-  severity TEXT NOT NULL DEFAULT 'LOW',
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  processed BOOLEAN DEFAULT FALSE,
-  notified BOOLEAN DEFAULT FALSE
+    alert_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    video_id VARCHAR(20) NOT NULL,
+    title TEXT NOT NULL,
+    channel_title VARCHAR(255),
+    view_count BIGINT DEFAULT 0,
+    like_count BIGINT DEFAULT 0,
+    comment_count BIGINT DEFAULT 0,
+    growth_rate DECIMAL(10, 3) DEFAULT 0,
+    wave_score DECIMAL(10, 6) DEFAULT 0,
+    sentiment_score DECIMAL(5, 4) DEFAULT 0,
+    severity VARCHAR(20) DEFAULT 'LOW' CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
+    reason TEXT,
+    triggered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    dismissed BOOLEAN DEFAULT FALSE,
+    dismissed_at TIMESTAMP WITH TIME ZONE,
+    category VARCHAR(100),
+    published_at TIMESTAMP WITH TIME ZONE
 );
 
--- Create indexes for youtube_alerts
-CREATE INDEX IF NOT EXISTS idx_youtube_alerts_created_at ON youtube_alerts(created_at DESC);
+-- Add any additional indexes as needed
+CREATE INDEX IF NOT EXISTS idx_youtube_data_published_date ON youtube_data(published_date);
+CREATE INDEX IF NOT EXISTS idx_youtube_data_category ON youtube_data(category);
+CREATE INDEX IF NOT EXISTS idx_youtube_data_view_count ON youtube_data(view_count);
+CREATE INDEX IF NOT EXISTS idx_sentiment_analysis_topic ON sentiment_analysis(topic);
+CREATE INDEX IF NOT EXISTS idx_sentiment_analysis_created_at ON sentiment_analysis(created_at);
 CREATE INDEX IF NOT EXISTS idx_youtube_alerts_severity ON youtube_alerts(severity);
-CREATE INDEX IF NOT EXISTS idx_youtube_alerts_video_id ON youtube_alerts(video_id);
-CREATE INDEX IF NOT EXISTS idx_youtube_alerts_alert_type ON youtube_alerts(alert_type);
+CREATE INDEX IF NOT EXISTS idx_youtube_alerts_triggered_at ON youtube_alerts(triggered_at);
+CREATE INDEX IF NOT EXISTS idx_youtube_alerts_dismissed ON youtube_alerts(dismissed);
 
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
