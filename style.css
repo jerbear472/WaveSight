@@ -158,7 +158,7 @@ h1, h2, h3, .logo, .header-title {
   box-shadow: 
     0 0 0 3px rgba(94, 227, 255, 0.15),
     0 4px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   background: linear-gradient(135deg, #1a1a2e 0%, #252545 100%);
 }
 
@@ -2124,4 +2124,65 @@ h1, h2, h3, .logo, .header-title {
   .topic-subtitle {
     font-size: 0.7rem;
   }
+}
+
+/* Massive fetch button styling */
+.massive-fetch-btn {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  border: 2px solid #10B981 !important;
+  font-weight: 600 !important;
+  animation: pulse-green 2s infinite;
+}
+
+.massive-fetch-btn:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.3) !important;
+}
+
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+}
+
+/* Enhanced loading overlay for massive fetch */
+#massiveLoadingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(19, 19, 31, 0.95);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(5px);
+}
+
+#massiveLoadingOverlay .loading-container {
+  text-align: center;
+  background: rgba(46, 46, 69, 0.8);
+  padding: 40px;
+  border-radius: 15px;
+  border: 1px solid #5ee3ff;
+  box-shadow: 0 0 30px rgba(94, 227, 255, 0.3);
+}
+
+#massiveLoadingOverlay .loading-text {
+  font-size: 24px;
+  font-weight: 600;
+  color: #5ee3ff;
+  margin-bottom: 10px;
+}
+
+#massiveLoadingOverlay .progress-info {
+  font-size: 14px;
+  color: #9ca3af;
+  margin-bottom: 20px;
+}
+
+#massiveLoadingOverlay .progress-details {
+  font-size: 16px;
+  color: #f1f1f1;
+  font-weight: 500;
 }

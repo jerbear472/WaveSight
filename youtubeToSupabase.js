@@ -439,19 +439,132 @@ app.get('/api/validate-youtube', async (req, res) => {
 app.get('/api/bulk-fetch', async (req, res) => {
   try {
     const categories = req.query.categories || 'all';
-    const totalResults = parseInt(req.query.totalResults) || 1000;
+    const totalResults = parseInt(req.query.totalResults) || 10000;
     
     console.log(`🔄 Bulk fetch initiated: ${totalResults} total results`);
     
-    // Define category-specific queries
+    // Expanded category-specific queries for maximum diversity
     const categoryQueries = {
-      'tech': ['AI artificial intelligence', 'programming coding', 'tech reviews gadgets', 'software development'],
-      'entertainment': ['movies trailers', 'music videos', 'celebrity news', 'tv shows series'],
-      'gaming': ['gaming gameplay', 'esports tournaments', 'game reviews', 'streaming highlights'],
-      'lifestyle': ['fitness health', 'cooking recipes', 'travel vlogs', 'fashion beauty'],
-      'education': ['tutorials learning', 'science discovery', 'history documentary', 'skills training'],
-      'business': ['entrepreneurship', 'investing finance', 'marketing business', 'career advice'],
-      'trending': ['viral trends', 'memes funny', 'breaking news', 'social media trends']
+      'tech': [
+        'AI artificial intelligence machine learning',
+        'programming coding tutorial javascript python',
+        'tech reviews gadgets smartphones laptops',
+        'software development web development',
+        'cybersecurity hacking ethical',
+        'blockchain cryptocurrency bitcoin',
+        'cloud computing AWS Azure',
+        'data science analytics',
+        'robotics automation future tech',
+        'startup tech entrepreneur silicon valley'
+      ],
+      'entertainment': [
+        'movies trailers hollywood blockbuster',
+        'music videos pop rock hip hop',
+        'celebrity news gossip entertainment',
+        'tv shows series netflix streaming',
+        'comedy funny viral videos',
+        'reality tv drama series',
+        'awards shows oscars grammy',
+        'behind the scenes making of',
+        'interviews celebrity talk show',
+        'entertainment news latest'
+      ],
+      'gaming': [
+        'gaming gameplay walkthrough review',
+        'esports tournaments championship',
+        'game reviews AAA indie',
+        'streaming highlights twitch',
+        'minecraft fortnite valorant',
+        'nintendo playstation xbox',
+        'mobile gaming android ios',
+        'retro gaming classic games',
+        'game development unity unreal',
+        'speedrun world record'
+      ],
+      'lifestyle': [
+        'fitness workout health nutrition',
+        'cooking recipes food chef',
+        'travel vlogs destination guide',
+        'fashion beauty makeup style',
+        'home decor interior design',
+        'productivity life hacks tips',
+        'relationship advice dating',
+        'minimalism organization',
+        'self improvement motivation',
+        'wellness meditation yoga'
+      ],
+      'education': [
+        'tutorials learning how to',
+        'science discovery physics chemistry',
+        'history documentary world war',
+        'skills training professional development',
+        'language learning english spanish',
+        'mathematics algebra calculus',
+        'biology anatomy medical',
+        'economics finance investing',
+        'geography world countries',
+        'psychology behavior human mind'
+      ],
+      'business': [
+        'entrepreneurship startup business',
+        'investing finance stocks crypto',
+        'marketing digital social media',
+        'career advice job interview',
+        'real estate investment property',
+        'e-commerce online business',
+        'leadership management skills',
+        'passive income side hustle',
+        'business strategy growth',
+        'freelancing remote work'
+      ],
+      'sports': [
+        'football NFL highlights touchdown',
+        'basketball NBA highlights dunk',
+        'soccer fifa world cup',
+        'baseball MLB highlights homerun',
+        'tennis wimbledon grand slam',
+        'olympics athletic competition',
+        'boxing MMA UFC fight',
+        'golf PGA tournament',
+        'motorsports formula 1 racing',
+        'extreme sports adventure'
+      ],
+      'news': [
+        'breaking news latest updates',
+        'politics election government',
+        'world news international',
+        'economics market analysis',
+        'climate change environment',
+        'technology innovation breakthrough',
+        'health medical research',
+        'space exploration NASA',
+        'social issues human rights',
+        'local news community'
+      ],
+      'automotive': [
+        'car reviews automotive test drive',
+        'electric vehicles tesla EV',
+        'motorcycle racing sport bike',
+        'automotive news industry',
+        'car modification tuning',
+        'luxury cars supercars',
+        'classic vintage cars',
+        'truck SUV comparison',
+        'automotive technology future',
+        'racing formula 1 NASCAR'
+      ],
+      'trending': [
+        'viral trends social media latest',
+        'memes funny internet culture',
+        'tiktok trends viral videos',
+        'youtube shorts trending',
+        'social media challenges',
+        'internet phenomena viral',
+        'pop culture trending topics',
+        'celebrity viral moments',
+        'trending hashtags topics',
+        'viral news stories'
+      ]
     };
     
     let allQueries = [];
@@ -466,22 +579,47 @@ app.get('/api/bulk-fetch', async (req, res) => {
       });
     }
     
-    const resultsPerQuery = Math.ceil(totalResults / allQueries.length);
-    let allVideos = [];
+    // Optimize results per query for better distribution
+    const maxResultsPerQuery = 50; // YouTube API limit
+    const queriesNeeded = Math.ceil(totalResults / maxResultsPerQuery);
+    const queriesToUse = allQueries.slice(0, Math.max(queriesNeeded, allQueries.length));
+    const resultsPerQuery = Math.min(maxResultsPerQuery, Math.ceil(totalResults / queriesToUse.length));
     
-    for (const query of allQueries) {
+    let allVideos = [];
+    let successfulQueries = 0;
+    let failedQueries = 0;
+    
+    console.log(`📊 Using ${queriesToUse.length} queries, ${resultsPerQuery} results per query`);
+    
+    for (let i = 0; i < queriesToUse.length && allVideos.length < totalResults; i++) {
+      const query = queriesToUse[i];
       try {
+        console.log(`🔍 Query ${i + 1}/${queriesToUse.length}: "${query}"`);
         const videos = await fetchYouTubeVideos(query, resultsPerQuery);
+        
         if (videos && videos.length > 0) {
           allVideos.push(...videos);
+          successfulQueries++;
+          console.log(`✅ Got ${videos.length} videos (total: ${allVideos.length})`);
         }
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Rate limiting - longer delay for bulk operations
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
       } catch (error) {
+        failedQueries++;
         console.log(`⚠️ Error fetching for query "${query}":`, error.message);
+        
+        // If quota exceeded, wait longer before continuing
+        if (error.message.includes('quota') || error.message.includes('403')) {
+          console.log('⏳ Quota limit detected, waiting 5 seconds...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
         continue;
       }
     }
+    
+    console.log(`📊 Bulk fetch completed: ${successfulQueries} successful, ${failedQueries} failed queries`);
     
     if (allVideos.length > 0) {
       const processedData = processYouTubeDataForSupabase(allVideos);

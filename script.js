@@ -2537,8 +2537,99 @@ async function fetchBulkData(categories = 'all', totalResults = 1000) {
   }
 }
 
+// Enhanced bulk fetch for 10,000+ videos
+async function fetchMassiveDataset(targetRows = 10000) {
+  try {
+    console.log(`🚀 Initiating massive data fetch: ${targetRows} target videos`);
+    
+    // Show enhanced loading with progress
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.id = 'massiveLoadingOverlay';
+    loadingOverlay.innerHTML = `
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Fetching ${targetRows.toLocaleString()} videos...</div>
+        <div class="progress-info">This may take 10-15 minutes</div>
+        <div class="progress-details">Starting bulk data collection...</div>
+      </div>
+    `;
+    document.body.appendChild(loadingOverlay);
+
+    // Fetch data in categories to maximize diversity
+    const categories = ['tech', 'entertainment', 'gaming', 'lifestyle', 'education', 'business', 'sports', 'news', 'automotive'];
+    const videosPerCategory = Math.ceil(targetRows / categories.length);
+    
+    let totalFetched = 0;
+    let allResults = [];
+
+    for (let i = 0; i < categories.length; i++) {
+      const category = categories[i];
+      const progressDetails = document.querySelector('.progress-details');
+      
+      if (progressDetails) {
+        progressDetails.textContent = `Fetching ${category} trends... (${i + 1}/${categories.length})`;
+      }
+
+      try {
+        console.log(`📊 Fetching ${videosPerCategory} videos for category: ${category}`);
+        const response = await fetch(`/api/bulk-fetch?categories=${category}&totalResults=${videosPerCategory}`);
+        const result = await response.json();
+
+        if (result.success) {
+          totalFetched += result.count;
+          allResults.push(result);
+          console.log(`✅ ${category}: ${result.count} videos (total: ${totalFetched})`);
+          
+          if (progressDetails) {
+            progressDetails.textContent = `Collected ${totalFetched.toLocaleString()} videos so far...`;
+          }
+        }
+
+        // Rate limiting between categories
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+      } catch (error) {
+        console.error(`❌ Error fetching ${category}:`, error);
+        continue;
+      }
+    }
+
+    // Clean up loading overlay
+    const overlay = document.getElementById('massiveLoadingOverlay');
+    if (overlay) overlay.remove();
+
+    console.log(`🎉 Massive fetch completed! Total videos: ${totalFetched}`);
+    
+    // Show success message
+    const successDiv = document.createElement('div');
+    successDiv.innerHTML = `
+      <div style="position: fixed; top: 20px; right: 20px; background: #10B981; color: white; padding: 15px; border-radius: 8px; z-index: 10000;">
+        ✅ Successfully fetched ${totalFetched.toLocaleString()} videos!<br>
+        <small>Refreshing dashboard...</small>
+      </div>
+    `;
+    document.body.appendChild(successDiv);
+
+    // Refresh after 3 seconds
+    setTimeout(() => {
+      location.reload();
+    }, 3000);
+
+    return { totalFetched, results: allResults };
+
+  } catch (error) {
+    console.error('❌ Error in massive fetch:', error);
+    const overlay = document.getElementById('massiveLoadingOverlay');
+    if (overlay) overlay.remove();
+    
+    alert(`Error fetching massive dataset: ${error.message}`);
+    return null;
+  }
+}
+
 // Make bulk fetch available globally
 window.fetchBulkData = fetchBulkData;
+window.fetchMassiveDataset = fetchMassiveDataset;
 
 // Combined search function that handles trends, search terms, and date ranges
 async function performComprehensiveSearch() {
