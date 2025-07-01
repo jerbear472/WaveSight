@@ -10,7 +10,7 @@ publicDir = "/"
 deploymentTarget = "static"
 
 [workflows]
-runButton = "All Services - Fixed"
+runButton = "YouTube API Server"
 
 [[workflows.workflow]]
 name = "Serve static"
@@ -32,7 +32,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "nix-shell -p nodejs --run \"node youtubeToSupabase.js\""
+args = "node youtubeToSupabase.js"
 
 [[workflows.workflow]]
 name = "Sentiment Analysis Server"
@@ -116,6 +116,43 @@ args = "node youtubeToSupabase.js &"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python sentiment_server.py"
+
+[[workflows.workflow]]
+name = "Start All Services"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting WaveSight services...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"📊 Starting YouTube API Server on port 5000...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node youtubeToSupabase.js &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "sleep 3"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🧠 Starting Sentiment Analysis Server on port 5001...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python sentiment_server.py &"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"✅ All services started successfully!\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "wait"
 
 [[ports]]
 localPort = 80

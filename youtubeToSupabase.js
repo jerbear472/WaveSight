@@ -779,7 +779,7 @@ app.get('/api/bulk-fetch', async (req, res) => {
       'business': [
         'entrepreneurship startup business',
         'investing finance stocks crypto',
-        'marketing digital social media',
+        'marketingdigital social media',
         'career advice job interview',
         'real estate investment property',
         'e-commerce online business',
