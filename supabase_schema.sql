@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS youtube_trends (
   -- Trending analysis
   trend_category VARCHAR(100) DEFAULT 'General',
   trend_score INTEGER DEFAULT 0,
-  
+
   -- Wave analysis
   wave_score DECIMAL(10, 6) DEFAULT 0,
   sentiment_score DECIMAL(5, 4) DEFAULT 0,
@@ -160,27 +160,24 @@ CREATE TRIGGER update_sentiment_forecasts_updated_at
 
 -- YouTube Alerts Table
 CREATE TABLE IF NOT EXISTS youtube_alerts (
-    id BIGSERIAL PRIMARY KEY,
-    alert_id VARCHAR(255) UNIQUE NOT NULL,
-    alert_type VARCHAR(100) DEFAULT 'TRENDING_VIDEO',
-    video_id VARCHAR(50) NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT,
+    id SERIAL PRIMARY KEY,
+    alert_type VARCHAR(50) NOT NULL,
+    video_id VARCHAR(50),
+    title TEXT,
     channel_title VARCHAR(255),
-    view_count BIGINT DEFAULT 0,
-    like_count BIGINT DEFAULT 0,
-    comment_count BIGINT DEFAULT 0,
-    growth_rate DECIMAL(10, 3) DEFAULT 0,
-    wave_score DECIMAL(10, 6) DEFAULT 0,
-    sentiment_score DECIMAL(5, 4) DEFAULT 0,
-    severity VARCHAR(20) DEFAULT 'LOW' CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),
-    reason TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    processed BOOLEAN DEFAULT FALSE,
-    notified BOOLEAN DEFAULT FALSE,
-    category VARCHAR(100),
-    published_at TIMESTAMP WITH TIME ZONE
+    threshold_value BIGINT,
+    current_value BIGINT,
+    severity VARCHAR(20) DEFAULT 'MEDIUM',
+    message TEXT,
+    alert_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for alerts
+CREATE INDEX IF NOT EXISTS idx_alerts_time ON youtube_alerts(alert_time);
+CREATE INDEX IF NOT EXISTS idx_alerts_severity ON youtube_alerts(severity);
+CREATE INDEX IF NOT EXISTS idx_alerts_read ON youtube_alerts(is_read);
 
 -- Trend Insights Table for Cultural Trend Analysis
 CREATE TABLE IF NOT EXISTS trend_insights (
