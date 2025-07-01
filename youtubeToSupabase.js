@@ -291,9 +291,7 @@ function processYouTubeDataForSupabase(youtubeData) {
         like_count: variantLikeCount,
         comment_count: variantCommentCount,
         trend_category: category,
-        trend_score: Math.min(100, Math.max(10, trendScore + (Math.random() * 20 - 10))), // Add variance
-        wave_score: Math.round(waveScore * 1000) / 1000,
-        sentiment_score: Math.round(mockSentiment * 1000) / 1000
+        trend_score: Math.min(100, Math.max(10, trendScore + (Math.random() * 20 - 10))) // Add variance
       });
     }
   });
@@ -412,7 +410,7 @@ app.get('/api/config', (req, res) => {
 app.post('/api/process-trends', async (req, res) => {
   try {
     console.log('🧠 Processing cultural trends and insights...');
-    
+
     // Get recent YouTube data
     const { data: youtubeData, error: ytError } = await supabase
       .from('youtube_trends')
@@ -457,7 +455,7 @@ app.post('/api/process-trends', async (req, res) => {
         keywords.forEach(keyword => {
           if (content.includes(keyword)) score += 1;
         });
-        
+
         if (score > bestScore) {
           bestScore = score;
           bestCategory = category;
@@ -472,16 +470,16 @@ app.post('/api/process-trends', async (req, res) => {
 
     // Calculate insights for each trend
     const insights = [];
-    
+
     for (const [trendName, videos] of Object.entries(trendGroups)) {
       if (videos.length >= 2) { // Only process trends with multiple videos
         const totalViews = videos.reduce((sum, v) => sum + (v.view_count || 0), 0);
         const totalLikes = videos.reduce((sum, v) => sum + (v.like_count || 0), 0);
         const totalComments = videos.reduce((sum, v) => sum + (v.comment_count || 0), 0);
         const avgScore = videos.reduce((sum, v) => sum + (v.trend_score || 0), 0) / videos.length;
-        
+
         const engagementRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews * 100) : 0;
-        
+
         // Calculate wave score
         const lastViewCount = Math.max(totalViews * 0.8, totalViews - 100000);
         const growthFactor = lastViewCount > 0 ? Math.min((totalViews - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
@@ -641,7 +639,7 @@ app.post('/api/alerts/:alertId/dismiss', async (req, res) => {
 app.post('/api/run-alert-scan', async (req, res) => {
   try {
     console.log('🔍 API: Running manual alert scan...');
-    
+
     // This would typically trigger your Python alert system
     // For now, we'll return a mock response
     res.json({
@@ -1149,8 +1147,7 @@ async function generateSyntheticTrendData(count = 5000) {
       comment_count: commentCount,
       trend_category: category,
       trend_score: trendScore,
-      wave_score: Math.round(waveScore * 1000) / 1000,
-      sentiment_score: Math.round(mockSentiment * 1000) / 1000
+      wave_score: Math.round(waveScore * 1000) / 1000
     });
   }
 
