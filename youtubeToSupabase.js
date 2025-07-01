@@ -371,15 +371,19 @@ app.get('/api/youtube-data', async (req, res) => {
   try {
     console.log('📥 API: Fetching YouTube data from Supabase...');
 
+    const limit = parseInt(req.query.limit) || 1000; // Default to 1000, but allow override
+
     const { data, error } = await supabase
       .from('youtube_trends')
       .select('*')
       .order('published_at', { ascending: false })
-      .limit(200);
+      .limit(limit);
 
     if (error) {
       throw error;
     }
+
+    console.log(`✅ Retrieved ${data?.length || 0} records from Supabase`);
 
     res.json({
       success: true,
