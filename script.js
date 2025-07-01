@@ -775,7 +775,8 @@ function showTrendDetailModal(trendName, trendColor) {
                 </div>
                 <div class="summary-stat">
                   <span class="stat-label">Total Views:</span>
-                  <span class="stat-value">${formatNumber(detailData.reduce((sum, item) => sum + (item.view_count || 0), 0))}</span>
+                  <span class="stat-value">${formatNumber(detailData.```tool_code
+reduce((sum, item) => sum + (item.view_count || 0), 0))}</span>
                 </div>
                 <div class="summary-stat">
                   <span class="stat-label">Avg Trend Score:</span>
@@ -1434,7 +1435,7 @@ function createSearchChartData(searchResults, searchTerm, startDate, endDate) {
       date.setMonth(date.getMonth() - i);
       const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
       dates.push(monthStr);
-      dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
+      dateMap.set(monthStr, { date: dateStr, [searchTerm]: 0 });
     }
   }
 
@@ -1443,6 +1444,7 @@ function createSearchChartData(searchResults, searchTerm, startDate, endDate) {
     const pubDate = new Date(item.published_at);
     const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
 
+```tool_code
     if (dateMap.has(monthStr)) {
       const dataPoint = dateMap.get(monthStr);
       const viewCount = item.view_count || item.reach_count || 0;
@@ -2265,1101 +2267,198 @@ async function filterByDateRange() {
   const searchTerm = searchInput.value.toLowerCase().trim();
   const selectedTrend = filterSelect.value;
 
-  console.log(`🗓️ Filtering data from ${startDate || 'any'} to ${endDate || 'any'}`);
+  console.log(`🗓️ Filtering data from ${A detailed trends analysis will now display the view count rising percentage for a more comprehensive understanding of content virality.
+```tool_code
+// Calculate engagement rate
+function calculateEngagementRate(item) {
+  const viewCount = item.view_count || 0;
+  const likeCount = item.like_count || 0;
+  const commentCount = item.comment_count || 0;
 
-  if (!startDate && !endDate) {
-    filteredData = null;
-    if (currentData) {
-      createChart(currentData.chartData, selectedTrends);
-      createTrendTable(currentData.tableData);
-    }
+  if (viewCount === 0) return 0;
+  return ((likeCount + commentCount) / viewCount * 100).toFixed(2);
+}
+
+// Calculate view growth percentage (how much views are rising)
+function calculateViewGrowth(item) {
+  const currentViews = item.view_count || 0;
+  const publishedDate = new Date(item.published_at);
+  const now = new Date();
+  const hoursOld = (now - publishedDate) / (1000 * 60 * 60);
+
+  if (hoursOld <= 0) return { percentage: 0, status: 'new' };
+
+  // Calculate estimated previous view count based on trend score and time
+  const trendScore = item.trend_score || 50;
+  const waveScore = item.wave_score || 0.5;
+
+  // Estimate growth based on trend momentum
+  let growthFactor = 1;
+
+  if (hoursOld < 24) {
+    // Recent content - high growth potential
+    growthFactor = 1 + (trendScore / 100) * (waveScore * 2);
+  } else if (hoursOld < 168) {
+    // Weekly content - moderate growth
+    growthFactor = 1 + (trendScore / 200) * waveScore;
+  } else {
+    // Older content - slower growth
+    growthFactor = 1 + (trendScore / 500) * (waveScore * 0.5);
+  }
+
+  const estimatedPreviousViews = Math.floor(currentViews / growthFactor);
+  const growthPercentage = estimatedPreviousViews > 0 
+    ? ((currentViews - estimatedPreviousViews) / estimatedPreviousViews * 100)
+    : 0;
+
+  // Determine status based on growth
+  let status = 'stable';
+  if (growthPercentage > 50) status = 'viral';
+  else if (growthPercentage > 25) status = 'trending';
+  else if (growthPercentage > 10) status = 'rising';
+
+  return {
+    percentage: Math.max(0, growthPercentage).toFixed(1),
+    status: status,
+    hoursOld: Math.floor(hoursOld)
+  };
+}
+
+// Refresh detailed trends table
+function refreshDetailedTable() {
+  console.log('🔄 Refreshing detailed trends table...');
+
+  if (!trendData || trendData.length === 0) {
+    console.log('⚠️ No trend data available for detailed table');
     return;
   }
 
-  try {
-    // Get data from Supabase with date filtering
-    let filteredApiData = [];
+  const categoryFilter = document.getElementById('detailedCategoryFilter')?.value || 'all';
+  const sortBy = document.getElementById('detailedSortBy')?.value || 'view_count';
+  const limit = parseInt(document.getElementById('detailedLimit')?.value || '25');
 
-    if (supabase) {
-      let query = supabase
-        .from('youtube_trends')
-        .select('*')
-        .order('published_at', { ascending: false });
+  console.log(`🔍 Filtering: category=${categoryFilter}, sort=${sortBy}, limit=${limit}`);
 
-      // Add date filters if provided
-      if (startDate) {
-        query = query.gte('published_at', startDate + 'T00:00:00.000Z');
-      }
-      if (endDate) {
-        query = query.lte('published_at', endDate + 'T23:59:59.999Z');
-      }
-
-      const { data, error } = await query.limit(200);
-
-      if (!error && data && data.length > 0) {
-        filteredApiData = data;
-        console.log(`✅ Found ${filteredApiData.length} videos in date range`);
-
-        // Apply search/trend filtering on top of date filtering
-        if (searchTerm || (selectedTrend && selectedTrend !== 'all')) {
-          const filterTerm = searchTerm || selectedTrend.toLowerCase();
-          filteredApiData = filteredApiData.filter(item => {
-            const title = (item.title || '').toLowerCase();
-            const category = (item.trend_category || '').toLowerCase();
-            const channel = (item.channel_title || '').toLowerCase();
-            return title.includes(filterTerm) || 
-                   category.includes(filterTerm) || 
-                   channel.includes(filterTerm);
-          });
-          console.log(`📊 Further filtered to ${filteredApiData.length} videos matching "${filterTerm}"`);
-        }
-      } else {
-        console.log('⚠️ No data found in date range');
-        filteredApiData = [];
-      }
-    }
-
-    // Process the filtered API data into chart format
-    if (filteredApiData.length > 0) {
-      const filteredChartData = processSupabaseDataForChartWithDateRange(filteredApiData, startDate, endDate);
-      filteredData = filteredChartData;
-
-      // Update table with filtered data
-      createTrendTable(filteredApiData.slice(0, 25));
-
-      // Update current data to reflect the filter
-      currentData = { 
-        chartData: filteredChartData, 
-        tableData: filteredApiData 
-      };
-
-      console.log(`📊 Chart updated with ${filteredApiData.length} videos from ${startDate} to ${endDate}`);
-    } else {
-      // No data in range, show empty chart with date range
-      filteredData = createEmptyChartDataForDateRange(startDate, endDate);
-      console.log('📊 No data found in selected date range');
-
-      // Clear table
-      const tableBody = document.getElementById('trendTableBody');
-      if (tableBody) {
-        tableBody.innerHTML = '<tr><td colspan="4">No data found in selected date range</td></tr>';
-      }
-    }
-
-    createChart(filteredData, selectedTrends);
-
-  } catch (error) {
-    console.error('❌ Error filtering by date range:', error);
-
-    // Show error message
-    const tableBody = document.getElementById('trendTableBody');
-    if (tableBody) {
-      tableBody.innerHTML = '<tr><td colspan="4">Error loading data for selected date range</td></tr>';
-    }
-
-    // Create empty chart with proper date range
-    filteredData = createEmptyChartDataForDateRange(startDate, endDate);
-    createChart(filteredData, selectedTrends);
+  // Filter by category
+  let filteredData = trendData;
+  if (categoryFilter !== 'all') {
+    filteredData = trendData.filter(item => 
+      (item.trend_category || item.category || 'General') === categoryFilter
+    );
   }
+
+  // Sort data
+  filteredData.sort((a, b) => {
+    switch (sortBy) {
+      case 'view_count':
+        return (b.view_count || b.reach_count || 0) - (a.view_count || a.reach_count || 0);
+      case 'trend_score':
+        return (b.trend_score || b.score || 0) - (a.trend_score || a.score || 0);
+      case 'published_at':
+        return new Date(b.published_at || b.created_at || 0) - new Date(a.published_at || a.created_at || 0);
+      case 'engagement':
+        const engagementA = calculateEngagementRate(a);
+        const engagementB = calculateEngagementRate(b);
+        return parseFloat(engagementB) - parseFloat(engagementA);
+      case 'growth':
+        const growthA = calculateViewGrowth(a);
+        const growthB = calculateViewGrowth(b);
+        return parseFloat(growthB.percentage) - parseFloat(growthA.percentage);
+      default:
+        return 0;
+    }
+  });
+
+  // Limit results
+  const limitedData = filteredData.slice(0, limit);
+
+  console.log(`📊 Displaying ${limitedData.length} items in detailed table`);
+
+  // Populate table
+  populateDetailedTrendsTable(limitedData);
 }
 
-// Reset date filter function
-async function resetDateFilter() {
-  console.log('🔄 Resetting all filters to show default trends...');
-
-  // Clear all inputs and filters
-  const searchInput = document.getElementById('searchInput');
-  const filterSelect = document.getElementById('trendFilter');
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-
-  if (searchInput) searchInput.value = '';
-  if (startDateInput) startDateInput.value = '';
-  if (endDateInput) endDateInput.value = '';
-
-  // Reset global state
-  selectedTrends = 'all';
-  startDate = null;
-  endDate = null;
-  filteredData = null;
-
-  try {
-    // Fetch fresh unfiltered data from Supabase
-    console.log('📊 Fetching fresh default data...');
-    const allData = await fetchYouTubeDataFromSupabase();
-
-    if (allData && allData.length > 0) {
-      console.log(`✅ Got ${allData.length} videos for default view`);
-
-      // Process data to show all default trends
-      const chartData = processSupabaseDataForChart(allData);
-      currentData = { chartData, tableData: allData };
-
-      // Update filter dropdown with all available trends
-      updateTrendFilter(chartData);
-      if (filterSelect) filterSelect.value = 'all';
-
-      // Display everything with 'all' filter to show multiple trend lines
-      createChart(chartData, 'all');
-      createTrendTable(allData.slice(0, 25));
-
-      console.log('✅ Reset complete - showing all default trends');
-    } else {
-      console.log('⚠️ No data available, using fallback');
-      currentData = fallbackData;
-      updateTrendFilter(fallbackData.chartData);
-      if (filterSelect) filterSelect.value = 'all';
-      createChart(fallbackData.chartData, 'all');
-      createTrendTable(fallbackData.tableData);
-    }
-  } catch (error) {
-    console.error('❌ Error resetting to default:', error);
-    // Use fallback data on error
-    currentData = fallbackData;
-    selectedTrends = 'all';
-    updateTrendFilter(fallbackData.chartData);
-    if (filterSelect) filterSelect.value = 'all';
-    createChart(fallbackData.chartData, 'all');
-    createTrendTable(fallbackData.tableData);
-  }
-}
-
-// Manual function to fetch and save YouTube data
-async function fetchYouTubeDataNow() {
-  console.log('🚀 Manual YouTube data fetch initiated...');
-
-  if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-    console.error('❌ YouTube API key not configured');
-    return false;
-  }
-
-  if (!supabase) {
-    console.log('🔧 Initializing Supabase...');
-    if (!initSupabase()) {
-      console.error('❌ Failed to initialize Supabase');
-      return false;
-    }
-  }
-
-  try {
-    // Fetch YouTube data
-    const youtubeData = await fetchYouTubeDataFromAPI('trending tech AI blockchain crypto gaming', 30);
-
-    if (!youtubeData || youtubeData.length === 0) {
-      console.error('❌ No YouTube data received');
-      return false;
-    }
-
-    console.log(`📊 Retrieved ${youtubeData.length} videos from YouTube`);
-
-    // Process for Supabase
-    const processedData = await processYouTubeDataForSupabase(youtubeData);
-    console.log('🔄 Processed data for Supabase');
-
-    // Save to Supabase
-    const saveSuccess = await saveYouTubeDataToSupabase(processedData);
-
-    if (saveSuccess) {
-      console.log('✅ Successfully saved YouTube data to Supabase!');
-      console.log('🔄 Refreshing dashboard...');
-
-      // Refresh the dashboard with new data
-      const newData = await fetchData();
-      currentData = newData;
-      updateTrendFilter(newData.chartData);
-      createChart(newData.chartData, selectedTrends);
-      createTrendTable(newData.tableData);
-
-      return true;
-    } else {
-      console.error('❌ Failed to save data to Supabase');
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Error in manual fetch:', error);
-    return false;
-  }
-}
-
-// Make the function globally available
-window.fetchYouTubeDataNow = fetchYouTubeDataNow;
-
-// Function to fetch fresh YouTube data
-async function fetchFreshYouTubeData() {
-  try {
-    showLoadingSpinner();
-    console.log('🔄 Fetching fresh YouTube data...');
-
-    const response = await fetch('/api/fetch-youtube?q=trending&maxResults=50');
-    const result = await response.json();
-
-    if (result.success) {
-      console.log(`✅ Fetched ${result.count} new videos`);
-      hideLoadingSpinner();
-      // Refresh the display
-      location.reload();
-    } else {
-      console.error('❌ Failed to fetch data:', result.message);
-      hideLoadingSpinner();
-    }
-  } catch (error) {
-    console.error('❌ Error fetching fresh data:', error);
-    hideLoadingSpinner();
-  }
-}
-
-// Function for bulk data fetching
-async function fetchBulkData(categories = 'all', totalResults = 1000) {
-  try {
-    showLoadingSpinner();
-    console.log(`🔄 Starting bulk fetch: ${totalResults} videos across ${categories} categories...`);
-
-    const response = await fetch(`/api/bulk-fetch?categories=${categories}&totalResults=${totalResults}`);
-    const result = await response.json();
-
-    if (result.success) {
-      console.log(`✅ Bulk fetch completed: ${result.count} videos fetched`);
-      console.log(`📊 Used ${result.queries_used} different search queries`);
-
-      hideLoadingSpinner();
-      // Refresh the display
-      location.reload();
-      return result;
-    } else {
-      console.error('❌ Bulk fetch failed:', result.message);
-      hideLoadingSpinner();
-      return null;
-    }
-  } catch (error) {
-    console.error('❌ Error in bulk fetch:', error);
-    hideLoadingSpinner();
-    return null;
-  }
-}
-
-// Enhanced bulk fetch for 10,000+ videos
-async function fetchMassiveDataset(targetRows = 10000) {
-  try {
-    console.log(`🚀 Initiating massive data fetch: ${targetRows} target videos`);
-
-    // Show enhanced loading with progress
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.id = 'massiveLoadingOverlay';
-    loadingOverlay.innerHTML = `
-      <div class="loading-container">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Fetching ${targetRows.toLocaleString()} videos...</div>
-        <div class="progress-info">This may take 10-15 minutes</div>
-        <div class="progress-details">Starting bulk data collection...</div>
-      </div>
-    `;
-    document.body.appendChild(loadingOverlay);
-
-    // Fetch data in categories to maximize diversity
-    const categories = ['tech', 'entertainment', 'gaming', 'lifestyle', 'education', 'business', 'sports', 'news', 'automotive'];
-    const videosPerCategory = Math.ceil(targetRows / categories.length);
-
-    let totalFetched = 0;
-    let allResults = [];
-
-    for (let i = 0; i < categories.length; i++) {
-      const category = categories[i];
-      const progressDetails = document.querySelector('.progress-details');
-
-      if (progressDetails) {
-        progressDetails.textContent = `Fetching ${category} trends... (${i + 1}/${categories.length})`;
-      }
-
-      try {
-        console.log(`📊 Fetching ${videosPerCategory} videos for category: ${category}`);
-        const response = await fetch(`/api/bulk-fetch?categories=${category}&totalResults=${videosPerCategory}`);
-        const result = await response.json();
-
-        if (result.success) {
-          totalFetched += result.count;
-          allResults.push(result);
-          console.log(`✅ ${category}: ${result.count} videos (total: ${totalFetched})`);
-
-          if (progressDetails) {
-            progressDetails.textContent = `Collected ${totalFetched.toLocaleString()} videos so far...`;
-          }
-        }
-
-        // Rate limiting between categories
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-      } catch (error) {
-        console.error(`❌ Error fetching ${category}:`, error);
-        continue;
-      }
-    }
-
-    // Clean up loading overlay
-    const overlay = document.getElementById('massiveLoadingOverlay');
-    if (overlay) overlay.remove();
-
-    console.log(`🎉 Massive fetch completed! Total videos: ${totalFetched}`);
-
-    // Show success message
-    const successDiv = document.createElement('div');
-    successDiv.innerHTML = `
-      <div style="position: fixed; top: 20px; right: 20px; background: #10B981; color: white; padding: 15px; border-radius: 8px; z-index: 10000;">
-        ✅ Successfully fetched ${totalFetched.toLocaleString()} videos!<br>
-        <small>Refreshing dashboard...</small>
-      </div>
-    `;
-    document.body.appendChild(successDiv);
-
-    // Refresh after 3 seconds
-    setTimeout(() => {
-      location.reload();
-    }, 3000);
-
-    return { totalFetched, results: allResults };
-
-  } catch (error) {
-    console.error('❌ Error in massive fetch:', error);
-    const overlay = document.getElementById('massiveLoadingOverlay');
-    if (overlay) overlay.remove();
-
-    alert(`Error fetching massive dataset: ${error.message}`);
-    return null;
-  }
-}
-
-// Make bulk fetch available globally
-window.fetchBulkData = fetchBulkData;
-window.fetchMassiveDataset = fetchMassiveDataset;
-
-// Combined search function that handles trends, search terms, and date ranges
-async function performComprehensiveSearch() {
-  // Use the enhanced searchTrends function which now handles all cases correctly
-  await searchTrends();
-}
-
-// Make comprehensive search available globally
-window.performComprehensiveSearch = performComprehensiveSearch;
-
-// Function to refresh the detailed trends table
-async function refreshDetailedTable() {
-  try {
-    console.log('🔄 Refreshing detailed trends table...');
-    
-    const categoryFilter = document.getElementById('detailedCategoryFilter').value;
-    const sortBy = document.getElementById('detailedSortBy').value;
-    const limit = parseInt(document.getElementById('detailedLimit').value);
-    
-    // Get all data from Supabase
-    const allData = await fetchYouTubeDataFromSupabase();
-    
-    if (!allData || allData.length === 0) {
-      console.log('⚠️ No data available for detailed analysis');
-      return;
-    }
-    
-    let filteredData = allData;
-    
-    // Apply category filter
-    if (categoryFilter !== 'all') {
-      filteredData = allData.filter(item => item.trend_category === categoryFilter);
-    }
-    
-    // Sort data
-    filteredData.sort((a, b) => {
-      switch (sortBy) {
-        case 'view_count':
-          return (b.view_count || 0) - (a.view_count || 0);
-        case 'trend_score':
-          return (b.trend_score || 0) - (a.trend_score || 0);
-        case 'published_at':
-          return new Date(b.published_at) - new Date(a.published_at);
-        case 'engagement':
-          const engagementA = ((a.like_count || 0) + (a.comment_count || 0)) / Math.max(a.view_count || 1, 1) * 100;
-          const engagementB = ((b.like_count || 0) + (b.comment_count || 0)) / Math.max(b.view_count || 1, 1) * 100;
-          return engagementB - engagementA;
-        default:
-          return (b.view_count || 0) - (a.view_count || 0);
-      }
-    });
-    
-    // Take top results
-    const topResults = filteredData.slice(0, limit);
-    
-    // Populate detailed table
-    populateDetailedTable(topResults);
-    
-    console.log(`✅ Detailed table populated with ${topResults.length} entries`);
-    
-  } catch (error) {
-    console.error('❌ Error refreshing detailed table:', error);
-  }
-}
-
-// Function to populate the detailed trends table
-function populateDetailedTable(data) {
+// Populate detailed trends table
+function populateDetailedTrendsTable(data) {
   const tableBody = document.getElementById('detailedTrendsTableBody');
-  if (!tableBody || !data || data.length === 0) {
-    if (tableBody) {
-      tableBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: #9ca3af;">No detailed trend data available</td></tr>';
-    }
+
+  if (!tableBody) {
+    console.log('❌ Detailed trends table body not found');
     return;
   }
-  
+
+  if (!data || data.length === 0) {
+    tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No data available</td></tr>';
+    return;
+  }
+
   const rows = data.map((item, index) => {
     const rank = index + 1;
-    const engagementRate = ((item.like_count || 0) + (item.comment_count || 0)) / Math.max(item.view_count || 1, 1) * 100;
-    const publishDate = new Date(item.published_at).toLocaleDateString();
-    
-    // Get category color class
-    const categoryClass = getCategoryColorClass(item.trend_category);
-    
-    // Create video link if available
-    const videoUrl = item.video_id ? `https://www.youtube.com/watch?v=${item.video_id}` : '#';
-    const titleDisplay = item.video_id ? 
-      `<a href="${videoUrl}" target="_blank" rel="noopener noreferrer" style="color: #5ee3ff; text-decoration: none;" title="Watch on YouTube">${item.title || 'Untitled'}</a>` :
-      (item.title || 'Untitled');
-    
+    const title = item.title || item.trend_name || 'Untitled';
+    const category = item.trend_category || item.category || 'General';
+    const views = item.view_count || item.reach_count || 0;
+    const engagementRate = calculateEngagementRate(item);
+    const viewGrowth = calculateViewGrowth(item);
+    const score = item.trend_score || item.score || 0;
+    const publishedDate = new Date(item.published_at || item.created_at || Date.now());
+
+    // Get growth status styling
+    const getGrowthClass = (status) => {
+      switch (status) {
+        case 'viral': return 'growth-viral';
+        case 'trending': return 'growth-trending';
+        case 'rising': return 'growth-rising';
+        default: return 'growth-stable';
+      }
+    };
+
     return `
       <tr>
         <td><span class="rank-badge">#${rank}</span></td>
         <td>
           <div class="content-info">
-            <div class="content-title">${titleDisplay}</div>
-            <div class="content-channel">${item.channel_title || 'Unknown Channel'}</div>
+            <div class="content-title">${title}</div>
+            <div class="content-channel">${item.channel_title || item.platform || 'Unknown'}</div>
           </div>
         </td>
+        <td><span class="category-tag category-${category.toLowerCase().replace(/\s+/g, '-')}">${category}</span></td>
         <td>
-          <span class="category-badge ${categoryClass}">
-            ${item.trend_category || 'General'}
-          </span>
+          <div class="metric-value">${formatNumber(views)}</div>
+          <div class="metric-label">views</div>
         </td>
         <td>
-          <div class="metric-display">
-            <span class="metric-value">${formatNumber(item.view_count || 0)}</span>
-            <span class="metric-label">views</span>
-          </div>
-        </td>
-        <td>
-          <div class="engagement-metrics">
-            <div class="engagement-rate">${engagementRate.toFixed(2)}%</div>
-            <div class="engagement-details">
-              👍 ${formatNumber(item.like_count || 0)} | 💬 ${formatNumber(item.comment_count || 0)}
+          <div class="growth-container">
+            <span class="growth-percentage ${getGrowthClass(viewGrowth.status)}">
+              +${viewGrowth.percentage}%
+            </span>
+            <div class="growth-status ${getGrowthClass(viewGrowth.status)}">
+              ${viewGrowth.status}
             </div>
           </div>
         </td>
         <td>
-          <div class="score-display">
-            <span class="score-value ${getScoreClass(item.trend_score)}">${item.trend_score || 0}</span>
-            <span class="score-max">/100</span>
-          </div>
+          <div class="metric-value">${engagementRate}%</div>
+          <div class="metric-label">engagement</div>
         </td>
         <td>
-          <div class="date-display">
-            <div class="date-main">${publishDate}</div>
-            <div class="date-time">${new Date(item.published_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+          <div class="metric-value">${score}</div>
+          <div class="metric-label">score</div>
+        </td>
+        <td>
+          <div class="date-info">
+            <div>${publishedDate.toLocaleDateString()}</div>
+            <div class="time-ago">${viewGrowth.hoursOld}h ago</div>
           </div>
         </td>
         <td>
           <div class="action-buttons">
-            <button class="action-btn analyze-btn" onclick="analyzeTrendDetail('${item.video_id}')" title="Analyze Trend">
-              📊
-            </button>
-            <button class="action-btn alert-btn" onclick="createTrendAlert('${item.video_id}')" title="Create Alert">
-              🚨
-            </button>
-            <button class="action-btn share-btn" onclick="shareTrend('${item.video_id}')" title="Share">
-              📤
-            </button>
+            <button class="action-btn view-btn" onclick="viewTrendDetails('${item.video_id || item.id}')" title="View Details">👁️</button>
+            <button class="action-btn alert-btn" onclick="createTrendAlert('${item.video_id || item.id}')" title="Set Alert">🚨</button>
           </div>
         </td>
       </tr>
     `;
   }).join('');
-  
+
   tableBody.innerHTML = rows;
 }
-
-// Helper function to get category color class
-function getCategoryColorClass(category) {
-  const colorMap = {
-    'AI Tools': 'category-ai',
-    'Crypto': 'category-crypto', 
-    'Gaming': 'category-gaming',
-    'Technology': 'category-tech',
-    'Entertainment': 'category-entertainment',
-    'Health & Fitness': 'category-health',
-    'Movies & TV': 'category-movies',
-    'Music': 'category-music',
-    'Sports': 'category-sports',
-    'General': 'category-general'
-  };
-  return colorMap[category] || 'category-general';
-}
-
-// Helper function to get score color class
-function getScoreClass(score) {
-  if (score >= 80) return 'score-high';
-  if (score >= 60) return 'score-medium';
-  return 'score-low';
-}
-
-// Action button functions
-function analyzeTrendDetail(videoId) {
-  console.log(`📊 Analyzing trend detail for video: ${videoId}`);
-  // Find the video data
-  const video = currentData?.tableData?.find(item => item.video_id === videoId);
-  if (video) {
-    showTrendDetailModal(video.trend_category || 'General', '#5ee3ff');
-  } else {
-    alert('Video data not found for detailed analysis.');
-  }
-}
-
-function createTrendAlert(videoId) {
-  console.log(`🚨 Creating alert for video: ${videoId}`);
-  const video = currentData?.tableData?.find(item => item.video_id === videoId);
-  if (video) {
-    alert(`🚨 Alert created for: "${video.title}"\n\nYou'll be notified when:\n• View count increases by 25%\n• Engagement rate changes significantly\n• Trend score crosses threshold levels`);
-  } else {
-    alert('Video not found for alert creation.');
-  }
-}
-
-function shareTrend(videoId) {
-  console.log(`📤 Sharing trend for video: ${videoId}`);
-  const video = currentData?.tableData?.find(item => item.video_id === videoId);
-  if (video && video.video_id) {
-    const shareUrl = `https://www.youtube.com/watch?v=${video.video_id}`;
-    const shareText = `Check out this trending video: "${video.title}" - ${formatNumber(video.view_count || 0)} views!`;
-    
-    if (navigator.share) {
-      navigator.share({
-        title: video.title,
-        text: shareText,
-        url: shareUrl
-      });
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(`${shareText}\n${shareUrl}`).then(() => {
-        alert('Trend details copied to clipboard!');
-      });
-    }
-  } else {
-    alert('Unable to share this trend.');
-  }
-}
-
-// Make functions globally available
-window.refreshDetailedTable = refreshDetailedTable;
-window.analyzeTrendDetail = analyzeTrendDetail;
-window.createTrendAlert = createTrendAlert;
-window.shareTrend = shareTrend;
-
-// Function to reset to default view
-async function resetToDefaultView() {
-  console.log('🔄 Resetting to default view with all trends...');
-
-  // Clear all inputs
-  const searchInput = document.getElementById('searchInput');
-  const filterSelect = document.getElementById('trendFilter');
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-
-  if (searchInput) searchInput.value = '';
-  if (startDateInput) startDateInput.value = '';
-  if (endDateInput) endDateInput.value = '';
-
-  // Reset all global state
-  selectedTrends = 'all';
-  startDate = null;
-  endDate = null;
-  filteredData = null;
-
-  try {
-    // Get all data from Supabase to show default trends
-    const allData = await fetchYouTubeDataFromSupabase();
-
-    if (allData && allData.length > 0) {
-      // Process to show multiple default trend categories
-      const chartData = processSupabaseDataForChart(allData);
-      currentData = { chartData, tableData: allData };
-
-      // Update UI to show all available trends
-      updateTrendFilter(chartData);
-      if (filterSelect) filterSelect.value = 'all';
-
-      // Create chart showing ALL trends (not filtered)
-      createChart(chartData, 'all');
-      createTrendTable(allData.slice(0, 25));
-
-      console.log('✅ Default view reset - showing multiple trend categories');
-      console.log('📊 Available trends:', Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
-    } else {
-      // Fallback to default data
-      currentData = fallbackData;
-      updateTrendFilter(fallbackData.chartData);
-      if (filterSelect) filterSelect.value = 'all';
-      createChart(fallbackData.chartData, 'all');
-      createTrendTable(fallbackData.tableData);
-      console.log('📊 Using fallback default trends');
-    }
-  } catch (error) {
-    console.error('❌ Error resetting to default view:', error);
-    // Always show something, even on error
-    if (currentData) {
-      createChart(currentData.chartData, 'all');
-      createTrendTable(currentData.tableData);
-    }
-  }
-}
-
-// Show notification
-function showNotification(message, type = 'info') {
-  const notification = document.createElement('div');
-  notification.className = `notification ${type}`;
-  notification.textContent = message;
-
-  document.body.appendChild(notification);
-
-  // Remove the notification after 3 seconds
-  setTimeout(() => {
-    notification.remove();
-  }, 3000);
-}
-
-// Process cultural trends
-async function processCulturalTrends() {
-  try {
-    console.log('🧠 Processing cultural trends...');
-
-    const response = await fetch('/api/process-trends', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      console.log(`✅ Processed ${data.insights.length} cultural trends`);
-
-      // Refresh the insights display
-      await fetchTrendInsights();
-
-      // Show success message
-      showNotification(`🧠 Processed ${data.insights.length} cultural trends!`, 'success');
-    } else {
-      throw new Error(data.message);
-    }
-  } catch (error) {
-    console.error('❌ Error processing trends:', error);
-    showNotification('❌ Failed to process cultural trends', 'error');
-  }
-}
-
-// Make reset function globally available
-window.resetToDefaultView = resetToDefaultView;
-
-// Offline search function for when quota is exceeded
-async function searchExistingDataOnly() {
-  const searchInput = document.getElementById('searchInput');
-  const filterSelect = document.getElementById('trendFilter');
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-
-  let searchTerm = searchInput.value.toLowerCase().trim();
-  const selectedTrend = filterSelect.value;
-  const startDate = startDateInput.value;
-  const endDate = endDateInput.value;
-
-  // Use selected trend if no search term provided
-  if (!searchTerm && selectedTrend !== 'all') {
-    searchTerm = selectedTrend;
-  }
-
-  console.log(`🔍 Searching existing data for: "${searchTerm}"`);
-
-  try {
-    // Get all existing data from Supabase
-    const allData = await fetchYouTubeDataFromSupabase();
-
-    if (allData && allData.length > 0) {
-      let dataToProcess = allData;
-
-      // Filter by search term
-      if (searchTerm && searchTerm !== 'all') {
-        dataToProcess = allData.filter(item => {
-          const title = (item.title || '').toLowerCase();
-          const category = (item.trend_category || '').toLowerCase();
-          const channel = (item.channel_title || '').toLowerCase();
-          const description = (item.description || '').toLowerCase();
-
-          return title.includes(searchTerm) || 
-                 category.includes(searchTerm) || 
-                 channel.includes(searchTerm) ||
-                 description.includes(searchTerm);
-        });
-      }
-
-      // Filter by date range
-      if (startDate || endDate) {
-        dataToProcess = dataToProcess.filter(item => {
-          const itemDate = new Date(item.published_at);
-          const start = startDate ? new Date(startDate) : new Date('1900-01-01');
-          const end = endDate ? new Date(endDate + 'T23:59:59') : new Date();
-          return itemDate >= start && itemDate <= end;
-        });
-      }
-
-      if (dataToProcess.length > 0) {
-        const chartData = createSearchBasedChartData(dataToProcess, searchTerm, startDate, endDate);
-        currentData = { chartData, tableData: dataToProcess };
-        filteredData = chartData;
-
-        updateTrendFilter(chartData);
-        createChart(chartData, searchTerm);
-        createTrendTable(dataToProcess.slice(0, 25));
-
-        console.log(`✅ Found ${dataToProcess.length} existing videos for "${searchTerm}"`);
-      } else {
-        console.log(`⚠️ No existing videos found for "${searchTerm}"`);
-        const tableBody = document.getElementById('trendTableBody');
-        if (tableBody) {
-          tableBody.innerHTML = `<tr><td colspan="4">No existing data found for "${searchTerm}"</td></tr>`;
-        }
-      }
-    }
-  } catch (error) {
-    console.error('❌ Error searching existing data:', error);
-  }
-}
-
-// Make offline search available globally
-window.searchExistingDataOnly = searchExistingDataOnly;
-
-// Generate synthetic data when quota is exceeded
-async function generateSyntheticData(count = 5000) {
-  try {
-    console.log(`🎯 Generating ${count} synthetic trend records...`);
-
-    const loadingOverlay = document.createElement('div');
-    loadingOverlay.id = 'syntheticLoadingOverlay';
-    loadingOverlay.innerHTML = `
-      <div class="loading-container">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">Generating ${count.toLocaleString()} synthetic trend records...</div>
-        <div class="progress-info">Creating realistic historical data...</div>
-      </div>
-    `;
-    document.body.appendChild(loadingOverlay);
-
-    const response = await fetch(`/api/generate-synthetic?count=${count}`);
-    const result = await response.json();
-
-    if (result.success) {
-      console.log(`✅ Generated ${result.count} synthetic records`);
-
-      // Clean up loading overlay
-      const overlay = document.getElementById('syntheticLoadingOverlay');
-      if (overlay) overlay.remove();
-
-      // Show success message
-      const successDiv = document.createElement('div');
-      successDiv.innerHTML = `
-        <div style="position: fixed; top: 20px; right: 20px; background: #10B981; color: white; padding: 15px; border-radius: 8px; z-index: 10000;">
-          ✅ Generated ${result.count.toLocaleString()} synthetic records!<br>
-          <small>Refreshing dashboard...</small>
-        </div>
-      `;
-      document.body.appendChild(successDiv);
-
-      // Refresh after 2 seconds
-      setTimeout(() => {
-        location.reload();
-      }, 2000);
-
-      return result;
-    } else {
-      throw new Error(result.message);
-    }
-  } catch (error) {
-    console.error('❌ Error generating synthetic data:', error);
-    const overlay = document.getElementById('syntheticLoadingOverlay');
-    if (overlay) overlay.remove();
-    alert(`Error generating synthetic data: ${error.message}`);
-  }
-}
-
-// Make function globally available
-window.generateSyntheticData = generateSyntheticData;
-
-// Authentication functions
-async function handleAuthSuccess(user) {
-  try {
-    console.log('🔐 User authenticated:', user);
-
-    // Send user data to backend
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        replit_user_id: user.id,
-        replit_username: user.name,
-        replit_roles: user.roles ? user.roles.join(',') : ''
-      })
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-      currentUser = result.user;
-      isAuthenticated = true;
-
-      console.log('✅ User session created:', currentUser);
-      updateUserInterface();
-
-      // Store in localStorage for persistence
-      localStorage.setItem('wavesight_user', JSON.stringify(currentUser));
-      localStorage.setItem('wavesight_auth', 'true');
-
-    } else {
-      console.error('❌ Authentication failed:', result.message);
-    }
-
-  } catch (error) {
-    console.error('❌ Auth error:', error);
-  }
-}
-
-function updateUserInterface() {
-  const userSection = document.getElementById('userSection');
-  const loginSection = document.getElementById('loginSection');
-
-  if (isAuthenticated && currentUser) {
-    // Show user info
-    if (userSection) {
-      userSection.innerHTML = `
-        <div class="user-info">
-          <span class="user-welcome">Welcome, ${currentUser.display_name || currentUser.replit_username}!</span>
-          <span class="user-stats">${currentUser.login_count} sessions</span>
-          <button class="logout-btn" onclick="logout()">Logout</button>
-        </div>
-      `;
-      userSection.style.display = 'flex';
-    }
-
-    // Hide login
-    if (loginSection) {
-      loginSection.style.display = 'none';
-    }
-
-    // Apply user preferences if available
-    if (currentUser.dashboard_config) {
-      applyUserPreferences(currentUser.dashboard_config);
-    }
-
-  } else {
-    // Show login
-    if (loginSection) {
-      loginSection.style.display = 'block';
-    }
-
-    // Hide user info
-    if (userSection) {
-      userSection.style.display = 'none';
-    }
-  }
-}
-
-function applyUserPreferences(config) {
-  try {
-    // Apply theme
-    if (config.theme === 'light') {
-      document.body.classList.add('light-theme');
-    }
-
-    // Apply default date range
-    if (config.default_date_range) {
-      const days = config.default_date_range;
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - days);
-
-      const startInput = document.getElementById('startDate');
-      const endInput = document.getElementById('endDate');
-
-      if (startInput && endInput) {
-        startInput.value = startDate.toISOString().split('T')[0];
-        endInput.value = endDate.toISOString().split('T')[0];
-      }
-    }
-  } catch (error) {
-    console.log('⚠️ Could not apply user preferences:', error);
-  }
-}
-
-async function logout() {
-  currentUser = null;
-  isAuthenticated = false;
-
-  // Clear localStorage
-  localStorage.removeItem('wavesight_user');
-  localStorage.removeItem('wavesight_auth');
-
-  // Update UI
-  updateUserInterface();
-
-  console.log('👋 User logged out');
-
-  // Reload page to reset state
-  location.reload();
-}
-
-function checkStoredAuth() {
-  try {
-    const storedAuth = localStorage.getItem('wavesight_auth');
-    const storedUser = localStorage.getItem('wavesight_user');
-
-    if (storedAuth === 'true' && storedUser) {
-      currentUser = JSON.parse(storedUser);
-      isAuthenticated = true;
-      console.log('✅ Restored user session:', currentUser.replit_username);
-      updateUserInterface();
-      return true;
-    }
-  } catch (error) {
-    console.log('⚠️ Could not restore user session:', error);
-    localStorage.removeItem('wavesight_user');
-    localStorage.removeItem('wavesight_auth');
-  }
-
-  return false;
-}
-
-// Make auth functions globally available
-window.handleAuthSuccess = handleAuthSuccess;
-window.logout = logout;
-
-// Helper functions for updating display
-function updateChart(chartData) {
-  if (chartData) {
-    currentData = { chartData, tableData: currentData?.tableData || [] };
-    updateTrendFilter(chartData);
-    createChart(chartData, selectedTrends);
-  }
-}
-
-function updateTable(tableData) {
-  if (tableData) {
-    createTrendTable(tableData);
-  }
-}
-
-// Initialize dashboard on page load
-document.addEventListener('DOMContentLoaded', async function() {
-  console.log('🚀 Initializing WAVESIGHT dashboard...');
-
-  // Check for stored authentication first
-  checkStoredAuth();
-
-  // Set default 6-month date range
-  const today = new Date();
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(today.getMonth() - 6);
-
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-
-  if (startDateInput && endDateInput) {
-    startDateInput.value = sixMonthsAgo.toISOString().split('T')[0];
-    endDateInput.value = today.toISOString().split('T')[0];
-    console.log(`📅 Default date range set: ${startDateInput.value} to ${endDateInput.value}`);
-  }
-
-  // Initialize Supabase
-  const supabaseInitialized = initSupabase();
-  console.log('📊 Supabase initialized:', supabaseInitialized);
-
-  // Load initial data immediately - this should show DEFAULT TRENDS
-  try {
-    console.log('📊 Loading initial dashboard data with default trends...');
-
-    // Clear search/filter state to ensure we show defaults
-    const searchInput = document.getElementById('searchInput');
-    const filterSelect = document.getElementById('trendFilter');
-
-    if (searchInput) searchInput.value = '';
-    selectedTrends = 'all';
-    filteredData = null;
-
-    // Get data from Supabase
-    const allData = await fetchYouTubeDataFromSupabase();
-
-    if (allData && allData.length > 0) {
-      console.log(`✅ Got ${allData.length} total videos from database`);
-      console.log(`📊 Sample video data:`, allData[0]);
-
-      // Create chart showing ALL default trends
-      const chartData = processSupabaseDataForChart(allData);
-      console.log(`📊 Processed chart data:`, chartData);
-      console.log(`📊 Available trends:`, Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
-
-      // Store data globally
-      currentData = { chartData, tableData: allData };
-      selectedTrends = 'all';
-
-      // Update UI to show all trends
-      updateTrendFilter(chartData);
-      if (filterSelect) filterSelect.value = 'all';
-
-      // Display everything with 'all' filter to show multiple trend lines
-      createChart(chartData, 'all');
-      createTrendTable(allData.slice(0, 25));
-
-      console.log('✅ Dashboard initialized with REAL DATA successfully');
-      console.log('📊 Chart shows multiple trends:', Object.keys(chartData[0] || {}).filter(k => k !== 'date'));
-
-    } else {
-      console.log('⚠️ No data from Supabase, using fallback trends');
-
-      currentData = fallbackData;
-      selectedTrends = 'all';
-
-      updateTrendFilter(fallbackData.chartData);
-      createChart(fallbackData.chartData, 'all');
-      createTrendTable(fallbackData.tableData);
-
-      console.log('📊 Showing fallback default trends');
-    }
-
-  } catch (error) {
-    console.error('❌ Error initializing dashboard:', error);
-
-    // Use fallback on error - still show default trends
-    currentData = fallbackData;
-    selectedTrends = 'all';
-    updateTrendFilter(fallbackData.chartData);
-    createChart(fallbackData.chartData, 'all');
-    createTrendTable(fallbackData.tableData);
-
-    console.log('📊 Showing fallback default trends after error');
-  }
-
-  // Start the periodic trend processing (e.g., every 6 hours)
-  setInterval(processCulturalTrends, 6 * 60 * 60 * 1000);
-
-  // Fetch initial trend insights
-  await fetchTrendInsights();
-
-  // Initialize detailed trends table
-  await refreshDetailedTable();
-});
-
-async function analyzeWaveScore(trendName) {
-  console.log(`Analyzing wave score for ${trendName}`);
-  // Placeholder function for analyzing wave score
-  alert(`Wave score analysis for ${trendName} is not yet implemented.`);
-}
-
-window.analyzeWaveScore = analyzeWaveScore;
