@@ -1,6 +1,3 @@
-The code adds a link to charting-trends-table.html in the navigation bar.
-```
-```replit_final_file
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -70,7 +67,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
             </div>
         </div>
 
-        
+
 
         <div class="chart-section">
             <h2>WaveScope Timeline</h2>
@@ -112,7 +109,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                 </div>
                 <button class="control-btn" onclick="refreshDetailedTable()">🔄 Refresh</button>
             </div>
-            
+
             <div class="detailed-trends-container">
                 <table class="detailed-trends-table" id="detailedTrendsTable">
                     <thead>
@@ -164,7 +161,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                 <div class="about-section">
                     <h3>🌊 Mission</h3>
                     <p>WAVESIGHT is the premier trending analytics platform that transforms how you understand and predict digital trends. We combine real-time data collection with advanced analytics to provide unprecedented insights into emerging patterns across social media and digital platforms.</p>
-                    
+
                     <h3>🚀 Features</h3>
                     <ul>
                         <li><strong>Real-time Trend Analysis:</strong> Track trending topics as they emerge and evolve</li>
@@ -173,10 +170,10 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                         <li><strong>Interactive Visualizations:</strong> Dynamic charts and dashboards for data exploration</li>
                         <li><strong>Custom Alerts:</strong> Get notified when trends match your criteria</li>
                     </ul>
-                    
+
                     <h3>📊 Data Sources</h3>
                     <p>We aggregate data from multiple sources including YouTube, social media platforms, and news outlets to provide comprehensive trend coverage.</p>
-                    
+
                     <h3>💡 Innovation</h3>
                     <p>Built with cutting-edge technology including Canvas-based visualizations, real-time data processing, and advanced machine learning algorithms for trend prediction.</p>
                 </div>
@@ -202,7 +199,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <option value="categories">By Categories</option>
                         </select>
                     </div>
-                    
+
                     <div class="setting-item">
                         <label>Auto-refresh Interval:</label>
                         <select id="refreshInterval" onchange="saveSettings()">
@@ -212,7 +209,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <option value="1hour">Every hour</option>
                         </select>
                     </div>
-                    
+
                     <h3>🎨 Appearance</h3>
                     <div class="setting-item">
                         <label>Theme:</label>
@@ -222,26 +219,26 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <option value="auto">Auto (System)</option>
                         </select>
                     </div>
-                    
+
                     <div class="setting-item">
                         <label>Chart Animation:</label>
                         <input type="checkbox" id="chartAnimation" checked onchange="saveSettings()">
                         <span>Enable smooth animations</span>
                     </div>
-                    
+
                     <h3>🔔 Notifications</h3>
                     <div class="setting-item">
                         <label>Browser Notifications:</label>
                         <input type="checkbox" id="browserNotifications" onchange="toggleNotifications()">
                         <span>Allow browser notifications for alerts</span>
                     </div>
-                    
+
                     <div class="setting-item">
                         <label>Sound Alerts:</label>
                         <input type="checkbox" id="soundAlerts" onchange="saveSettings()">
                         <span>Play sound for trend alerts</span>
                     </div>
-                    
+
                     <h3>💾 Data Management</h3>
                     <div class="setting-item">
                         <button class="settings-btn" onclick="exportData()">📥 Export Data</button>
@@ -282,7 +279,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <p>Trigger cultural trend analysis processing</p>
                         </div>
                     </div>
-                    
+
                     <h3>🔧 Configuration</h3>
                     <div class="config-section">
                         <h4>Required Environment Variables</h4>
@@ -299,7 +296,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <code>OPENAI_API_KEY</code> - OpenAI API key (optional)
                         </div>
                     </div>
-                    
+
                     <h3>📊 Architecture</h3>
                     <div class="architecture-section">
                         <h4>Frontend Stack</h4>
@@ -309,7 +306,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <li>Vanilla JavaScript with Canvas API charts</li>
                             <li>Responsive design for all devices</li>
                         </ul>
-                        
+
                         <h4>Backend Services</h4>
                         <ul>
                             <li>Node.js Express server (Port 5000)</li>
@@ -318,7 +315,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <li>YouTube Data API v3 integration</li>
                         </ul>
                     </div>
-                    
+
                     <h3>🚀 Deployment</h3>
                     <div class="deployment-section">
                         <h4>Replit Workflows</h4>
@@ -328,11 +325,11 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                             <li><strong>Static Web Server:</strong> Frontend hosting</li>
                             <li><strong>Cultural Trend Analysis:</strong> Advanced analytics</li>
                         </ul>
-                        
+
                         <h4>Database Schema</h4>
                         <p>Check <code>supabase_schema.sql</code> for complete table structure and indexes.</p>
                     </div>
-                    
+
                     <h3>🔍 Debugging</h3>
                     <div class="debug-section">
                         <button class="debug-btn" onclick="runHealthCheck()">🏥 Health Check</button>
@@ -340,7 +337,7 @@ The code adds a link to charting-trends-table.html in the navigation bar.
                         <button class="debug-btn" onclick="viewLogs()">📝 View Logs</button>
                         <button class="debug-btn" onclick="checkDatabase()">🗄️ Check Database</button>
                     </div>
-                    
+
                     <div id="debugOutput" class="debug-output"></div>
                 </div>
             </div>
