@@ -1347,30 +1347,66 @@ async function checkDatabase() {
 // Reset to default view function
 async function resetToDefaultView() {
   console.log('🔄 Resetting to default view...');
+  showLoadingSpinner();
   
-  // Clear search input
-  const searchInput = document.getElementById('searchInput');
-  if (searchInput) {
-    searchInput.value = '';
+  try {
+    // Clear search input
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    
+    // Reset date inputs
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    if (startDateInput) startDateInput.value = '';
+    if (endDateInput) endDateInput.value = '';
+    
+    // Reset filter
+    const filterSelect = document.getElementById('trendFilter');
+    if (filterSelect) filterSelect.value = 'all';
+    
+    // Reset global variables
+    selectedTrends = 'all';
+    startDate = null;
+    endDate = null;
+    comparedTrends = [];
+    
+    // Reset trend comparison UI
+    resetTrendComparison();
+    
+    // Fetch fresh default data from Supabase
+    const allData = await fetchYouTubeDataFromSupabase();
+    if (allData && allData.length > 0) {
+      const chartData = processSupabaseDataForChart(allData);
+      
+      currentData = { 
+        chartData: chartData, 
+        tableData: allData.slice(0, 25), 
+        allData: allData 
+      };
+      trendData = allData;
+      
+      // Update all components with default data
+      createChart(chartData, 'all');
+      createTrendTable(allData.slice(0, 25));
+      populateDetailedTrendsTable(allData.slice(0, 25));
+      updateTrendFilter(chartData);
+      updateStatusInfo({ allData: allData });
+      
+      console.log('✅ Reset to default view with all trends');
+    } else {
+      console.log('⚠️ No data available, using fallback');
+      // Use fallback data if no data available
+      currentData = fallbackData;
+      createChart(fallbackData.chartData, 'all');
+      createTrendTable(fallbackData.tableData);
+    }
+  } catch (error) {
+    console.error('❌ Error resetting to default view:', error);
+  } finally {
+    hideLoadingSpinner();
   }
-  
-  // Reset date inputs
-  const startDateInput = document.getElementById('startDate');
-  const endDateInput = document.getElementById('endDate');
-  if (startDateInput) startDateInput.value = '';
-  if (endDateInput) endDateInput.value = '';
-  
-  // Reset filter
-  const filterSelect = document.getElementById('trendFilter');
-  if (filterSelect) filterSelect.value = 'all';
-  
-  // Reset global variables
-  selectedTrends = 'all';
-  startDate = null;
-  endDate = null;
-  
-  // Reload default data
-  await initializeDashboard();
 }
 
 // Fetch fresh YouTube data function
@@ -1379,17 +1415,41 @@ async function fetchFreshYouTubeData() {
   showLoadingSpinner();
   
   try {
-    const data = await fetchData();
-    if (data) {
-      currentData = data;
-      if (data.allData) {
-        trendData = data.allData;
+    const searchInput = document.getElementById('searchInput');
+    const searchTerm = searchInput ? searchInput.value.trim() : '';
+    const query = searchTerm || 'trending';
+    
+    console.log(`🔍 Using search term: "${query}"`);
+    
+    const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(query)}&maxResults=25`);
+    const result = await response.json();
+    
+    if (result.success) {
+      console.log(`✅ Fetched ${result.data?.length || 0} videos for "${query}"`);
+      
+      // Refresh all data to get updated results
+      const allData = await fetchYouTubeDataFromSupabase();
+      if (allData) {
+        currentData = { 
+          chartData: processSupabaseDataForChart(allData), 
+          tableData: allData.slice(0, 25), 
+          allData: allData 
+        };
+        trendData = allData;
+        
+        createChart(currentData.chartData);
+        createTrendTable(currentData.tableData);
         populateDetailedTrendsTable(trendData.slice(0, 25));
+        updateTrendFilter(currentData.chartData);
+        updateStatusInfo({ allData: allData });
+        
+        // If we have a specific search term, trigger search to filter results
+        if (searchTerm) {
+          await searchTrends();
+        }
       }
-      createChart(data.chartData);
-      createTrendTable(data.tableData);
-      updateTrendFilter(data.chartData);
-      console.log('✅ Fresh data loaded successfully');
+    } else {
+      console.log('⚠️ Fresh data fetch failed:', result.message);
     }
   } catch (error) {
     console.error('❌ Error fetching fresh data:', error);
@@ -1404,14 +1464,39 @@ async function fetchBulkData(category = 'all', maxResults = 50) {
   showLoadingSpinner();
   
   try {
-    // This would typically call the YouTube API with larger result sets
-    const response = await fetch(`/api/fetch-youtube?q=trending&maxResults=${maxResults}`);
+    const searchInput = document.getElementById('searchInput');
+    const searchTerm = searchInput ? searchInput.value.trim() : '';
+    const query = searchTerm || 'trending';
+    
+    console.log(`🔍 Bulk fetching for: "${query}"`);
+    
+    const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(query)}&maxResults=${maxResults}`);
     const result = await response.json();
     
     if (result.success) {
-      console.log(`✅ Fetched ${result.data?.length || 0} additional videos`);
-      // Refresh the dashboard with new data
-      await fetchFreshYouTubeData();
+      console.log(`✅ Bulk fetched ${result.data?.length || 0} videos for "${query}"`);
+      
+      // Refresh all data to get updated results
+      const allData = await fetchYouTubeDataFromSupabase();
+      if (allData) {
+        currentData = { 
+          chartData: processSupabaseDataForChart(allData), 
+          tableData: allData.slice(0, 25), 
+          allData: allData 
+        };
+        trendData = allData;
+        
+        createChart(currentData.chartData);
+        createTrendTable(currentData.tableData);
+        populateDetailedTrendsTable(trendData.slice(0, 25));
+        updateTrendFilter(currentData.chartData);
+        updateStatusInfo({ allData: allData });
+        
+        // If we have a specific search term, trigger search to filter results
+        if (searchTerm) {
+          await searchTrends();
+        }
+      }
     } else {
       console.log('⚠️ Bulk fetch failed:', result.message);
     }
@@ -2694,7 +2779,7 @@ async function searchTrends() {
     }
 
     if (searchTerm && searchTerm !== '') {
-      // SEARCH MODE: Filter by search term and show as single trend
+      // SEARCH MODE: Filter by search term and show ONLY that trend on timeline
       const searchResults = dataToProcess.filter(item => {
         const title = (item.title || '').toLowerCase();
         const category = (item.trend_category || '').toLowerCase();
@@ -2712,33 +2797,62 @@ async function searchTrends() {
       if (searchResults.length > 0) {
         console.log(`📊 Found ${searchResults.length} videos for "${searchTerm}"`);
 
+        // Create chart data showing ONLY the searched trend
+        const searchChartData = createSearchOnlyChartData(searchResults, searchTermDisplay, startDate, endDate);
+
         // If we have compared trends, add this search to comparison
         if (comparedTrends.length > 0) {
           addTrendToComparison(searchTermDisplay, searchResults, startDate, endDate);
         } else {
-          // Show single trend
-          displaySingleTrend(searchTermDisplay, searchResults, startDate, endDate);
+          // Show ONLY the searched trend on timeline
+          createChart(searchChartData, searchTermDisplay);
+          selectedTrends = searchTermDisplay;
+          
+          // Update filter to show only the searched trend
+          if (filterSelect) {
+            filterSelect.innerHTML = '<option value="all">All Trends</option>';
+            const option = document.createElement('option');
+            option.value = searchTermDisplay;
+            option.textContent = searchTermDisplay;
+            option.selected = true;
+            filterSelect.appendChild(option);
+          }
         }
 
         // Update UI components
-        currentData = { chartData: [], tableData: searchResults, allData: searchResults };
+        currentData = { chartData: searchChartData, tableData: searchResults, allData: searchResults };
         trendData = dataToProcess;
 
         createTrendTable(searchResults.slice(0, 25));
         populateDetailedTrendsTable(searchResults.slice(0, 25));
         updateStatusInfo({ allData: searchResults });
+        updateTrendComparisonUI();
 
-        console.log(`✅ Search completed for: "${searchTermDisplay}"`);
+        console.log(`✅ Timeline now shows ONLY: "${searchTermDisplay}"`);
       } else {
         console.log(`⚠️ No results for "${searchTerm}"`);
         showNoResultsMessage(searchTerm);
       }
     } else {
-      // DEFAULT MODE: Show all trends or reset comparison
+      // DEFAULT MODE: Show default 6 months of all trends
       resetTrendComparison();
-      const chartData = processSupabaseDataForChart(dataToProcess);
+      
+      // Filter to last 6 months if no date range specified
+      let timeFilteredData = dataToProcess;
+      if (!startDate && !endDate) {
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        
+        timeFilteredData = dataToProcess.filter(item => {
+          const itemDate = new Date(item.published_at);
+          return itemDate >= sixMonthsAgo;
+        });
+        console.log(`📅 Showing default 6 months of data: ${timeFilteredData.length} items`);
+      }
+      
+      const chartData = processSupabaseDataForChart(timeFilteredData);
 
-      currentData = { chartData, tableData: dataToProcess, allData: dataToProcess };
+      currentData = { chartData, tableData: timeFilteredData, allData: timeFilteredData };
       trendData = dataToProcess;
       selectedTrends = 'all';
 
@@ -2746,11 +2860,11 @@ async function searchTrends() {
       if (filterSelect) filterSelect.value = 'all';
 
       createChart(chartData, 'all');
-      createTrendTable(dataToProcess.slice(0, 25));
-      populateDetailedTrendsTable(dataToProcess.slice(0, 25));
-      updateStatusInfo({ allData: dataToProcess });
+      createTrendTable(timeFilteredData.slice(0, 25));
+      populateDetailedTrendsTable(timeFilteredData.slice(0, 25));
+      updateStatusInfo({ allData: timeFilteredData });
 
-      console.log('📊 Showing all default trends');
+      console.log('📊 Timeline showing default 6 months of all trends');
     }
 
     hideLoadingSpinner();
@@ -2824,6 +2938,57 @@ function addTrendToComparison(trendName, searchResults, startDate, endDate) {
   updateTrendComparisonUI();
 }
 
+// Create chart data showing ONLY the searched trend
+function createSearchOnlyChartData(searchResults, searchTerm, startDate, endDate) {
+  console.log(`📊 Creating search-only chart for "${searchTerm}" with ${searchResults.length} results`);
+
+  // Determine date range
+  const dates = [];
+  const dateMap = new Map();
+
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const currentDate = new Date(start);
+    
+    while (currentDate <= end) {
+      const monthStr = `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`;
+      if (!dates.includes(monthStr)) {
+        dates.push(monthStr);
+        dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
+      }
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+  } else {
+    // Default to last 6 months for searches
+    const currentDate = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentDate);
+      date.setMonth(date.getMonth() - i);
+      const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
+      dates.push(monthStr);
+      dateMap.set(monthStr, { date: monthStr, [searchTerm]: 0 });
+    }
+  }
+
+  // Aggregate all search results under the single search term
+  searchResults.forEach(item => {
+    const pubDate = new Date(item.published_at);
+    const monthStr = `${pubDate.getMonth() + 1}/${pubDate.getFullYear()}`;
+    
+    if (dateMap.has(monthStr)) {
+      const dataPoint = dateMap.get(monthStr);
+      dataPoint[searchTerm] = (dataPoint[searchTerm] || 0) + (item.view_count || 0);
+      dateMap.set(monthStr, dataPoint);
+    }
+  });
+
+  const chartData = dates.map(date => dateMap.get(date));
+  console.log(`📊 Search-only chart created showing ONLY: "${searchTerm}"`);
+  
+  return chartData;
+}
+
 // Create combined chart data for multiple trends
 function createCombinedChartData(trends, startDate, endDate) {
   console.log(`📊 Creating combined chart for ${trends.length} trends`);
@@ -2850,9 +3015,9 @@ function createCombinedChartData(trends, startDate, endDate) {
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
   } else {
-    // Default to last 12 months
+    // Default to last 6 months for comparisons
     const currentDate = new Date();
-    for (let i = 11; i >= 0; i--) {
+    for (let i = 5; i >= 0; i--) {
       const date = new Date(currentDate);
       date.setMonth(date.getMonth() - i);
       const monthStr = `${date.getMonth() + 1}/${date.getFullYear()}`;
