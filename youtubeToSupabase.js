@@ -22,13 +22,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
   try {
     console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
-    
+
     // Check if YouTube API key is configured
     if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
       console.error('❌ YouTube API key not configured in environment variables');
       throw new Error('YouTube API key not configured');
     }
-    
+
     console.log('✅ YouTube API key found, proceeding with requests...');
 
     // Use diverse search queries for comprehensive historical-style data
@@ -122,7 +122,7 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
           const errorText = await searchResponse.text();
           console.log(`⚠️ Failed to fetch for query "${searchQuery}": ${searchResponse.status}`);
           console.log(`❌ Error details: ${errorText}`);
-          
+
           // Log specific error types
           if (searchResponse.status === 403) {
             console.log('❌ 403 Forbidden - Check your YouTube API key, quota limits, or restrictions');
@@ -182,7 +182,7 @@ async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
 
 function processYouTubeDataForSupabase(youtubeData) {
   const processedRecords = [];
-  
+
   youtubeData.forEach(item => {
     const stats = item.statistics || {};
     const snippet = item.snippet;
@@ -243,7 +243,7 @@ function processYouTubeDataForSupabase(youtubeData) {
 
     // Create multiple historical variants of each video (5-8 variants per video)
     const variantCount = 5 + Math.floor(Math.random() * 4); // 5-8 variants
-    
+
     for (let variant = 0; variant < variantCount; variant++) {
       const now = new Date();
       const historicalDate = new Date(now);
@@ -268,7 +268,7 @@ function processYouTubeDataForSupabase(youtubeData) {
       // Calculate wave score with variant data
       const mockSentiment = 0.4 + (Math.random() * 0.4); // 0.4 to 0.8 range
       const lastViewCount = Math.floor(variantViewCount * (0.7 + Math.random() * 0.2));
-      
+
       const growthFactor = lastViewCount > 0 ? Math.min((variantViewCount - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
       const engagementFactor = variantViewCount > 0 ? Math.min((variantLikeCount + variantCommentCount) / variantViewCount * 1000, 1.0) : 0;
       const volumeFactor = Math.min(variantViewCount / 10000000, 1.0);
@@ -293,8 +293,7 @@ function processYouTubeDataForSupabase(youtubeData) {
         trend_category: category,
         trend_score: Math.min(100, Math.max(10, trendScore + (Math.random() * 20 - 10))), // Add variance
         wave_score: Math.round(waveScore * 1000) / 1000,
-        sentiment_score: Math.round(mockSentiment * 1000) / 1000,
-        last_view_count: lastViewCount
+        sentiment_score: Math.round(mockSentiment * 1000) / 1000
       });
     }
   });
@@ -421,9 +420,9 @@ app.get('/api/validate-youtube', async (req, res) => {
 
     // Test API key with a simple quota check
     const testUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&type=video&maxResults=1&key=${YOUTUBE_API_KEY}`;
-    
+
     const response = await fetch(testUrl);
-    
+
     if (response.ok) {
       const data = await response.json();
       res.json({
@@ -457,9 +456,9 @@ app.get('/api/bulk-fetch', async (req, res) => {
   try {
     const categories = req.query.categories || 'all';
     const totalResults = parseInt(req.query.totalResults) || 10000;
-    
+
     console.log(`🔄 Bulk fetch initiated: ${totalResults} total results`);
-    
+
     // Expanded category-specific queries for maximum diversity
     const categoryQueries = {
       'tech': [
@@ -583,7 +582,7 @@ app.get('/api/bulk-fetch', async (req, res) => {
         'viral news stories'
       ]
     };
-    
+
     let allQueries = [];
     if (categories === 'all') {
       allQueries = Object.values(categoryQueries).flat();
@@ -595,38 +594,38 @@ app.get('/api/bulk-fetch', async (req, res) => {
         }
       });
     }
-    
+
     // Optimize results per query for better distribution
     const maxResultsPerQuery = 50; // YouTube API limit
     const queriesNeeded = Math.ceil(totalResults / maxResultsPerQuery);
     const queriesToUse = allQueries.slice(0, Math.max(queriesNeeded, allQueries.length));
     const resultsPerQuery = Math.min(maxResultsPerQuery, Math.ceil(totalResults / queriesToUse.length));
-    
+
     let allVideos = [];
     let successfulQueries = 0;
     let failedQueries = 0;
-    
+
     console.log(`📊 Using ${queriesToUse.length} queries, ${resultsPerQuery} results per query`);
-    
+
     for (let i = 0; i < queriesToUse.length && allVideos.length < totalResults; i++) {
       const query = queriesToUse[i];
       try {
         console.log(`🔍 Query ${i + 1}/${queriesToUse.length}: "${query}"`);
         const videos = await fetchYouTubeVideos(query, resultsPerQuery);
-        
+
         if (videos && videos.length > 0) {
           allVideos.push(...videos);
           successfulQueries++;
           console.log(`✅ Got ${videos.length} videos (total: ${allVideos.length})`);
         }
-        
+
         // Rate limiting - longer delay for bulk operations
         await new Promise(resolve => setTimeout(resolve, 200));
-        
+
       } catch (error) {
         failedQueries++;
         console.log(`⚠️ Error fetching for query "${query}":`, error.message);
-        
+
         // If quota exceeded, wait longer before continuing
         if (error.message.includes('quota') || error.message.includes('403')) {
           console.log('⏳ Quota limit detected, waiting 5 seconds...');
@@ -635,13 +634,13 @@ app.get('/api/bulk-fetch', async (req, res) => {
         continue;
       }
     }
-    
+
     console.log(`📊 Bulk fetch completed: ${successfulQueries} successful, ${failedQueries} failed queries`);
-    
+
     if (allVideos.length > 0) {
       const processedData = processYouTubeDataForSupabase(allVideos);
       const savedData = await saveDataToSupabase(processedData);
-      
+
       res.json({
         success: true,
         message: `Bulk fetch completed: ${allVideos.length} videos processed`,
@@ -657,7 +656,7 @@ app.get('/api/bulk-fetch', async (req, res) => {
         categories: categories
       });
     }
-    
+
   } catch (error) {
     console.error('❌ Bulk fetch error:', error);
     res.status(500).json({
@@ -859,21 +858,21 @@ async function generateSyntheticTrendData(count = 5000) {
     const category = categories[Math.floor(Math.random() * categories.length)];
     const templates = titleTemplates[category] || ['Trending Topic', 'Viral Video', 'Popular Content'];
     const titleBase = templates[Math.floor(Math.random() * templates.length)];
-    
+
     // Create realistic historical date (last 3 years)
     const historicalDate = new Date(now);
     const daysBack = Math.floor(Math.random() * 1095);
     historicalDate.setDate(historicalDate.getDate() - daysBack);
-    
+
     // Generate realistic engagement metrics
     const viewCount = Math.floor(Math.random() * 5000000) + 10000;
     const likeCount = Math.floor(viewCount * (0.01 + Math.random() * 0.05));
     const commentCount = Math.floor(viewCount * (0.002 + Math.random() * 0.008));
-    
+
     // Calculate trend score
     const engagementRatio = (likeCount + commentCount) / viewCount * 1000;
     const trendScore = Math.min(100, Math.max(10, Math.floor(engagementRatio * 10) + 40 + Math.random() * 20));
-    
+
     // Generate wave score
     const mockSentiment = 0.3 + Math.random() * 0.5;
     const lastViewCount = Math.floor(viewCount * (0.6 + Math.random() * 0.3));
@@ -898,8 +897,7 @@ async function generateSyntheticTrendData(count = 5000) {
       trend_category: category,
       trend_score: trendScore,
       wave_score: Math.round(waveScore * 1000) / 1000,
-      sentiment_score: Math.round(mockSentiment * 1000) / 1000,
-      last_view_count: lastViewCount
+      sentiment_score: Math.round(mockSentiment * 1000) / 1000
     });
   }
 
