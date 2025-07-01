@@ -191,95 +191,104 @@
     </style>
 </head>
 <body>
-    <nav>
-        <div class="nav-brand">
-            <img src="logo2.png" alt="WAVESIGHT Logo" class="logo">
-            <span class="brand-text">WAVESIGHT</span>
-        </div>
-        <div class="nav-links">
-            <a href="index.html">Dashboard</a>
-            <a href="sentiment-dashboard.html">Sentiment</a>
-            <a href="alerts-dashboard.html" class="active">Alerts</a>
-        </div>
-    </nav>
-
-    <main class="alerts-container">
-        <header>
-            <h1>🚨 Alert Dashboard</h1>
-            <p>Real-time YouTube trend alerts and notifications</p>
-        </header>
-
-        <div class="stats-bar" id="statsBar">
-            <div class="stat-card">
-                <div class="stat-number" id="totalAlerts">0</div>
-                <div class="stat-label">Total Alerts</div>
+    <div class="container">
+        <div class="header-bar">
+            <div class="logo-group">
+                <img src="logo2.png" alt="Logo" class="logo-icon">
+                <span class="logo-text">WAVESIGHT</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-number" id="criticalAlerts">0</div>
-                <div class="stat-label">Critical</div>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Trends</a>
+                <a href="sentiment-dashboard.html" class="nav-link">Sentiment</a>
+                <a href="alerts-dashboard.html" class="nav-link active">Alerts</a>
             </div>
-            <div class="stat-card">
-                <div class="stat-number" id="highAlerts">0</div>
-                <div class="stat-label">High Priority</div>
+            <div class="auth-section">
+                <div id="userSection" class="user-section" style="display: none;">
+                    <!-- User info will be populated by JavaScript -->
+                </div>
+                <div id="loginSection" class="login-section">
+                    <script authed="handleAuthSuccess(window.replit.user)" src="https://auth.util.repl.co/script.js"></script>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-number" id="recentAlerts">0</div>
-                <div class="stat-label">Last 24h</div>
-            </div>
+            <button class="menu-btn">☰</button>
         </div>
 
-        <div class="filters">
-            <select class="filter-select" id="severityFilter">
-                <option value="">All Severities</option>
-                <option value="CRITICAL">Critical</option>
-                <option value="HIGH">High</option>
-                <option value="MEDIUM">Medium</option>
-                <option value="LOW">Low</option>
-            </select>
+        <div class="header">
+            <div class="hero-text">
+                <h1 class="hero-title">Alert Intelligence Dashboard</h1>
+                <p class="hero-subtitle">Real-time YouTube Trend Monitoring</p>
+                <p class="hero-description">Advanced alert system tracking viral content and emerging trends</p>
+            </div>
+            <div class="submit-bar">
+                <div class="filter-group-title">Alert Controls</div>
+                <div class="filter-group">
+                    <select class="filter-select" id="severityFilter">
+                        <option value="">All Severities</option>
+                        <option value="CRITICAL">Critical</option>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                    </select>
+                    <select class="filter-select" id="timeFilter">
+                        <option value="24">Last 24 hours</option>
+                        <option value="72">Last 3 days</option>
+                        <option value="168">Last week</option>
+                        <option value="720">Last 30 days</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button class="submit-btn" onclick="refreshAlerts()">🔄 Refresh</button>
+                    <button class="submit-btn" onclick="runAlertScan()">🔍 Run Scan</button>
+                </div>
+            </div>
+        </div>
 
-            <select class="filter-select" id="timeFilter">
-                <option value="24">Last 24 hours</option>
-                <option value="72">Last 3 days</option>
-                <option value="168">Last week</option>
-                <option value="720">Last 30 days</option>
-            </select>
+        <main class="alerts-container"></main>
 
-            <button class="btn-primary" onclick="refreshAlerts()">🔄 Refresh</button>
-            <button class="btn-primary" onclick="runAlertScan()">🔍 Run Scan</button>
+        
+
+        
+
+        <div class="chart-section">
+            <h2>Alert Statistics</h2>
+            <div class="stats-bar" id="statsBar">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalAlerts">0</div>
+                    <div class="stat-label">Total Alerts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="criticalAlerts">0</div>
+                    <div class="stat-label">Critical</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="highAlerts">0</div>
+                    <div class="stat-label">High Priority</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="recentAlerts">0</div>
+                    <div class="stat-label">Last 24h</div>
+                </div>
+            </div>
         </div>
 
         <div class="chart-section">
             <h2>Recent Alerts</h2>
-</div>
-        </div>
-
-        <div class="chart-section">
-            <h2>Recent Alerts</h2>
-</div>
-        </div>
-
-        <div class="chart-section">
-            <h2>Recent Alerts</h2>
-</div>
-        </div>
-
-        <div style="padding: 0 20px;">
-                <div id="alertsContainer">
-                    <!-- Alerts will be populated here -->
-                </div>
-
-                <div id="loadingIndicator" style="text-align: center; padding: 40px; display: none;">
-                    <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(0, 212, 255, 0.3); border-top: 4px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
-                    <p style="color: #00d4ff; font-size: 16px;">Loading alerts...</p>
-                </div>
-
-                <div id="noAlertsMessage" style="text-align: center; padding: 40px; display: none;">
-                    <h3 style="color: #9ca3af;">📭 No alerts found</h3>
-                    <p style="color: #6b7280;">Run the alert system to start monitoring YouTube trends</p>
-                    <button class="submit-btn" onclick="runAlertScan()">Start Monitoring</button>
-                </div>
+            <div id="alertsContainer">
+                <!-- Alerts will be populated here -->
             </div>
-    </main>
+
+            <div id="loadingIndicator" style="text-align: center; padding: 40px; display: none;">
+                <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(0, 212, 255, 0.3); border-top: 4px solid #00d4ff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+                <p style="color: #00d4ff; font-size: 16px;">Loading alerts...</p>
+            </div>
+
+            <div id="noAlertsMessage" style="text-align: center; padding: 40px; display: none;">
+                <h3 style="color: #9ca3af;">📭 No alerts found</h3>
+                <p style="color: #6b7280;">Run the alert system to start monitoring YouTube trends</p>
+                <button class="submit-btn" onclick="runAlertScan()">Start Monitoring</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         let allAlerts = [];
