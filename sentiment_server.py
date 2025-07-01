@@ -455,6 +455,171 @@ def calculate_wave_score_endpoint():
             'message': str(e)
         }), 500
 
+@app.route('/api/cultural-compass', methods=['POST'])
+def cultural_compass_analysis():
+    """Analyze multiple topics for Cultural Compass mapping"""
+    try:
+        data = request.get_json()
+        topics = data.get('topics', [])
+        
+        if not topics:
+            return jsonify({
+                'success': False,
+                'message': 'No topics provided for analysis'
+            }), 400
+        
+        print(f"🧭 Cultural Compass analysis requested for {len(topics)} topics")
+        
+        results = []
+        for topic in topics[:10]:  # Limit to 10 topics to prevent overload
+            try:
+                print(f"🔍 Analyzing cultural sentiment for: {topic}")
+                sentiment_result = analyze_reddit_sentiment(topic, limit_posts=20, limit_comments=15)
+                
+                if sentiment_result:
+                    # Calculate cultural coordinates
+                    coordinates = calculate_cultural_coordinates(topic, sentiment_result)
+                    
+                    cultural_analysis = {
+                        'topic': topic,
+                        'name': format_topic_name(topic),
+                        'sentiment_data': sentiment_result,
+                        'coordinates': coordinates,
+                        'category': categorize_by_topic(topic),
+                        'velocity': calculate_velocity_score(sentiment_result),
+                        'cultural_impact': assess_cultural_impact(sentiment_result)
+                    }
+                    
+                    results.append(cultural_analysis)
+                    
+            except Exception as topic_error:
+                print(f"⚠️ Error analyzing {topic}: {topic_error}")
+                continue
+        
+        print(f"✅ Cultural Compass analysis complete: {len(results)} topics processed")
+        
+        return jsonify({
+            'success': True,
+            'data': results,
+            'total_analyzed': len(results),
+            'message': f'Successfully analyzed {len(results)} topics for Cultural Compass'
+        })
+        
+    except Exception as e:
+        print(f"❌ Cultural Compass API Error: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+def calculate_cultural_coordinates(topic, sentiment_data):
+    """Calculate cultural coordinates for compass placement"""
+    confidence = sentiment_data.get('confidence', 50)
+    total_responses = sentiment_data.get('total_responses', 0)
+    momentum = (sentiment_data.get('cultural_momentum', '')).lower()
+    
+    # X-axis: Mainstream (-1) to Underground (+1)
+    x = 0
+    topic_lower = topic.lower()
+    
+    if any(term in topic_lower for term in ['ai', 'crypto', 'blockchain']):
+        x = 0.3  # Emerging mainstream
+    elif any(term in topic_lower for term in ['climate', 'mental health', 'remote work']):
+        x = -0.4  # Mainstream acceptance
+    elif any(term in topic_lower for term in ['streetwear', 'indie', 'vinyl', 'craft']):
+        x = 0.7  # Underground/niche
+    elif any(term in topic_lower for term in ['fitness', 'wellness', 'productivity']):
+        x = -0.2  # Trending mainstream
+    else:
+        x = (confidence - 50) / 100  # Base on confidence
+    
+    # Y-axis: Traditional (-1) to Disruptive (+1)
+    y = 0
+    
+    if any(term in topic_lower for term in ['ai', 'crypto', 'digital', 'virtual']):
+        y = 0.6  # Highly disruptive
+    elif any(term in topic_lower for term in ['sustainability', 'climate', 'renewable']):
+        y = 0.4  # Moderately disruptive
+    elif any(term in topic_lower for term in ['vintage', 'classic', 'traditional', 'heritage']):
+        y = -0.5  # Traditional
+    elif any(term in topic_lower for term in ['wellness', 'mindfulness', 'meditation']):
+        y = 0.1  # Slightly progressive
+    else:
+        # Base on sentiment momentum
+        if 'rising' in momentum or 'strong' in momentum:
+            y = 0.3
+        elif 'declining' in momentum:
+            y = -0.3
+        else:
+            y = 0
+    
+    # Adjust based on response volume (more responses = more mainstream)
+    if total_responses > 100:
+        x -= 0.2
+    elif total_responses < 20:
+        x += 0.2
+    
+    # Ensure bounds
+    x = max(-0.9, min(0.9, x))
+    y = max(-0.9, min(0.9, y))
+    
+    return {'x': round(x, 2), 'y': round(y, 2)}
+
+def format_topic_name(topic):
+    """Format topic name for display"""
+    return ' '.join(word.capitalize() for word in topic.split())
+
+def categorize_by_topic(topic):
+    """Categorize topic by cultural domain"""
+    topic_lower = topic.lower()
+    
+    if any(term in topic_lower for term in ['ai', 'crypto', 'tech', 'digital', 'virtual']):
+        return 'Technology'
+    elif any(term in topic_lower for term in ['fashion', 'music', 'art', 'design', 'creative']):
+        return 'Creative'
+    elif any(term in topic_lower for term in ['health', 'fitness', 'wellness', 'mental', 'nutrition']):
+        return 'Lifestyle'
+    elif any(term in topic_lower for term in ['climate', 'environment', 'sustainability', 'green']):
+        return 'Environmental'
+    elif any(term in topic_lower for term in ['work', 'career', 'business', 'productivity']):
+        return 'Professional'
+    elif any(term in topic_lower for term in ['travel', 'culture', 'social', 'community']):
+        return 'Social'
+    else:
+        return 'Cultural'
+
+def calculate_velocity_score(sentiment_data):
+    """Calculate cultural velocity based on sentiment momentum"""
+    confidence = sentiment_data.get('confidence', 50)
+    total_responses = sentiment_data.get('total_responses', 0)
+    momentum = sentiment_data.get('cultural_momentum', 'Stable').lower()
+    
+    base_velocity = confidence / 100
+    response_boost = min(total_responses / 100, 0.5)
+    
+    momentum_multiplier = 1.0
+    if 'strong' in momentum or 'rising' in momentum:
+        momentum_multiplier = 1.3
+    elif 'declining' in momentum:
+        momentum_multiplier = 0.7
+    
+    velocity = (base_velocity + response_boost) * momentum_multiplier
+    return min(round(velocity, 3), 1.0)
+
+def assess_cultural_impact(sentiment_data):
+    """Assess the cultural impact level"""
+    confidence = sentiment_data.get('confidence', 50)
+    total_responses = sentiment_data.get('total_responses', 0)
+    
+    if confidence >= 75 and total_responses >= 100:
+        return 'High Impact'
+    elif confidence >= 60 and total_responses >= 50:
+        return 'Moderate Impact'
+    elif confidence >= 40:
+        return 'Emerging Impact'
+    else:
+        return 'Low Impact'
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({

@@ -1,0 +1,337 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WAVESIGHT | Cultural Compass</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .compass-container {
+            background: #13131f;
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 1px solid #2e2e45;
+        }
+
+        .compass-chart {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            margin: 2rem auto;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 12px;
+            border: 2px solid #5ee3ff;
+            overflow: hidden;
+        }
+
+        .compass-axes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .axis-line {
+            position: absolute;
+            background: #5ee3ff;
+            opacity: 0.6;
+        }
+
+        .axis-horizontal {
+            width: 100%;
+            height: 2px;
+            top: 50%;
+            left: 0;
+            transform: translateY(-1px);
+        }
+
+        .axis-vertical {
+            width: 2px;
+            height: 100%;
+            left: 50%;
+            top: 0;
+            transform: translateX(-1px);
+        }
+
+        .axis-label {
+            position: absolute;
+            color: #f1f1f1;
+            font-weight: 600;
+            font-size: 14px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .label-top { top: 20px; left: 50%; transform: translateX(-50%); }
+        .label-bottom { bottom: 20px; left: 50%; transform: translateX(-50%); }
+        .label-left { left: 20px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+        .label-right { right: 20px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+
+        .quadrant {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            border: 1px solid rgba(94, 227, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #9ca3af;
+            text-align: center;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        .quadrant-1 { top: 0; right: 0; background: rgba(34, 197, 94, 0.1); }
+        .quadrant-2 { top: 0; left: 0; background: rgba(59, 130, 246, 0.1); }
+        .quadrant-3 { bottom: 0; left: 0; background: rgba(239, 68, 68, 0.1); }
+        .quadrant-4 { bottom: 0; right: 0; background: rgba(245, 158, 11, 0.1); }
+
+        .trend-point {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.8);
+            z-index: 10;
+        }
+
+        .trend-point:hover {
+            transform: scale(1.5);
+            z-index: 20;
+            box-shadow: 0 0 20px rgba(94, 227, 255, 0.8);
+        }
+
+        .trend-tooltip {
+            position: absolute;
+            background: #1a1a2e;
+            border: 1px solid #5ee3ff;
+            border-radius: 8px;
+            padding: 12px;
+            color: #f1f1f1;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 30;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            max-width: 250px;
+        }
+
+        .trend-tooltip.show {
+            opacity: 1;
+        }
+
+        .compass-controls {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-group label {
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .control-group select, .control-group input {
+            padding: 8px 12px;
+            background: #2e2e45;
+            border: 1px solid #5ee3ff;
+            border-radius: 6px;
+            color: #f1f1f1;
+            font-size: 14px;
+        }
+
+        .trend-legend {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #f1f1f1;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.8);
+        }
+
+        .sentiment-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .metric-card {
+            background: #2e2e45;
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #5ee3ff;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #5ee3ff;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-label {
+            color: #9ca3af;
+            font-size: 14px;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(45deg, #5ee3ff, #8b5cf6);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            color: #13131f;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(94, 227, 255, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            .compass-chart {
+                width: 100%;
+                max-width: 600px;
+                height: 450px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <img src="logo2.png" alt="WaveSight" class="logo">
+                <span class="brand-text">WAVESIGHT</span>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html">Dashboard</a>
+                <a href="sentiment-dashboard.html">Sentiment</a>
+                <a href="cultural-compass.html" class="active">Cultural Compass</a>
+                <a href="#" onclick="showAboutModal()">About</a>
+            </div>
+            <button class="menu-toggle" onclick="toggleMobileMenu()">☰</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="page-header">
+            <h1>🧭 Cultural Compass</h1>
+            <p>Interactive mapping of cultural trends based on Reddit sentiment analysis</p>
+        </header>
+
+        <div class="compass-controls">
+            <div class="control-group">
+                <label>X-Axis (Horizontal)</label>
+                <select id="xAxisSelect">
+                    <option value="mainstream">Mainstream ↔ Underground</option>
+                    <option value="appeal">Mass Appeal ↔ Subcultural Depth</option>
+                    <option value="adoption">Early Adopter ↔ Late Majority</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Y-Axis (Vertical)</label>
+                <select id="yAxisSelect">
+                    <option value="traditional">Traditional ↔ Disruptive</option>
+                    <option value="sentiment">Sentimental ↔ Ironic/Detached</option>
+                    <option value="energy">High Energy ↔ Chill/Laid Back</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Color Dimension</label>
+                <select id="colorSelect">
+                    <option value="sentiment">Sentiment Score</option>
+                    <option value="velocity">Viral Velocity</option>
+                    <option value="momentum">Cultural Momentum</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Topic Filter</label>
+                <input type="text" id="topicFilter" placeholder="Enter topic to analyze...">
+                <button class="analyze-btn" onclick="analyzeTopic()">Analyze</button>
+            </div>
+        </div>
+
+        <div class="compass-container">
+            <div class="compass-chart" id="compassChart">
+                <div class="compass-axes">
+                    <div class="axis-line axis-horizontal"></div>
+                    <div class="axis-line axis-vertical"></div>
+                </div>
+                
+                <div class="axis-label label-top" id="topLabel">Disruptive</div>
+                <div class="axis-label label-bottom" id="bottomLabel">Traditional</div>
+                <div class="axis-label label-left" id="leftLabel">Underground</div>
+                <div class="axis-label label-right" id="rightLabel">Mainstream</div>
+
+                <div class="quadrant quadrant-1">
+                    <div>Mainstream<br>Disruptive</div>
+                </div>
+                <div class="quadrant quadrant-2">
+                    <div>Underground<br>Disruptive</div>
+                </div>
+                <div class="quadrant quadrant-3">
+                    <div>Underground<br>Traditional</div>
+                </div>
+                <div class="quadrant quadrant-4">
+                    <div>Mainstream<br>Traditional</div>
+                </div>
+
+                <div class="trend-tooltip" id="trendTooltip"></div>
+            </div>
+        </div>
+
+        <div class="sentiment-metrics" id="sentimentMetrics">
+            <div class="metric-card">
+                <div class="metric-value" id="totalTrends">0</div>
+                <div class="metric-label">Cultural Trends Mapped</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="avgSentiment">0%</div>
+                <div class="metric-label">Average Sentiment Score</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="viralTrends">0</div>
+                <div class="metric-label">High Velocity Trends</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="emergingTrends">0</div>
+                <div class="metric-label">Emerging Underground</div>
+            </div>
+        </div>
+
+        <div class="trend-legend" id="trendLegend">
+            <!-- Legend items will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <script src="cultural-compass.js"></script>
+</body>
+</html>
