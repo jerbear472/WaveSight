@@ -182,11 +182,15 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install"
+args = "echo \"🚀 Starting WAVESIGHT services...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node youtubescraper.js"
+args = "echo \"📱 Starting frontend static server...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node Server/youtubescraper.js"
 
 [[ports]]
 localPort = 80
