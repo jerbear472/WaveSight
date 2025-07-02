@@ -15,8 +15,30 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Validate critical environment variables
+console.log('🔍 Checking environment configuration...');
+if (!SUPABASE_URL || SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+  console.warn('⚠️ SUPABASE_URL not configured in Secrets');
+}
+if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+  console.warn('⚠️ SUPABASE_ANON_KEY not configured in Secrets');
+}
+if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+  console.warn('⚠️ YOUTUBE_API_KEY not configured in Secrets - some features will be limited');
+}
+
+// Initialize Supabase client with error handling
+let supabase;
+try {
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase client initialized');
+  } else {
+    console.error('❌ Cannot initialize Supabase client - missing configuration');
+  }
+} catch (error) {
+  console.error('❌ Error initializing Supabase client:', error);
+}
 
 // Simple cache for API responses
 const apiCache = new Map();
@@ -1213,7 +1235,10 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Add CORS headers
+// Serve static files from root directory
+app.use(express.static('.'));
+
+// Add CORS headers (moved before routes)
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -1248,16 +1273,36 @@ app.post('/api/analyze-sentiment', async (req, res) => {
   }
 });
 
-// Serve static files from root directory
-app.use(express.static('.'));
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('❌ Server error:', error);
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: error.message
+  });
+});
 
-// Start server
-app.listen(PORT, '0.0.0.0', () => {
+// Start server with better error handling
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-  console.log(`📊 YouTube API: ${YOUTUBE_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🗄️  Supabase: ${SUPABASE_URL ? 'Configured' : 'Missing'}`);
+  console.log(`📊 YouTube API: ${YOUTUBE_API_KEY ? 'Configured' : 'Missing - Add to Secrets'}`);
+  console.log(`🗄️  Supabase: ${SUPABASE_URL ? 'Configured' : 'Missing - Add to Secrets'}`);
   console.log('📡 API endpoints:');
+  console.log(`   - GET /api/health (Server health check)`);
   console.log(`   - GET /api/fetch-youtube?q=search_term&maxResults=25`);
   console.log(`   - GET /api/youtube-data`);
-  console.log(`   - GET /api/health`);
+  console.log(`   - GET /api/config (Check configuration)`);
+});
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use. Trying alternative ports...`);
+    const altPort = PORT + 1;
+    app.listen(altPort, '0.0.0.0', () => {
+      console.log(`🚀 Server running on alternative port http://0.0.0.0:${altPort}`);
+    });
+  } else {
+    console.error('❌ Server error:', error);
+  }
 });
