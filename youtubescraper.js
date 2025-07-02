@@ -1,10 +1,10 @@
 // index.js - Full Feature Elegant Server for WaveSight
 // Replit Compatible | Modular Structure | Supabase Integrated
 
-import express from 'express';
-import cors from 'cors';
-import fetch from 'node-fetch';
-import { createClient } from '@supabase/supabase-js';
+const express = require('express');
+const cors = require('cors');
+const fetch = require('node-fetch');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;

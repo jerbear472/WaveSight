@@ -32,7 +32,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node youtubeToSupabase.js"
+args = "node youtubescraper.js"
 
 [[workflows.workflow]]
 name = "Sentiment Analysis Server"
@@ -182,7 +182,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node youtubeToSupabase.js"
+args = "node youtubescraper.js"
 
 [[ports]]
 localPort = 80
