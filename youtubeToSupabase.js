@@ -18,8 +18,19 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 // Initialize Supabase client
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Simple cache for API responses
+const apiCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // YouTube API functions
-async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
+async function fetchYouTubeVideos(query = 'trending', maxResults = 200) {
+  const cacheKey = `${query}_${maxResults}`;
+  const cached = apiCache.get(cacheKey);
+  
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    console.log('📦 Using cached data for:', query);
+    return cached.data;
+  }
   try {
     console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
 
@@ -371,7 +382,7 @@ app.get('/api/youtube-data', async (req, res) => {
   try {
     console.log('📥 API: Fetching YouTube data from Supabase...');
 
-    const limit = parseInt(req.query.limit) || 1000; // Default to 1000, but allow override
+    const limit = parseInt(req.query.limit) || 200; // Reduced default for better performance
 
     const { data, error } = await supabase
       .from('youtube_trends')

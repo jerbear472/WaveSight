@@ -10,7 +10,7 @@ publicDir = "/"
 deploymentTarget = "static"
 
 [workflows]
-runButton = "YouTube API Server"
+runButton = "Essential Services Only"
 
 [[workflows.workflow]]
 name = "Serve static"
@@ -174,6 +174,15 @@ args = "echo \"📱 Starting frontend server...\""
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python -m http.server 8080 --bind 0.0.0.0"
+
+[[workflows.workflow]]
+name = "Essential Services Only"
+author = 44347283
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node youtubeToSupabase.js"
 
 [[ports]]
 localPort = 80
