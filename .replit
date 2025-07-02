@@ -10,7 +10,7 @@ publicDir = "/"
 deploymentTarget = "static"
 
 [workflows]
-runButton = "Essential Services Only"
+runButton = "All Services - Fixed"
 
 [[workflows.workflow]]
 name = "Serve static"
@@ -32,7 +32,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node youtubescraper.js"
+args = "nix-shell -p nodejs --run \"node youtubeToSupabase.js\""
 
 [[workflows.workflow]]
 name = "Sentiment Analysis Server"
@@ -116,81 +116,6 @@ args = "node youtubeToSupabase.js &"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python sentiment_server.py"
-
-[[workflows.workflow]]
-name = "Start All Services"
-author = 44347283
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🚀 Starting WaveSight services...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "export PATH=\"/nix/store/$(ls /nix/store | grep nodejs | head -1)/bin:$PATH\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"📊 Starting YouTube API Server on port 5000...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node youtubeToSupabase.js &"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "sleep 3"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🧠 Starting Sentiment Analysis Server on port 5001...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python sentiment_server.py &"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"✅ All services started successfully!\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "wait"
-
-[[workflows.workflow]]
-name = "Serve Frontend"
-author = 44347283
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"📱 Starting frontend server...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python -m http.server 8080 --bind 0.0.0.0"
-
-[[workflows.workflow]]
-name = "Essential Services Only"
-author = 44347283
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"🚀 Starting WAVESIGHT services...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "echo \"📱 Starting frontend static server...\""
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node Server/youtubescraper.js"
 
 [[ports]]
 localPort = 80
