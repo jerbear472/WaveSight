@@ -111,7 +111,7 @@ args = "sleep 2"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node youtubeToSupabase.js &"
+args = "nix-shell -p nodejs --run \"node youtubeToSupabase.js\" &"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
