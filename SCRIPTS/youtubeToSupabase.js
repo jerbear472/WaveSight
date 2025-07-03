@@ -2,1251 +2,776 @@ const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
 const { createClient } = require('@supabase/supabase-js');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const compression = require('compression');
+const morgan = require('morgan');
 
+// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for all routes
-app.use(cors());
-app.use(express.json());
+// Environment configuration with validation
+const config = {
+  youtube: {
+    apiKey: process.env.YOUTUBE_API_KEY,
+    maxResultsPerQuery: 50,
+    quotaBuffer: 0.8, // Use only 80% of quota to be safe
+    retryAttempts: 3,
+    retryDelay: 1000
+  },
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    anonKey: process.env.SUPABASE_ANON_KEY,
+    batchSize: 500 // Insert in batches for better performance
+  },
+  server: {
+    port: PORT,
+    corsOrigins: process.env.CORS_ORIGINS?.split(',') || ['*'],
+    environment: process.env.NODE_ENV || 'development'
+  },
+  cache: {
+    ttl: 5 * 60 * 1000, // 5 minutes
+    checkPeriod: 60 * 1000 // Check every minute
+  }
+};
 
-// Configuration - using environment variables from secrets
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+// Validate required environment variables
+function validateConfig() {
+  const required = [
+    { key: 'YOUTUBE_API_KEY', value: config.youtube.apiKey },
+    { key: 'SUPABASE_URL', value: config.supabase.url },
+    { key: 'SUPABASE_ANON_KEY', value: config.supabase.anonKey }
+  ];
 
-// Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// YouTube API functions
-async function fetchYouTubeVideos(query = 'trending', maxResults = 500) {
-  try {
-    console.log(`🔍 Fetching YouTube data for query: "${query}" (max ${maxResults} results)`);
-
-    // Check if YouTube API key is configured
-    if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-      console.error('❌ YouTube API key not configured in environment variables');
-      throw new Error('YouTube API key not configured');
-    }
-
-    console.log('✅ YouTube API key found, proceeding with requests...');
-
-    // Use diverse search queries for comprehensive historical-style data
-    let searchQueries = [query];
-    if (query === 'trending' || query.includes('trending tech AI blockchain crypto')) {
-      searchQueries = [
-        // Technology & AI
-        'artificial intelligence machine learning tutorial',
-        'chatgpt openai ai tools productivity',
-        'programming coding tutorial javascript python',
-        'tech review smartphone laptop computer',
-        'software development web development',
-
-        // Crypto & Finance
-        'bitcoin cryptocurrency trading investment',
-        'ethereum blockchain defi nft market',
-        'dogecoin altcoin crypto news analysis',
-        'stock market investing finance tips',
-        'real estate investment property business',
-
-        // Entertainment & Gaming
-        'gaming gameplay walkthrough review',
-        'movie trailer film review cinema',
-        'music video song artist concert',
-        'netflix series tv show entertainment',
-        'esports tournament gaming highlights',
-
-        // Lifestyle & Health
-        'fitness workout health nutrition diet',
-        'cooking recipe food chef kitchen',
-        'travel vlog destination adventure',
-        'lifestyle daily routine productivity',
-        'fashion style beauty makeup skincare',
-
-        // Sports & Activities
-        'sports highlights football basketball',
-        'soccer fifa world cup tournament',
-        'tennis golf baseball sports news',
-        'olympics athletics competition',
-        'extreme sports adventure outdoor',
-
-        // Education & Science
-        'education tutorial learning course',
-        'science physics chemistry biology',
-        'space nasa astronomy discovery',
-        'history documentary educational',
-        'art design creative tutorial',
-
-        // Automotive & Tech
-        'car review automotive tesla electric',
-        'motorcycle racing automotive news',
-        'drone technology gadget review',
-        'smartphone tech unboxing review',
-
-        // Animals & Nature
-        'animals pets dogs cats funny',
-        'wildlife nature documentary',
-        'environment climate sustainability',
-
-        // Business & Career
-        'entrepreneur business startup success',
-        'career advice job interview tips',
-        'marketing digital business strategy',
-
-        // Additional trending topics
-        'viral trends social media latest',
-        'breaking news current events',
-        'celebrity gossip entertainment news',
-        'memes funny viral videos',
-        'product reviews unboxing hauls',
-        'tutorials how to guides',
-        'reaction videos trending topics',
-        'podcast highlights interviews',
-        'live streams gaming music',
-        'shorts viral tiktok trends'
-      ];
-    }
-
-    let allVideos = [];
-    const videosPerQuery = Math.ceil(maxResults / searchQueries.length);
-
-    for (const searchQuery of searchQueries) {
-      try {
-        console.log(`🔍 Searching for: "${searchQuery}"`);
-
-        // First, get search results
-        const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&order=relevance&maxResults=${videosPerQuery}&key=${YOUTUBE_API_KEY}`;
-
-        const searchResponse = await fetch(searchUrl);
-        if (!searchResponse.ok) {
-          const errorText = await searchResponse.text();
-          console.log(`⚠️ Failed to fetch for query "${searchQuery}": ${searchResponse.status}`);
-          console.log(`❌ Error details: ${errorText}`);
-
-          // Log specific error types
-          if (searchResponse.status === 403) {
-            console.log('❌ 403 Forbidden - Check your YouTube API key, quota limits, or restrictions');
-          } else if (searchResponse.status === 400) {
-            console.log('❌ 400 Bad Request - Check your query parameters');
-          } else if (searchResponse.status === 429) {
-            console.log('❌ 429 Too Many Requests - You have exceeded your quota');
-          }
-          continue;
-        }
-
-        const searchData = await searchResponse.json();
-
-        if (searchData.items && searchData.items.length > 0) {
-          allVideos.push(...searchData.items);
-          console.log(`📋 Found ${searchData.items.length} videos for "${searchQuery}"`);
-        }
-      } catch (queryError) {
-        console.log(`⚠️ Error with query "${searchQuery}":`, queryError.message);
-        continue;
-      }
-    }
-
-    if (allVideos.length === 0) {
-      console.log('⚠️ No YouTube videos found for any query');
-      return [];
-    }
-
-    console.log(`📋 Total found ${allVideos.length} videos, fetching detailed statistics...`);
-
-    // Get video IDs for detailed stats (limit to avoid URL length issues)
-    const videoIds = allVideos.slice(0, 50).map(item => item.id.videoId).join(',');
-
-    // Fetch detailed video statistics
-    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${YOUTUBE_API_KEY}`;
-
-    const statsResponse = await fetch(statsUrl);
-    const statsData = statsResponse.ok ? await statsResponse.json() : { items: [] };
-
-    // Merge search data with statistics
-    const enrichedData = allVideos.slice(0, 50).map(item => {
-      const stats = statsData.items?.find(stat => stat.id === item.id.videoId);
-      return {
-        ...item,
-        statistics: stats?.statistics || {}
-      };
-    });
-
-    console.log(`✅ Successfully fetched ${enrichedData.length} YouTube videos with statistics`);
-    return enrichedData;
-
-  } catch (error) {
-    console.error('❌ Error fetching YouTube data:', error);
-    throw error;
+  const missing = required.filter(item => !item.value || item.value === 'YOUR_' + item.key);
+  
+  if (missing.length > 0) {
+    console.error('❌ Missing required environment variables:', missing.map(m => m.key).join(', '));
+    console.log('📝 Please set these in your environment or .env file');
+    process.exit(1);
   }
 }
 
-function processYouTubeDataForSupabase(youtubeData) {
-  const processedRecords = [];
+// Initialize Supabase client with retry logic
+class SupabaseService {
+  constructor() {
+    this.client = createClient(config.supabase.url, config.supabase.anonKey, {
+      auth: {
+        persistSession: false
+      },
+      global: {
+        headers: {
+          'x-application-name': 'wavesight-server'
+        }
+      }
+    });
+  }
 
-  youtubeData.forEach(item => {
-    const stats = item.statistics || {};
-    const snippet = item.snippet;
+  async upsertBatch(table, data, options = {}) {
+    const batches = [];
+    for (let i = 0; i < data.length; i += config.supabase.batchSize) {
+      batches.push(data.slice(i, i + config.supabase.batchSize));
+    }
 
-    // Calculate trend score based on engagement
+    const results = [];
+    for (const batch of batches) {
+      try {
+        const { data: result, error } = await this.client
+          .from(table)
+          .upsert(batch, options)
+          .select();
+
+        if (error) throw error;
+        results.push(...(result || []));
+        
+        console.log(`✅ Batch inserted: ${batch.length} records`);
+      } catch (error) {
+        console.error(`❌ Batch insert failed:`, error.message);
+        throw error;
+      }
+    }
+
+    return results;
+  }
+
+  async query(table, queryBuilder) {
+    try {
+      const { data, error } = await queryBuilder;
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error(`❌ Query failed on ${table}:`, error.message);
+      throw error;
+    }
+  }
+}
+
+// YouTube API service with retry and quota management
+class YouTubeService {
+  constructor() {
+    this.quotaUsed = 0;
+    this.quotaLimit = 10000; // Daily quota
+    this.lastReset = new Date().setHours(0, 0, 0, 0);
+  }
+
+  async fetchWithRetry(url, attempts = config.youtube.retryAttempts) {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const response = await fetch(url);
+        
+        if (response.ok) {
+          return response;
+        }
+
+        if (response.status === 429 || response.status === 403) {
+          console.log(`⚠️ Rate limit hit, waiting ${config.youtube.retryDelay * (i + 1)}ms...`);
+          await this.delay(config.youtube.retryDelay * (i + 1));
+          continue;
+        }
+
+        const error = await response.text();
+        throw new Error(`YouTube API error ${response.status}: ${error}`);
+        
+      } catch (error) {
+        if (i === attempts - 1) throw error;
+        await this.delay(config.youtube.retryDelay);
+      }
+    }
+  }
+
+  delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  checkQuota() {
+    // Reset quota if new day
+    const today = new Date().setHours(0, 0, 0, 0);
+    if (today > this.lastReset) {
+      this.quotaUsed = 0;
+      this.lastReset = today;
+    }
+
+    // Check if we've exceeded our buffer
+    if (this.quotaUsed >= this.quotaLimit * config.youtube.quotaBuffer) {
+      throw new Error('YouTube API quota limit approaching. Please wait until tomorrow.');
+    }
+  }
+
+  async searchVideos(query, maxResults = 50) {
+    this.checkQuota();
+    
+    const url = new URL('https://www.googleapis.com/youtube/v3/search');
+    url.searchParams.append('part', 'snippet');
+    url.searchParams.append('q', query);
+    url.searchParams.append('type', 'video');
+    url.searchParams.append('order', 'relevance');
+    url.searchParams.append('maxResults', Math.min(maxResults, config.youtube.maxResultsPerQuery));
+    url.searchParams.append('key', config.youtube.apiKey);
+
+    const response = await this.fetchWithRetry(url.toString());
+    const data = await response.json();
+    
+    // Update quota usage (search costs 100 units)
+    this.quotaUsed += 100;
+    
+    return data.items || [];
+  }
+
+  async getVideoStatistics(videoIds) {
+    this.checkQuota();
+    
+    const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+    url.searchParams.append('part', 'statistics');
+    url.searchParams.append('id', videoIds.join(','));
+    url.searchParams.append('key', config.youtube.apiKey);
+
+    const response = await this.fetchWithRetry(url.toString());
+    const data = await response.json();
+    
+    // Update quota usage (videos.list costs 1 unit per video)
+    this.quotaUsed += videoIds.length;
+    
+    return data.items || [];
+  }
+}
+
+// In-memory cache for reducing API calls
+class CacheService {
+  constructor() {
+    this.cache = new Map();
+    this.startCleanupTimer();
+  }
+
+  set(key, value, ttl = config.cache.ttl) {
+    this.cache.set(key, {
+      value,
+      expiry: Date.now() + ttl
+    });
+  }
+
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return item.value;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  startCleanupTimer() {
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, item] of this.cache.entries()) {
+        if (now > item.expiry) {
+          this.cache.delete(key);
+        }
+      }
+    }, config.cache.checkPeriod);
+  }
+}
+
+// Initialize services
+const supabaseService = new SupabaseService();
+const youtubeService = new YouTubeService();
+const cacheService = new CacheService();
+
+// Middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable for API
+  crossOriginEmbedderPolicy: false
+}));
+
+app.use(compression());
+app.use(morgan(config.server.environment === 'production' ? 'combined' : 'dev'));
+
+app.use(cors({
+  origin: config.server.corsOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // Stricter limit for expensive operations
+  message: 'Rate limit exceeded for this operation.',
+});
+
+app.use('/api/', limiter);
+app.use('/api/fetch-youtube', strictLimiter);
+app.use('/api/bulk-fetch', strictLimiter);
+
+// Error handling middleware
+class AppError extends Error {
+  constructor(message, statusCode) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+// Async route handler wrapper
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+// Data processing utilities
+class DataProcessor {
+  static determineTrendCategory(title, description) {
+    const content = `${title} ${description}`.toLowerCase();
+    
+    const categoryKeywords = {
+      'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai', 'claude', 'midjourney', 'deep learning'],
+      'Crypto': ['crypto', 'bitcoin', 'ethereum', 'cryptocurrency', 'nft', 'defi', 'blockchain', 'web3'],
+      'Gaming': ['gaming', 'game', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'gameplay'],
+      'Technology': ['tech', 'technology', 'gadget', 'software', 'hardware', 'computer', 'smartphone', 'innovation'],
+      'Programming': ['programming', 'coding', 'developer', 'javascript', 'python', 'react', 'tutorial', 'web development'],
+      'Entertainment': ['movie', 'film', 'series', 'netflix', 'entertainment', 'celebrity', 'music', 'song'],
+      'Health & Fitness': ['health', 'fitness', 'workout', 'exercise', 'diet', 'nutrition', 'wellness', 'yoga'],
+      'Education': ['education', 'learning', 'course', 'tutorial', 'study', 'science', 'history', 'mathematics'],
+      'Business': ['business', 'entrepreneur', 'startup', 'finance', 'investing', 'marketing', 'money', 'economy'],
+      'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine', 'travel', 'food', 'fashion', 'beauty'],
+      'Sports': ['sports', 'football', 'basketball', 'soccer', 'tennis', 'olympics', 'athlete', 'championship']
+    };
+
+    let bestCategory = 'General';
+    let maxScore = 0;
+
+    for (const [category, keywords] of Object.entries(categoryKeywords)) {
+      const score = keywords.reduce((acc, keyword) => {
+        return acc + (content.includes(keyword) ? 1 : 0);
+      }, 0);
+
+      if (score > maxScore) {
+        maxScore = score;
+        bestCategory = category;
+      }
+    }
+
+    return bestCategory;
+  }
+
+  static calculateMetrics(stats) {
     const viewCount = parseInt(stats.viewCount) || 0;
     const likeCount = parseInt(stats.likeCount) || 0;
     const commentCount = parseInt(stats.commentCount) || 0;
 
-    // Simple trend score calculation (0-100)
-    const engagementRatio = viewCount > 0 ? (likeCount + commentCount) / viewCount * 1000 : 0;
+    // Calculate engagement rate
+    const engagementRate = viewCount > 0 
+      ? ((likeCount + commentCount) / viewCount * 100).toFixed(2)
+      : 0;
+
+    // Calculate trend score (0-100)
+    const engagementRatio = viewCount > 0 
+      ? (likeCount + commentCount) / viewCount * 1000 
+      : 0;
     const trendScore = Math.min(100, Math.max(0, Math.floor(engagementRatio * 10) + 50));
 
-    // Comprehensive categorization
-    const title = snippet.title.toLowerCase();
-    const description = (snippet.description || '').toLowerCase();
-    const content = title + ' ' + description;
+    // Calculate wave score (momentum indicator)
+    const mockSentiment = 0.5 + (Math.random() * 0.3);
+    const growthFactor = 0.3 + (Math.random() * 0.4);
+    const engagementFactor = Math.min(engagementRatio, 1.0);
+    const volumeFactor = Math.min(viewCount / 10000000, 1.0);
+    
+    const waveScore = (
+      growthFactor * 0.3 + 
+      engagementFactor * 0.25 + 
+      volumeFactor * 0.25 + 
+      mockSentiment * 0.2
+    );
 
-    let category = 'General';
-
-    // Define comprehensive keyword categories
-    const categories = {
-      'Sports': ['sports', 'football', 'basketball', 'soccer', 'baseball', 'tennis', 'golf', 'nfl', 'nba', 'fifa', 'olympics', 'athlete', 'team', 'match', 'game', 'score', 'championship', 'league', 'player', 'coach'],
-      'Health & Fitness': ['health', 'fitness', 'workout', 'exercise', 'diet', 'nutrition', 'wellness', 'yoga', 'meditation', 'gym', 'weight', 'muscle', 'cardio', 'running', 'training', 'healthy', 'doctor', 'medical'],
-      'Food & Cooking': ['food', 'cooking', 'recipe', 'chef', 'kitchen', 'meal', 'dinner', 'lunch', 'breakfast', 'baking', 'restaurant', 'ingredients', 'taste', 'delicious', 'easy recipe', 'how to cook'],
-      'Travel': ['travel', 'vacation', 'trip', 'destination', 'adventure', 'explore', 'journey', 'visit', 'tourist', 'city', 'country', 'hotel', 'flight', 'backpack', 'culture', 'guide'],
-      'Music': ['music', 'song', 'artist', 'album', 'concert', 'band', 'singer', 'guitar', 'piano', 'drums', 'lyrics', 'remix', 'cover', 'live', 'studio', 'melody'],
-      'Movies & TV': ['movie', 'film', 'series', 'tv show', 'netflix', 'review', 'trailer', 'actor', 'actress', 'cinema', 'director', 'episode', 'season', 'streaming', 'drama', 'comedy'],
-      'Gaming': ['gaming', 'game', 'gamer', 'esports', 'streamer', 'twitch', 'minecraft', 'fortnite', 'valorant', 'league of legends', 'console', 'pc gaming', 'mobile game', 'gameplay'],
-      'Fashion': ['fashion', 'style', 'outfit', 'clothing', 'makeup', 'beauty', 'skincare', 'haul', 'trends', 'designer', 'model', 'runway', 'accessories', 'jewelry'],
-      'Education': ['education', 'learning', 'course', 'tutorial', 'study', 'school', 'university', 'skill', 'lesson', 'teach', 'professor', 'class', 'knowledge', 'academic'],
-      'Science': ['science', 'physics', 'chemistry', 'biology', 'space', 'nasa', 'research', 'discovery', 'experiment', 'laboratory', 'scientist', 'theory', 'evolution'],
-      'AI Tools': ['ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai', 'claude', 'midjourney', 'gpt', 'deep learning', 'neural network', 'automation'],
-      'Crypto': ['crypto', 'bitcoin', 'ethereum', 'cryptocurrency', 'trading', 'nft', 'dogecoin', 'altcoin', 'binance', 'defi', 'mining', 'wallet', 'investment'],
-      'Blockchain': ['blockchain', 'web3', 'smart contract', 'decentralized', 'solana', 'polygon', 'cardano', 'chainlink', 'dapp', 'protocol'],
-      'Programming': ['programming', 'coding', 'developer', 'software', 'javascript', 'python', 'react', 'html', 'css', 'node', 'github', 'tutorial'],
-      'Finance': ['finance', 'investing', 'stocks', 'money', 'business', 'entrepreneur', 'passive income', 'real estate', 'bank', 'economy', 'market'],
-      'Lifestyle': ['lifestyle', 'vlog', 'daily', 'routine', 'minimalism', 'productivity', 'self improvement', 'motivation', 'habits', 'morning routine'],
-      'Art & Design': ['art', 'design', 'creative', 'drawing', 'painting', 'graphic', 'artist', 'portfolio', 'illustration', 'digital art', 'photoshop'],
-      'Automotive': ['car', 'automotive', 'vehicle', 'tesla', 'electric car', 'racing', 'motorcycle', 'driving', 'auto', 'engine', 'review'],
-      'Pets': ['pets', 'dog', 'cat', 'animal', 'puppy', 'kitten', 'pet care', 'veterinary', 'training', 'cute', 'funny animals'],
-      'Politics': ['politics', 'election', 'government', 'policy', 'news', 'debate', 'vote', 'democracy', 'president', 'congress'],
-      'Psychology': ['psychology', 'mental health', 'therapy', 'mindset', 'behavior', 'motivation', 'anxiety', 'depression', 'self help'],
-      'Environment': ['climate', 'environment', 'sustainability', 'green', 'renewable', 'eco', 'carbon', 'nature', 'conservation', 'recycling'],
-      'Real Estate': ['real estate', 'property', 'house', 'apartment', 'rent', 'buy', 'investment', 'mortgage', 'home', 'market'],
-      'Parenting': ['parenting', 'kids', 'children', 'baby', 'family', 'mom', 'dad', 'pregnancy', 'childcare', 'toddler']
+    return {
+      engagementRate: parseFloat(engagementRate),
+      trendScore,
+      waveScore: Math.round(waveScore * 1000) / 1000,
+      sentimentScore: Math.round(mockSentiment * 1000) / 1000
     };
+  }
 
-    // Find the best matching category
-    let maxMatches = 0;
-    for (const [categoryName, keywords] of Object.entries(categories)) {
-      const matches = keywords.filter(keyword => content.includes(keyword)).length;
-      if (matches > maxMatches) {
-        maxMatches = matches;
-        category = categoryName;
-      }
-    }
+  static processYouTubeData(youtubeItems, enrichWithVariants = false) {
+    const processedRecords = [];
 
-    // Create multiple historical variants of each video (5-8 variants per video)
-    const variantCount = 5 + Math.floor(Math.random() * 4); // 5-8 variants
+    for (const item of youtubeItems) {
+      const stats = item.statistics || {};
+      const snippet = item.snippet;
+      
+      const category = this.determineTrendCategory(snippet.title, snippet.description || '');
+      const metrics = this.calculateMetrics(stats);
 
-    for (let variant = 0; variant < variantCount; variant++) {
-      const now = new Date();
-      const historicalDate = new Date(now);
-
-      // Distribute variants across different time periods
-      const daysBack = Math.floor(Math.random() * 1095) + (variant * 50); // Spread variants over 3 years
-      historicalDate.setDate(historicalDate.getDate() - daysBack);
-
-      // Add randomness to make variants realistic
-      const hoursBack = Math.floor(Math.random() * 24);
-      const minutesBack = Math.floor(Math.random() * 60);
-      historicalDate.setHours(historicalDate.getHours() - hoursBack);
-      historicalDate.setMinutes(historicalDate.getMinutes() - minutesBack);
-
-      // Create variant view counts (simulate viral growth over time)
-      const baseViewCount = viewCount || (Math.floor(Math.random() * 2000000) + 100000);
-      const growthMultiplier = 0.3 + (variant * 0.15); // Earlier variants have fewer views
-      const variantViewCount = Math.floor(baseViewCount * growthMultiplier);
-      const variantLikeCount = Math.floor((likeCount || Math.floor(variantViewCount * 0.02)) * growthMultiplier);
-      const variantCommentCount = Math.floor((commentCount || Math.floor(variantViewCount * 0.005)) * growthMultiplier);
-
-      // Calculate wave score with variant data
-      const mockSentiment = 0.4 + (Math.random() * 0.4); // 0.4 to 0.8 range
-      const lastViewCount = Math.floor(variantViewCount * (0.7 + Math.random() * 0.2));
-
-      const growthFactor = lastViewCount > 0 ? Math.min((variantViewCount - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
-      const engagementFactor = variantViewCount > 0 ? Math.min((variantLikeCount + variantCommentCount) / variantViewCount * 1000, 1.0) : 0;
-      const volumeFactor = Math.min(variantViewCount / 10000000, 1.0);
-      const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + mockSentiment * 0.2);
-
-      // Create unique video ID for variant
-      const variantVideoId = `${item.id.videoId}_v${variant}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-
-      processedRecords.push({
-        video_id: variantVideoId,
+      const baseRecord = {
+        video_id: item.id.videoId || item.id,
         title: snippet.title,
         description: snippet.description?.substring(0, 1000) || '',
-        published_at: historicalDate.toISOString(),
+        published_at: snippet.publishedAt || new Date().toISOString(),
         channel_id: snippet.channelId,
         channel_title: snippet.channelTitle,
         thumbnail_default: snippet.thumbnails?.default?.url || '',
         thumbnail_medium: snippet.thumbnails?.medium?.url || '',
         thumbnail_high: snippet.thumbnails?.high?.url || '',
-        view_count: variantViewCount,
-        like_count: variantLikeCount,
-        comment_count: variantCommentCount,
+        view_count: parseInt(stats.viewCount) || 0,
+        like_count: parseInt(stats.likeCount) || 0,
+        comment_count: parseInt(stats.commentCount) || 0,
         trend_category: category,
-        trend_score: Math.min(100, Math.max(10, trendScore + (Math.random() * 20 - 10))) // Add variance
-      });
+        trend_score: metrics.trendScore,
+        wave_score: metrics.waveScore,
+        sentiment_score: metrics.sentimentScore,
+        engagement_rate: metrics.engagementRate
+      };
+
+      if (enrichWithVariants) {
+        // Create historical variants for better data diversity
+        const variantCount = 3 + Math.floor(Math.random() * 3);
+        
+        for (let v = 0; v < variantCount; v++) {
+          const variant = { ...baseRecord };
+          const daysBack = Math.floor(Math.random() * 365) + (v * 100);
+          const variantDate = new Date();
+          variantDate.setDate(variantDate.getDate() - daysBack);
+          
+          variant.video_id = `${baseRecord.video_id}_v${v}_${Date.now()}`;
+          variant.published_at = variantDate.toISOString();
+          
+          // Adjust metrics for historical data
+          const timeFactor = 0.3 + (v * 0.2);
+          variant.view_count = Math.floor(baseRecord.view_count * timeFactor);
+          variant.like_count = Math.floor(baseRecord.like_count * timeFactor);
+          variant.comment_count = Math.floor(baseRecord.comment_count * timeFactor);
+          
+          processedRecords.push(variant);
+        }
+      } else {
+        processedRecords.push(baseRecord);
+      }
     }
-  });
 
-  return processedRecords;
-}
-
-async function saveDataToSupabase(processedData) {
-  try {
-    console.log(`💾 Saving ${processedData.length} videos to Supabase...`);
-
-    const { data, error } = await supabase
-      .from('youtube_trends')
-      .upsert(processedData, { 
-        onConflict: 'video_id',
-        ignoreDuplicates: false 
-      })
-      .select();
-
-    if (error) {
-      console.error('❌ Error saving YouTube data to Supabase:', error);
-      throw error;
-    }
-
-    console.log('✅ YouTube data saved to Supabase successfully!');
-    console.log(`📊 Saved ${data?.length || processedData.length} videos to youtube_trends table`);
-    return data;
-  } catch (error) {
-    console.error('❌ Error in saveDataToSupabase:', error);
-    throw error;
+    return processedRecords;
   }
 }
 
 // API Routes
-app.get('/api/fetch-youtube', async (req, res) => {
-  try {
-    const query = req.query.q || 'trending';
-    const maxResults = parseInt(req.query.maxResults) || 50;
 
-    console.log('🚀 API: Fetching YouTube data...');
-
-    // Fetch YouTube data
-    const youtubeData = await fetchYouTubeVideos(query, maxResults);
-
-    if (youtubeData.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'No YouTube data found',
-        data: []
-      });
-    }
-
-    // Process for Supabase
-    const processedData = processYouTubeDataForSupabase(youtubeData);
-
-    // Save to Supabase
-    const savedData = await saveDataToSupabase(processedData);
-
-    res.json({
-      success: true,
-      message: `Successfully fetched and saved ${processedData.length} videos`,
-      data: savedData || processedData,
-      count: processedData.length
-    });
-
-  } catch (error) {
-    console.error('❌ API Error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: error.toString()
-    });
-  }
-});
-
-app.get('/api/youtube-data', async (req, res) => {
-  try {
-    console.log('📥 API: Fetching YouTube data from Supabase...');
-
-    const limit = parseInt(req.query.limit) || 1000; // Default to 1000, but allow override
-
-    const { data, error } = await supabase
-      .from('youtube_trends')
-      .select('*')
-      .order('published_at', { ascending: false })
-      .limit(limit);
-
-    if (error) {
-      throw error;
-    }
-
-    console.log(`✅ Retrieved ${data?.length || 0} records from Supabase`);
-
-    res.json({
-      success: true,
-      data: data || [],
-      count: data?.length || 0
-    });
-
-  } catch (error) {
-    console.error('❌ API Error fetching from Supabase:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: error.toString()
-    });
-  }
-});
-
-// Config endpoint for frontend
-app.get('/api/config', (req, res) => {
+// Health check
+app.get('/api/health', (req, res) => {
   res.json({
-    SUPABASE_URL: SUPABASE_URL,
-    SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
-    YOUTUBE_API_KEY: YOUTUBE_API_KEY ? 'Configured' : 'Missing'
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    services: {
+      youtube: config.youtube.apiKey ? 'configured' : 'missing',
+      supabase: config.supabase.url ? 'configured' : 'missing',
+      cache: `${cacheService.cache.size} items cached`
+    },
+    quota: {
+      used: youtubeService.quotaUsed,
+      limit: youtubeService.quotaLimit,
+      percentage: ((youtubeService.quotaUsed / youtubeService.quotaLimit) * 100).toFixed(2) + '%'
+    }
   });
 });
 
-// Process and store trend insights
-app.post('/api/process-trends', async (req, res) => {
-  try {
-    console.log('🧠 Processing cultural trends and insights...');
+// Fetch YouTube data with caching
+app.get('/api/fetch-youtube', asyncHandler(async (req, res) => {
+  const { q = 'trending', maxResults = 50 } = req.query;
+  const cacheKey = `youtube:${q}:${maxResults}`;
 
-    // Get recent YouTube data
-    const { data: youtubeData, error: ytError } = await supabase
-      .from('youtube_trends')
-      .select('*')
-      .gte('published_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // Last 7 days
-      .order('published_at', { ascending: false });
-
-    if (ytError) throw ytError;
-
-    if (!youtubeData || youtubeData.length === 0) {
-      return res.json({
-        success: true,
-        message: 'No recent data to process',
-        insights: []
-      });
-    }
-
-    // Group by trend categories and calculate insights
-    const trendGroups = {};
-    const culturalCategories = {
-      'Gen Z Internet Culture': ['aesthetic', 'vibe', 'tiktok', 'viral', 'meme', 'corecore'],
-      'Urban Style & Nightlife': ['streetwear', 'fashion', 'style', 'nightlife', 'club'],
-      'Tech Innovation': ['ai', 'tech', 'blockchain', 'crypto', 'innovation', 'startup'],
-      'Wellness & Mindfulness': ['health', 'fitness', 'wellness', 'meditation', 'mindful'],
-      'Entertainment & Media': ['movie', 'music', 'celebrity', 'entertainment', 'tv'],
-      'Gaming Culture': ['gaming', 'game', 'esports', 'streamer', 'twitch'],
-      'Financial Markets': ['finance', 'trading', 'investment', 'money', 'stocks'],
-      'Food & Lifestyle': ['food', 'cooking', 'recipe', 'lifestyle', 'diet']
-    };
-
-    // Categorize videos
-    youtubeData.forEach(video => {
-      const title = (video.title || '').toLowerCase();
-      const description = (video.description || '').toLowerCase();
-      const content = `${title} ${description}`;
-
-      let bestCategory = 'Emerging Subcultures';
-      let bestScore = 0;
-
-      for (const [category, keywords] of Object.entries(culturalCategories)) {
-        let score = 0;
-        keywords.forEach(keyword => {
-          if (content.includes(keyword)) score += 1;
-        });
-
-        if (score > bestScore) {
-          bestScore = score;
-          bestCategory = category;
-        }
-      }
-
-      if (!trendGroups[bestCategory]) {
-        trendGroups[bestCategory] = [];
-      }
-      trendGroups[bestCategory].push(video);
-    });
-
-    // Calculate insights for each trend
-    const insights = [];
-
-    for (const [trendName, videos] of Object.entries(trendGroups)) {
-      if (videos.length >= 2) { // Only process trends with multiple videos
-        const totalViews = videos.reduce((sum, v) => sum + (v.view_count || 0), 0);
-        const totalLikes = videos.reduce((sum, v) => sum + (v.like_count || 0), 0);
-        const totalComments = videos.reduce((sum, v) => sum + (v.comment_count || 0), 0);
-        const avgScore = videos.reduce((sum, v) => sum + (v.trend_score || 0), 0) / videos.length;
-
-        const engagementRate = totalViews > 0 ? ((totalLikes + totalComments) / totalViews * 100) : 0;
-
-        // Calculate wave score
-        const lastViewCount = Math.max(totalViews * 0.8, totalViews - 100000);
-        const growthFactor = lastViewCount > 0 ? Math.min((totalViews - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
-        const engagementFactor = totalViews > 0 ? Math.min((totalLikes + totalComments) / totalViews * 1000, 1.0) : 0;
-        const volumeFactor = Math.min(totalViews / 10000000, 1.0);
-        const sentimentScore = 0.5 + (Math.random() * 0.3); // Mock sentiment for now
-        const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + sentimentScore * 0.2);
-
-        const insight = {
-          trend_name: trendName,
-          category: trendName,
-          total_videos: videos.length,
-          total_reach: totalViews,
-          engagement_rate: Math.round(engagementRate * 100) / 100,
-          wave_score: Math.round(waveScore * 1000) / 1000,
-          sentiment_score: Math.round(sentimentScore * 1000) / 1000,
-          trend_score: Math.round(avgScore * 100) / 100,
-          data_sources: JSON.stringify(['YouTube']),
-          analysis_date: new Date().toISOString(),
-          top_video_title: videos[0]?.title || '',
-          top_video_views: Math.max(...videos.map(v => v.view_count || 0))
-        };
-
-        insights.push(insight);
-      }
-    }
-
-    // Store insights in database
-    if (insights.length > 0) {
-      const { data: savedInsights, error: insertError } = await supabase
-        .from('trend_insights')
-        .upsert(insights, { onConflict: 'trend_name,analysis_date' })
-        .select();
-
-      if (insertError) {
-        console.error('❌ Error saving trend insights:', insertError);
-        throw insertError;
-      }
-
-      console.log(`✅ Processed and saved ${insights.length} trend insights`);
-    }
-
-    res.json({
+  // Check cache first
+  const cached = cacheService.get(cacheKey);
+  if (cached) {
+    console.log('📦 Returning cached YouTube data');
+    return res.json({
       success: true,
-      message: `Processed ${insights.length} cultural trends`,
-      insights: insights,
-      categories_found: Object.keys(trendGroups).length,
-      total_videos_processed: youtubeData.length
-    });
-
-  } catch (error) {
-    console.error('❌ Error processing trends:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
+      message: 'Data from cache',
+      data: cached.data,
+      count: cached.count,
+      cached: true
     });
   }
-});
+
+  console.log(`🔍 Fetching YouTube data for query: "${q}"`);
+
+  // Fetch videos
+  const videos = await youtubeService.searchVideos(q, maxResults);
+  
+  if (!videos.length) {
+    throw new AppError('No videos found for the query', 404);
+  }
+
+  // Get video statistics
+  const videoIds = videos.map(v => v.id.videoId).slice(0, 50);
+  const statistics = await youtubeService.getVideoStatistics(videoIds);
+
+  // Merge data
+  const enrichedVideos = videos.map(video => {
+    const stats = statistics.find(s => s.id === video.id.videoId);
+    return {
+      ...video,
+      statistics: stats?.statistics || {}
+    };
+  });
+
+  // Process data
+  const processedData = DataProcessor.processYouTubeData(enrichedVideos, true);
+
+  // Save to database
+  const savedData = await supabaseService.upsertBatch('youtube_trends', processedData, {
+    onConflict: 'video_id',
+    ignoreDuplicates: false
+  });
+
+  // Cache the result
+  const result = {
+    success: true,
+    message: `Successfully fetched and saved ${processedData.length} videos`,
+    data: savedData || processedData,
+    count: processedData.length,
+    cached: false
+  };
+
+  cacheService.set(cacheKey, result);
+
+  res.json(result);
+}));
+
+// Get YouTube data from database
+app.get('/api/youtube-data', asyncHandler(async (req, res) => {
+  const { limit = 1000, category, sortBy = 'published_at', order = 'desc' } = req.query;
+
+  let query = supabaseService.client
+    .from('youtube_trends')
+    .select('*')
+    .order(sortBy, { ascending: order === 'asc' })
+    .limit(parseInt(limit));
+
+  if (category && category !== 'all') {
+    query = query.eq('trend_category', category);
+  }
+
+  const data = await supabaseService.query('youtube_trends', query);
+
+  res.json({
+    success: true,
+    data: data || [],
+    count: data?.length || 0
+  });
+}));
+
+// Process trends and generate insights
+app.post('/api/process-trends', asyncHandler(async (req, res) => {
+  console.log('🧠 Processing cultural trends and insights...');
+
+  const { days = 7, categories = [] } = req.body;
+  const cutoffDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  // Get recent data
+  let query = supabaseService.client
+    .from('youtube_trends')
+    .select('*')
+    .gte('published_at', cutoffDate)
+    .order('view_count', { ascending: false });
+
+  if (categories.length > 0) {
+    query = query.in('trend_category', categories);
+  }
+
+  const youtubeData = await supabaseService.query('youtube_trends', query);
+
+  if (!youtubeData || youtubeData.length === 0) {
+    return res.json({
+      success: true,
+      message: 'No recent data to process',
+      insights: []
+    });
+  }
+
+  // Group by category and calculate insights
+  const trendGroups = youtubeData.reduce((acc, video) => {
+    const category = video.trend_category || 'General';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(video);
+    return acc;
+  }, {});
+
+  const insights = [];
+
+  for (const [category, videos] of Object.entries(trendGroups)) {
+    if (videos.length < 2) continue;
+
+    const totalViews = videos.reduce((sum, v) => sum + (v.view_count || 0), 0);
+    const totalEngagement = videos.reduce((sum, v) => sum + (v.like_count || 0) + (v.comment_count || 0), 0);
+    const avgTrendScore = videos.reduce((sum, v) => sum + (v.trend_score || 0), 0) / videos.length;
+    const avgWaveScore = videos.reduce((sum, v) => sum + (v.wave_score || 0), 0) / videos.length;
+
+    insights.push({
+      trend_name: category,
+      category: category,
+      total_videos: videos.length,
+      total_reach: totalViews,
+      engagement_rate: totalViews > 0 ? ((totalEngagement / totalViews) * 100).toFixed(2) : 0,
+      wave_score: avgWaveScore.toFixed(3),
+      sentiment_score: (0.5 + Math.random() * 0.3).toFixed(3),
+      trend_score: avgTrendScore.toFixed(2),
+      data_sources: ['YouTube'],
+      analysis_date: new Date().toISOString(),
+      top_video_title: videos[0]?.title || '',
+      top_video_views: videos[0]?.view_count || 0,
+      growth_rate: ((Math.random() * 0.3) - 0.1).toFixed(2), // Mock growth rate
+      momentum: avgWaveScore > 0.6 ? 'rising' : avgWaveScore > 0.3 ? 'stable' : 'declining'
+    });
+  }
+
+  // Save insights
+  if (insights.length > 0) {
+    await supabaseService.upsertBatch('trend_insights', insights, {
+      onConflict: 'trend_name,analysis_date'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: `Processed ${insights.length} cultural trends`,
+    insights: insights,
+    categories_found: Object.keys(trendGroups).length,
+    total_videos_processed: youtubeData.length
+  });
+}));
 
 // Get trend insights
-app.get('/api/trend-insights', async (req, res) => {
-  try {
-    const limit = parseInt(req.query.limit) || 50;
-    const category = req.query.category || null;
+app.get('/api/trend-insights', asyncHandler(async (req, res) => {
+  const { limit = 50, category, momentum } = req.query;
 
-    let query = supabase
-      .from('trend_insights')
-      .select('*')
-      .order('analysis_date', { ascending: false })
-      .limit(limit);
+  let query = supabaseService.client
+    .from('trend_insights')
+    .select('*')
+    .order('analysis_date', { ascending: false })
+    .limit(parseInt(limit));
 
-    if (category) {
-      query = query.eq('category', category);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    res.json({
-      success: true,
-      insights: data || [],
-      count: data?.length || 0
-    });
-
-  } catch (error) {
-    console.error('❌ Error fetching trend insights:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+  if (category) {
+    query = query.eq('category', category);
   }
-});
 
-// Get alerts from database
-app.get('/api/alerts', async (req, res) => {
-  try {
-    console.log('📥 API: Fetching alerts from Supabase...');
-
-    const { data, error } = await supabase
-      .from('youtube_alerts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({
-      success: true,
-      alerts: data || [],
-      count: data?.length || 0
-    });
-
-  } catch (error) {
-    console.error('❌ API Error fetching alerts:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: error.toString()
-    });
+  if (momentum) {
+    query = query.eq('momentum', momentum);
   }
-});
 
-// Dismiss an alert
-app.post('/api/alerts/:alertId/dismiss', async (req, res) => {
-  try {
-    const { alertId } = req.params;
-    console.log(`📝 API: Dismissing alert ${alertId}...`);
+  const data = await supabaseService.query('trend_insights', query);
 
-    const { data, error } = await supabase
-      .from('youtube_alerts')
-      .update({ processed: true, notified: true })
-      .eq('alert_id', alertId);
+  res.json({
+    success: true,
+    insights: data || [],
+    count: data?.length || 0
+  });
+}));
 
-    if (error) {
-      throw error;
-    }
+// User authentication
+app.post('/api/auth/login', asyncHandler(async (req, res) => {
+  const { replit_user_id, replit_username, replit_roles } = req.body;
 
-    res.json({
-      success: true,
-      message: 'Alert dismissed successfully'
-    });
-
-  } catch (error) {
-    console.error('❌ API Error dismissing alert:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: error.toString()
-    });
+  if (!replit_user_id || !replit_username) {
+    throw new AppError('Missing required user data', 400);
   }
-});
 
-// Run alert scan manually
-app.post('/api/run-alert-scan', async (req, res) => {
-  try {
-    console.log('🔍 API: Running manual alert scan...');
+  // Check if user exists
+  const existingUser = await supabaseService.client
+    .from('users')
+    .select('*')
+    .eq('replit_user_id', replit_user_id)
+    .single();
 
-    // This would typically trigger your Python alert system
-    // For now, we'll return a mock response
-    res.json({
-      success: true,
-      message: 'Alert scan initiated',
-      alertsGenerated: 0,
-      note: 'Start the "YouTube Alert System" workflow to run actual scans'
-    });
+  let userData;
 
-  } catch (error) {
-    console.error('❌ API Error running alert scan:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: error.toString()
-    });
-  }
-});
-
-// YouTube API validation endpoint
-app.get('/api/validate-youtube', async (req, res) => {
-  try {
-    if (!YOUTUBE_API_KEY) {
-      return res.status(400).json({
-        success: false,
-        error: 'YouTube API key not configured'
-      });
-    }
-
-    // Test API key with a simple quota check
-    const testUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=test&type=video&maxResults=1&key=${YOUTUBE_API_KEY}`;
-
-    const response = await fetch(testUrl);
-
-    if (response.ok) {
-      const data = await response.json();
-      res.json({
-        success: true,
-        message: 'YouTube API key is valid',
-        quota_remaining: response.headers.get('x-ratelimit-remaining') || 'Unknown'
-      });
-    } else {
-      const errorText = await response.text();
-      res.status(response.status).json({
-        success: false,
-        error: `YouTube API error: ${response.status}`,
-        details: errorText,
-        troubleshooting: {
-          403: 'Check API key validity, quota limits, or HTTP referrer restrictions',
-          400: 'Check API key format and request parameters',
-          429: 'Quota exceeded - wait or increase limits'
-        }[response.status] || 'Unknown error'
-      });
-    }
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// Bulk fetch endpoint for massive data collection
-app.get('/api/bulk-fetch', async (req, res) => {
-  try {
-    const categories = req.query.categories || 'all';
-    const totalResults = parseInt(req.query.totalResults) || 10000;
-
-    console.log(`🔄 Bulk fetch initiated: ${totalResults} total results`);
-
-    // Expanded category-specific queries for maximum diversity
-    const categoryQueries = {
-      'tech': [
-        'AI artificial intelligence machine learning',
-        'programming coding tutorial javascript python',
-        'tech reviews gadgets smartphones laptops',
-        'software development web development',
-        'cybersecurity hacking ethical',
-        'blockchain cryptocurrency bitcoin',
-        'cloud computing AWS Azure',
-        'data science analytics',
-        'robotics automation future tech',
-        'startup tech entrepreneur silicon valley'
-      ],
-      'entertainment': [
-        'movies trailers hollywood blockbuster',
-        'music videos pop rock hip hop',
-        'celebrity news gossip entertainment',
-        'tv shows series netflix streaming',
-        'comedy funny viral videos',
-        'reality tv drama series',
-        'awards shows oscars grammy',
-        'behind the scenes making of',
-        'interviews celebrity talk show',
-        'entertainment news latest'
-      ],
-      'gaming': [
-        'gaming gameplay walkthrough review',
-        'esports tournaments championship',
-        'game reviews AAA indie',
-        'streaming highlights twitch',
-        'minecraft fortnite valorant',
-        'nintendo playstation xbox',
-        'mobile gaming android ios',
-        'retro gaming classic games',
-        'game development unity unreal',
-        'speedrun world record'
-      ],
-      'lifestyle': [
-        'fitness workout health nutrition',
-        'cooking recipes food chef',
-        'travel vlogs destination guide',
-        'fashion beauty makeup style',
-        'home decor interior design',
-        'productivity life hacks tips',
-        'relationship advice dating',
-        'minimalism organization',
-        'self improvement motivation',
-        'wellness meditation yoga'
-      ],
-      'education': [
-        'tutorials learning how to',
-        'science discovery physics chemistry',
-        'history documentary world war',
-        'skills training professional development',
-        'language learning english spanish',
-        'mathematics algebra calculus',
-        'biology anatomy medical',
-        'economics finance investing',
-        'geography world countries',
-        'psychology behavior human mind'
-      ],
-      'business': [
-        'entrepreneurship startup business',
-        'investing finance stocks crypto',
-        'marketing digital social media',
-        'career advice job interview',
-        'real estate investment property',
-        'e-commerce online business',
-        'leadership management skills',
-        'passive income side hustle',
-        'business strategy growth',
-        'freelancing remote work'
-      ],
-      'sports': [
-        'football NFL highlights touchdown',
-        'basketball NBA highlights dunk',
-        'soccer fifa world cup',
-        'baseball MLB highlights homerun',
-        'tennis wimbledon grand slam',
-        'olympics athletic competition',
-        'boxing MMA UFC fight',
-        'golf PGA tournament',
-        'motorsports formula 1 racing',
-        'extreme sports adventure'
-      ],
-      'news': [
-        'breaking news latest updates',
-        'politics election government',
-        'world news international',
-        'economics market analysis',
-        'climate change environment',
-        'technology innovation breakthrough',
-        'health medical research',
-        'space exploration NASA',
-        'social issues human rights',
-        'local news community'
-      ],
-      'automotive': [
-        'car reviews automotive test drive',
-        'electric vehicles tesla EV',
-        'motorcycle racing sport bike',
-        'automotive news industry',
-        'car modification tuning',
-        'luxury cars supercars',
-        'classic vintage cars',
-        'truck SUV comparison',
-        'automotive technology future',
-        'racing formula 1 NASCAR'
-      ],
-      'trending': [
-        'viral trends social media latest',
-        'memes funny internet culture',
-        'tiktok trends viral videos',
-        'youtube shorts trending',
-        'social media challenges',
-        'internet phenomena viral',
-        'pop culture trending topics',
-        'celebrity viral moments',
-        'trending hashtags topics',
-        'viral news stories'
-      ]
+  if (existingUser.data) {
+    // Update existing user
+    const updateData = {
+      replit_username,
+      replit_roles,
+      last_login: new Date().toISOString(),
+      login_count: (existingUser.data.login_count || 0) + 1
     };
 
-    let allQueries = [];
-    if (categories === 'all') {
-      allQueries = Object.values(categoryQueries).flat();
-    } else {
-      const selectedCategories = categories.split(',');
-      selectedCategories.forEach(cat => {
-        if (categoryQueries[cat.trim()]) {
-          allQueries.push(...categoryQueries[cat.trim()]);
-        }
-      });
-    }
-
-    // Optimize results per query for better distribution
-    const maxResultsPerQuery = 50; // YouTube API limit
-    const queriesNeeded = Math.ceil(totalResults / maxResultsPerQuery);
-    const queriesToUse = allQueries.slice(0, Math.max(queriesNeeded, allQueries.length));
-    const resultsPerQuery = Math.min(maxResultsPerQuery, Math.ceil(totalResults / queriesToUse.length));
-
-    let allVideos = [];
-    let successfulQueries = 0;
-    let failedQueries = 0;
-
-    console.log(`📊 Using ${queriesToUse.length} queries, ${resultsPerQuery} results per query`);
-
-    for (let i = 0; i < queriesToUse.length && allVideos.length < totalResults; i++) {
-      const query = queriesToUse[i];
-      try {
-        console.log(`🔍 Query ${i + 1}/${queriesToUse.length}: "${query}"`);
-        const videos = await fetchYouTubeVideos(query, resultsPerQuery);
-
-        if (videos && videos.length > 0) {
-          allVideos.push(...videos);
-          successfulQueries++;
-          console.log(`✅ Got ${videos.length} videos (total: ${allVideos.length})`);
-        }
-
-        // Rate limiting - longer delay for bulk operations
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-      } catch (error) {
-        failedQueries++;
-        console.log(`⚠️ Error fetching for query "${query}":`, error.message);
-
-        // If quota exceeded, wait longer before continuing
-        if (error.message.includes('quota') || error.message.includes('403')) {
-          console.log('⏳ Quota limit detected, waiting 5 seconds...');
-          await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-        continue;
-      }
-    }
-
-    console.log(`📊 Bulk fetch completed: ${successfulQueries} successful, ${failedQueries} failed queries`);
-
-    if (allVideos.length > 0) {
-      const processedData = processYouTubeDataForSupabase(allVideos);
-      const savedData = await saveDataToSupabase(processedData);
-
-      res.json({
-        success: true,
-        message: `Bulk fetch completed: ${allVideos.length} videos processed`,
-        data: savedData || processedData,
-        count: allVideos.length,
-        categories: categories,
-        queries_used: allQueries.length
-      });
-    } else {
-      res.status(404).json({
-        success: false,
-        message: 'No data found in bulk fetch',
-        categories: categories
-      });
-    }
-
-  } catch (error) {
-    console.error('❌ Bulk fetch error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      error: error.toString()
-    });
-  }
-});
-
-// User authentication endpoints
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { replit_user_id, replit_username, replit_roles } = req.body;
-
-    if (!replit_user_id || !replit_username) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required user data'
-      });
-    }
-
-    // Check if user exists
-    const { data: existingUser, error: selectError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('replit_user_id', replit_user_id)
-      .single();
-
-    if (selectError && selectError.code !== 'PGRST116') {
-      throw selectError;
-    }
-
-    let userData;
-
-    if (existingUser) {
-      // Update existing user
-      const { data, error } = await supabase
-        .from('users')
-        .update({
-          replit_username,
-          replit_roles,
-          last_login: new Date().toISOString(),
-          login_count: existingUser.login_count + 1
-        })
-        .eq('replit_user_id', replit_user_id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      userData = data;
-      console.log(`✅ User ${replit_username} logged in (${userData.login_count} times)`);
-    } else {
-      // Create new user
-      const { data, error } = await supabase
-        .from('users')
-        .insert({
-          replit_user_id,
-          replit_username,
-          replit_roles,
-          display_name: replit_username
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      userData = data;
-      console.log(`✅ New user ${replit_username} registered`);
-    }
-
-    res.json({
-      success: true,
-      user: userData,
-      message: existingUser ? 'Login successful' : 'User registered successfully'
-    });
-
-  } catch (error) {
-    console.error('❌ Auth error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-app.get('/api/auth/user/:replit_user_id', async (req, res) => {
-  try {
-    const { replit_user_id } = req.params;
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('replit_user_id', replit_user_id)
-      .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
-        });
-      }
-      throw error;
-    }
-
-    res.json({
-      success: true,
-      user: data
-    });
-
-  } catch (error) {
-    console.error('❌ Error fetching user:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-app.put('/api/auth/user/:replit_user_id', async (req, res) => {
-  try {
-    const { replit_user_id } = req.params;
-    const updateData = req.body;
-
-    // Remove sensitive fields that shouldn't be updated via this endpoint
-    delete updateData.replit_user_id;
-    delete updateData.created_at;
-    delete updateData.login_count;
-
-    const { data, error } = await supabase
+    const { data } = await supabaseService.client
       .from('users')
       .update(updateData)
       .eq('replit_user_id', replit_user_id)
       .select()
       .single();
 
-    if (error) throw error;
+    userData = data;
+    console.log(`✅ User ${replit_username} logged in (${userData.login_count} times)`);
+  } else {
+    // Create new user
+    const newUser = {
+      replit_user_id,
+      replit_username,
+      replit_roles,
+      display_name: replit_username,
+      created_at: new Date().toISOString(),
+      login_count: 1,
+      last_login: new Date().toISOString()
+    };
 
-    res.json({
-      success: true,
-      user: data,
-      message: 'User updated successfully'
-    });
+    const { data } = await supabaseService.client
+      .from('users')
+      .insert(newUser)
+      .select()
+      .single();
 
-  } catch (error) {
-    console.error('❌ Error updating user:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-// Generate synthetic data when quota is exceeded
-app.get('/api/generate-synthetic', async (req, res) => {
-  try {
-    const targetCount = parseInt(req.query.count) || 5000;
-    console.log(`🎯 Generating ${targetCount} synthetic trend records...`);
-
-    const syntheticData = await generateSyntheticTrendData(targetCount);
-    const savedData = await saveDataToSupabase(syntheticData);
-
-    res.json({
-      success: true,
-      message: `Generated ${syntheticData.length} synthetic records`,
-      data: savedData || syntheticData,
-      count: syntheticData.length
-    });
-
-  } catch (error) {
-    console.error('❌ Error generating synthetic data:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
-});
-
-async function generateSyntheticTrendData(count = 5000) {
-  const categories = [
-    'AI Tools', 'Crypto', 'Gaming', 'Technology', 'Entertainment', 'Health & Fitness',
-    'Education', 'Finance', 'Lifestyle', 'Music', 'Sports', 'Movies & TV',
-    'Food & Cooking', 'Travel', 'Fashion', 'Science', 'Art & Design', 
-    'Automotive', 'Real Estate', 'Programming'
-  ];
-
-  const titleTemplates = {
-    'AI Tools': ['AI-Powered', 'ChatGPT', 'Machine Learning', 'Neural Network', 'Deep Learning', 'Artificial Intelligence'],
-    'Crypto': ['Bitcoin', 'Ethereum', 'DeFi', 'NFT', 'Blockchain', 'Cryptocurrency Trading'],
-    'Gaming': ['Gaming Setup', 'Esports', 'Game Review', 'Speedrun', 'Gaming Tutorial', 'Pro Gamer'],
-    'Technology': ['Tech Review', 'Smartphone', 'Laptop', 'Gadget Unboxing', 'Tech News', 'Innovation'],
-    'Programming': ['Coding Tutorial', 'JavaScript', 'Python', 'React', 'Full Stack', 'Web Development']
-  };
-
-  const syntheticRecords = [];
-  const now = new Date();
-
-  for (let i = 0; i < count; i++) {
-    const category = categories[Math.floor(Math.random() * categories.length)];
-    const templates = titleTemplates[category] || ['Trending Topic', 'Viral Video', 'Popular Content'];
-    const titleBase = templates[Math.floor(Math.random() * templates.length)];
-
-    // Create realistic historical date (last 3 years)
-    const historicalDate = new Date(now);
-    const daysBack = Math.floor(Math.random() * 1095);
-    historicalDate.setDate(historicalDate.getDate() - daysBack);
-
-    // Generate realistic engagement metrics
-    const viewCount = Math.floor(Math.random() * 5000000) + 10000;
-    const likeCount = Math.floor(viewCount * (0.01 + Math.random() * 0.05));
-    const commentCount = Math.floor(viewCount * (0.002 + Math.random() * 0.008));
-
-    // Calculate trend score
-    const engagementRatio = (likeCount + commentCount) / viewCount * 1000;
-    const trendScore = Math.min(100, Math.max(10, Math.floor(engagementRatio * 10) + 40 + Math.random() * 20));
-
-    // Generate wave score
-    const mockSentiment = 0.3 + Math.random() * 0.5;
-    const lastViewCount = Math.floor(viewCount * (0.6 + Math.random() * 0.3));
-    const growthFactor = lastViewCount > 0 ? Math.min((viewCount - lastViewCount) / lastViewCount, 2.0) / 2.0 : 0;
-    const engagementFactor = Math.min((likeCount + commentCount) / viewCount * 1000, 1.0);
-    const volumeFactor = Math.min(viewCount / 10000000, 1.0);
-    const waveScore = (growthFactor * 0.3 + engagementFactor * 0.25 + volumeFactor * 0.25 + mockSentiment * 0.2);
-
-    syntheticRecords.push({
-      video_id: `synthetic_${i}_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`,
-      title: `${titleBase} ${2024 + Math.floor(Math.random() * 2)} - ${Math.floor(Math.random() * 1000)}`,
-      description: `Trending ${category.toLowerCase()} content with high engagement and viral potential.`,
-      published_at: historicalDate.toISOString(),
-      channel_id: `channel_${Math.random().toString(36).substr(2, 10)}`,
-      channel_title: `${category} Channel ${Math.floor(Math.random() * 1000)}`,
-      thumbnail_default: '',
-      thumbnail_medium: '',
-      thumbnail_high: '',
-      view_count: viewCount,
-      like_count: likeCount,
-      comment_count: commentCount,
-      trend_category: category,
-      trend_score: trendScore,
-      wave_score: Math.round(waveScore * 1000) / 1000
-    });
+    userData = data;
+    console.log(`✅ New user ${replit_username} registered`);
   }
 
-  return syntheticRecords;
-}
+  res.json({
+    success: true,
+    user: userData,
+    message: existingUser.data ? 'Login successful' : 'User registered successfully'
+  });
+}));
 
-// Get sentiment forecasts from Supabase
-app.get('/api/sentiment-forecasts', async (req, res) => {
-  try {
-    console.log('📊 API: Fetching sentiment forecasts from Supabase...');
+// Clear cache endpoint (admin only)
+app.post('/api/admin/clear-cache', asyncHandler(async (req, res) => {
+  // TODO: Add proper authentication check here
+  cacheService.clear();
+  
+  res.json({
+    success: true,
+    message: 'Cache cleared successfully'
+  });
+}));
 
-    const { data, error } = await supabase
-      .from('sentiment_forecasts')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
+// Global error handler
+app.use((err, req, res, next) => {
+  const { statusCode = 500, message } = err;
 
-    if (error) {
-      throw error;
+  console.error('❌ Error:', err);
+
+  res.status(statusCode).json({
+    success: false,
+    error: {
+      message,
+      status: statusCode,
+      ...(config.server.environment === 'development' && { stack: err.stack })
     }
-
-    console.log(`✅ Retrieved ${data?.length || 0} sentiment records from Supabase`);
-
-    res.json({
-      success: true,
-      data: data || [],
-      count: data?.length || 0,
-      message: 'Successfully retrieved sentiment forecasts'
-    });
-
-  } catch (error) {
-    console.error('❌ Error fetching sentiment forecasts:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message,
-      data: []
-    });
-  }
-});
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    youtube_api: YOUTUBE_API_KEY ? 'Configured' : 'Missing',
-    supabase: SUPABASE_URL ? 'Configured' : 'Missing'
   });
 });
 
-// Add CORS headers
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      message: 'Route not found',
+      status: 404
+    }
+  });
 });
 
-// Proxy sentiment analysis requests to Python server
-app.post('/api/analyze-sentiment', async (req, res) => {
-  try {
-    const response = await fetch('http://0.0.0.0:5001/api/analyze-sentiment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(req.body)
-    });
-
-    const data = await response.json();
-    res.status(response.status).json(data);
-  } catch (error) {
-    console.error('❌ Error proxying to sentiment server:', error);
-    res.status(500).json({ 
-      error: 'Sentiment analysis server not available. Please start the Sentiment Analysis Server workflow.' 
-    });
-  }
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
-
-// Serve static files from root directory
-app.use(express.static('.'));
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-  console.log(`📊 YouTube API: ${YOUTUBE_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🗄️  Supabase: ${SUPABASE_URL ? 'Configured' : 'Missing'}`);
-  console.log('📡 API endpoints:');
-  console.log(`   - GET /api/fetch-youtube?q=search_term&maxResults=25`);
-  console.log(`   - GET /api/youtube-data`);
-  console.log(`   - GET /api/health`);
+validateConfig();
+
+const server = app.listen(config.server.port, '0.0.0.0', () => {
+  console.log(`
+🚀 WaveSight Server Started
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📡 Port: ${config.server.port}
+🌍 Environment: ${config.server.environment}
+📊 YouTube API: ${config.youtube.apiKey ? '✅ Configured' : '❌ Missing'}
+🗄️  Supabase: ${config.supabase.url ? '✅ Configured' : '❌ Missing'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 Available Endpoints:
+• GET  /api/health - Health check
+• GET  /api/fetch-youtube - Fetch YouTube data
+• GET  /api/youtube-data - Get stored data
+• POST /api/process-trends - Process trend insights
+• GET  /api/trend-insights - Get trend insights
+• POST /api/auth/login - User authentication
+  `);
 });
