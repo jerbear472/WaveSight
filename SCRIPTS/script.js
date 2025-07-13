@@ -96,6 +96,9 @@ class WaveSightDashboard {
       // Set up aggressive auto-refresh to hit API limits
       this.startAggressiveDataFetching();
       
+      // Initialize TikTok integration
+      this.initTikTokIntegration();
+      
       console.log('✅ Dashboard initialized successfully with viral trend detection');
     } catch (error) {
       console.error('❌ Dashboard initialization failed:', error);
@@ -3817,6 +3820,243 @@ class WaveSightDashboard {
       this.rapidViralCheck = null;
     }
     console.log('🛑 Aggressive data fetching stopped');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // TIKTOK INTEGRATION SYSTEM
+  // ═══════════════════════════════════════════════════════════════
+
+  async initTikTokIntegration() {
+    console.log('🎵 Initializing TikTok Research API integration...');
+    
+    try {
+      // Check TikTok server health
+      const healthResponse = await fetch('http://localhost:5002/health');
+      const healthData = await healthResponse.json();
+      
+      if (healthData.status === 'healthy') {
+        console.log('✅ TikTok server is healthy and ready');
+        this.tiktokEnabled = true;
+        
+        // Start TikTok data fetching
+        setTimeout(() => {
+          this.fetchTikTokViralContent();
+        }, 5000);
+        
+        // Schedule regular TikTok updates
+        this.startTikTokDataFetching();
+      } else {
+        console.warn('⚠️ TikTok server not healthy:', healthData);
+        this.tiktokEnabled = false;
+      }
+    } catch (error) {
+      console.warn('⚠️ TikTok server not available:', error.message);
+      console.log('💡 To enable TikTok integration:');
+      console.log('   1. Set TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET');
+      console.log('   2. Run: node SERVER/tiktok-server.js');
+      this.tiktokEnabled = false;
+    }
+  }
+
+  async fetchTikTokViralContent() {
+    if (!this.tiktokEnabled) {
+      console.log('🚫 TikTok integration disabled');
+      return null;
+    }
+
+    try {
+      console.log('🔥 Fetching viral TikTok content...');
+      
+      const response = await fetch('http://localhost:5002/api/tiktok-viral?categories=viral,trending,music,dance,comedy&limit=30');
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to fetch TikTok viral content');
+      }
+      
+      const { videos, analysis, top_viral, summary } = result.data;
+      
+      console.log(`✅ TikTok viral content: ${videos.length} videos, ${top_viral.length} highly viral`);
+      console.log(`📊 TikTok summary: ${summary.viral_count} viral, ${summary.emerging_count} emerging`);
+      
+      // Update category trends with TikTok data
+      this.updateCategoryTrendsWithTikTok(top_viral);
+      
+      // Show notification about TikTok trends
+      if (top_viral.length > 0) {
+        this.showNotification(`🎵 TikTok: Found ${top_viral.length} viral trends (scores: ${top_viral[0].viral_score}-${top_viral[top_viral.length-1].viral_score})`, 'success');
+      }
+      
+      return {
+        videos,
+        analysis,
+        top_viral,
+        summary
+      };
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch TikTok viral content:', error);
+      this.showNotification(`⚠️ TikTok data fetch failed: ${error.message}`, 'warning');
+      return null;
+    }
+  }
+
+  async fetchTikTokTrendingByCategory(category = 'viral', limit = 20) {
+    if (!this.tiktokEnabled) return null;
+
+    try {
+      const response = await fetch(`http://localhost:5002/api/tiktok-trending?category=${category}&limit=${limit}&include_analysis=true`);
+      const result = await response.json();
+      
+      if (result.success && result.data.length > 0) {
+        console.log(`🎵 TikTok ${category}: ${result.data.length} videos fetched`);
+        return result.data;
+      }
+      
+      return null;
+    } catch (error) {
+      console.warn(`⚠️ Failed to fetch TikTok ${category} trends:`, error.message);
+      return null;
+    }
+  }
+
+  updateCategoryTrendsWithTikTok(topViral) {
+    if (!topViral || topViral.length === 0) return;
+    
+    // Update WaveScope Timeline with TikTok trends
+    if (this.wavescopeChart) {
+      try {
+        const currentTrends = this.wavescopeChart.getCategoryBasedTrends();
+        
+        // Find the highest scoring TikTok trends for each category
+        const tiktokByCategory = {
+          music: topViral.filter(v => v.hashtags.some(h => 
+            ['music', 'song', 'singing', 'dance'].includes(h.toLowerCase())
+          )).slice(0, 1)[0],
+          
+          viral: topViral.filter(v => v.viral_score >= 85).slice(0, 1)[0],
+          
+          social: topViral.filter(v => v.hashtags.some(h => 
+            ['social', 'trending', 'viral', 'fyp'].includes(h.toLowerCase())
+          )).slice(0, 1)[0],
+          
+          lifestyle: topViral.filter(v => v.hashtags.some(h => 
+            ['lifestyle', 'vlog', 'dayinmylife', 'grwm'].includes(h.toLowerCase())
+          )).slice(0, 1)[0]
+        };
+        
+        // Update trends with TikTok data
+        Object.keys(tiktokByCategory).forEach(category => {
+          const tiktokTrend = tiktokByCategory[category];
+          if (tiktokTrend && currentTrends[category]) {
+            // Create hybrid trend data combining TikTok + existing
+            currentTrends[category] = {
+              ...currentTrends[category],
+              topic: `${tiktokTrend.username}'s ${category} trend`,
+              reach: tiktokTrend.views || currentTrends[category].reach,
+              velocity: Math.min(1.0, (tiktokTrend.viral_score / 100) * 1.2),
+              wave_score: Math.max(currentTrends[category].wave_score, tiktokTrend.viral_score),
+              platform_origin: 'TikTok',
+              description: `Viral TikTok content: ${tiktokTrend.engagement_rate * 100}% engagement rate`,
+              tiktok_data: tiktokTrend
+            };
+          }
+        });
+        
+        // Refresh the timeline with updated trends
+        this.wavescopeChart.refreshCategoryTrends();
+        
+        console.log('🎵 Updated WaveScope Timeline with TikTok viral trends');
+      } catch (error) {
+        console.warn('⚠️ Failed to update category trends with TikTok data:', error);
+      }
+    }
+  }
+
+  startTikTokDataFetching() {
+    if (!this.tiktokEnabled) return;
+    
+    console.log('🎵 Starting TikTok data fetching scheduler...');
+    
+    // Fetch TikTok viral content every 15 minutes
+    const tiktokInterval = setInterval(async () => {
+      try {
+        await this.fetchTikTokViralContent();
+      } catch (error) {
+        console.warn('⚠️ Scheduled TikTok fetch failed:', error);
+      }
+    }, 15 * 60 * 1000); // 15 minutes
+    
+    // Quick viral checks every 5 minutes for ultra-viral TikTok content
+    const tiktokViralCheck = setInterval(async () => {
+      try {
+        console.log('⚡ Quick TikTok viral check...');
+        const viralContent = await this.fetchTikTokTrendingByCategory('viral', 10);
+        
+        if (viralContent && viralContent.length > 0) {
+          const ultraViral = viralContent.filter(v => 
+            v.analysis && v.analysis.viral_score >= 90
+          );
+          
+          if (ultraViral.length > 0) {
+            console.log(`🚨 ULTRA-VIRAL TIKTOK: ${ultraViral.length} videos with 90+ viral score`);
+            this.showNotification(`🚨 ULTRA-VIRAL TikTok: ${ultraViral.length} breaking trends detected!`, 'warning');
+            
+            // Immediately update trends
+            this.updateCategoryTrendsWithTikTok(ultraViral.map(v => ({
+              ...v.analysis,
+              username: v.username,
+              hashtags: v.hashtag_names || []
+            })));
+          }
+        }
+      } catch (error) {
+        console.warn('⚠️ TikTok viral check failed:', error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    // Store intervals for cleanup
+    this.tiktokInterval = tiktokInterval;
+    this.tiktokViralCheck = tiktokViralCheck;
+    
+    console.log('✅ TikTok data fetching scheduler active');
+  }
+
+  stopTikTokDataFetching() {
+    if (this.tiktokInterval) {
+      clearInterval(this.tiktokInterval);
+      this.tiktokInterval = null;
+    }
+    if (this.tiktokViralCheck) {
+      clearInterval(this.tiktokViralCheck);
+      this.tiktokViralCheck = null;
+    }
+    console.log('🛑 TikTok data fetching stopped');
+  }
+
+  // Get TikTok health status for dashboard
+  async getTikTokStatus() {
+    if (!this.tiktokEnabled) {
+      return {
+        status: 'disabled',
+        message: 'TikTok integration not configured'
+      };
+    }
+    
+    try {
+      const response = await fetch('http://localhost:5002/health');
+      const data = await response.json();
+      return {
+        status: data.status,
+        message: data.components ? 'TikTok API operational' : 'TikTok API issues',
+        details: data.components
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'TikTok server unreachable'
+      };
+    }
   }
 }
 
