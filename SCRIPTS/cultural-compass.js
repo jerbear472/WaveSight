@@ -7,19 +7,17 @@ let currentTooltip = null;
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🧭 Initializing Cultural Compass...');
 
-    // Ensure compass always shows something
-    try {
-        initializeCompass();
-        loadSentimentTrends(); // Load trends from sentiment analysis
-        loadEnhancedData();
-        updateMetrics();
-    } catch (error) {
-        console.error('❌ Error initializing compass:', error);
-        // Fallback initialization
-        createSampleCompassData();
-        updateCompass();
-        updateMetrics();
-    }
+    // Always start with working demo data
+    initializeCompass();
+    createSampleCompassData();
+    updateCompass();
+    updateMetrics();
+    
+    // Update server status
+    updateServerStatus();
+    
+    // Set up navigation functions
+    setupNavigation();
 });
 
 // Initialize compass with default settings
@@ -784,3 +782,52 @@ function updateEnhancedMetrics(trends) {
         `;
     }
 }
+
+// Update server status
+function updateServerStatus() {
+    const statusElement = document.getElementById('serverStatus');
+    if (statusElement) {
+        statusElement.innerHTML = '📊 Cultural Compass Active - Demo data loaded';
+    }
+}
+
+// Setup navigation functions
+function setupNavigation() {
+    // Toggle mobile menu
+    window.toggleMobileMenu = function() {
+        const navLinks = document.getElementById('navLinks');
+        if (navLinks) {
+            navLinks.style.display = (navLinks.style.display === 'flex') ? 'none' : 'flex';
+        }
+    };
+
+    // Modal functions
+    window.showAboutModal = function() {
+        alert('Cultural Compass: Map trends on multi-dimensional cultural axes based on sentiment analysis and social momentum.');
+    };
+
+    window.showSettingsModal = function() {
+        alert('Settings: Configure your Cultural Compass preferences here.');
+    };
+
+    window.showDevelopersModal = function() {
+        alert('Developers: API documentation and developer resources for Cultural Compass integration.');
+    };
+}
+
+// Analyze specific topic
+function analyzeTopic() {
+    const topicInput = document.getElementById('topicFilter');
+    const topic = topicInput.value.trim();
+    
+    if (!topic) {
+        alert('Please enter a topic to analyze');
+        return;
+    }
+    
+    // Show analysis message
+    alert(`🧭 Analyzing cultural position of "${topic}"...\n\nThis would map the topic across:\n• Mainstream ↔ Underground\n• Traditional ↔ Disruptive\n• Sentiment analysis\n• Cultural momentum\n\nDemo: Try searching for topics like "AI", "crypto", or "climate change"`);
+}
+
+// Make functions globally available
+window.analyzeTopic = analyzeTopic;
