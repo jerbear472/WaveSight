@@ -602,9 +602,7 @@ class WaveSightDashboard {
   initWaveScopeTimeline() {
     console.log('🌊 Initializing WaveScope Timeline...');
     
-    // Always show BOTH canvas and fallback for reliability
-    this.createReliableTimeline();
-    
+    // First initialize the main canvas timeline
     const canvas = document.getElementById('wavescopeCanvas');
     if (canvas) {
       setTimeout(() => {
@@ -613,10 +611,28 @@ class WaveSightDashboard {
           this.wavescopeChart.init();
           console.log('✅ Canvas WaveScope Timeline initialized');
         } catch (error) {
-          console.warn('⚠️ Canvas failed, fallback timeline active:', error);
+          console.warn('⚠️ Canvas failed, showing fallback timeline:', error);
+          // If canvas fails, show a fallback message
+          const chartContainer = canvas.parentElement;
+          if (chartContainer) {
+            chartContainer.innerHTML = `
+              <div style="display: flex; align-items: center; justify-content: center; height: 400px; background: #1a1a2e; border-radius: 12px; border: 2px solid #ef4444;">
+                <div style="text-align: center; color: #f1f1f1;">
+                  <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                  <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">Canvas Timeline Unavailable</div>
+                  <div style="color: #9ca3af; font-size: 0.9rem;">See Trend Tiles below for detailed analytics</div>
+                </div>
+              </div>
+            `;
+          }
         }
       }, 100);
     }
+    
+    // Then add Trend Tiles section below
+    setTimeout(() => {
+      this.createReliableTimeline();
+    }, 200);
     
     // Update status to show timeline is active
     this.updateElement('youtubeStatus', '🟢');
@@ -633,28 +649,30 @@ class WaveSightDashboard {
     // Normalize data for Trend Tiles
     const normalizedTrends = this.normalizeDataForTrendTiles(currentData);
     
-    // Create a comprehensive timeline view with Trend Tiles
+    // Create Trend Tiles section BELOW the main WaveScope Timeline canvas
     container.innerHTML = `
-      <div class="reliable-timeline" style="background: #13131f; border-radius: 16px; padding: 2rem; margin: 2rem 0; border: 1px solid #2e2e45;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-          <h3 style="color: #5ee3ff; margin: 0;">🧩 Trend Tiles - Normalized Cross-Platform Analytics</h3>
-          <div style="color: #10b981; font-size: 0.9rem;">🟢 ${normalizedTrends.length} trends normalized</div>
-        </div>
-        
-        ${this.createTrendTilesSection(normalizedTrends)}
-        
-        <div class="timeline-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 2rem 0;">
-          ${this.generateCategoryCards(currentData)}
-        </div>
-        
-        <div class="trending-list">
-          <h4 style="color: #f1f1f1; margin-bottom: 1rem;">📊 Detailed Analytics</h4>
-          <div id="liveTrendsList">${this.generateNormalizedTrendsList(normalizedTrends.slice(0, 10))}</div>
+      <div class="trend-tiles-section" style="margin-top: 3rem;">
+        <div class="reliable-timeline" style="background: #13131f; border-radius: 16px; padding: 2rem; margin: 2rem 0; border: 1px solid #2e2e45;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h3 style="color: #5ee3ff; margin: 0;">🧩 Trend Tiles - Normalized Cross-Platform Analytics</h3>
+            <div style="color: #10b981; font-size: 0.9rem;">🟢 ${normalizedTrends.length} trends normalized</div>
+          </div>
+          
+          ${this.createTrendTilesSection(normalizedTrends)}
+          
+          <div class="timeline-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 2rem 0;">
+            ${this.generateCategoryCards(currentData)}
+          </div>
+          
+          <div class="trending-list">
+            <h4 style="color: #f1f1f1; margin-bottom: 1rem;">📊 Detailed Analytics</h4>
+            <div id="liveTrendsList">${this.generateNormalizedTrendsList(normalizedTrends.slice(0, 10))}</div>
+          </div>
         </div>
       </div>
     `;
     
-    console.log('✅ Reliable timeline with Trend Tiles created and populated');
+    console.log('✅ Trend Tiles section created below WaveScope Timeline');
   }
 
   // Create Trend Tiles section
