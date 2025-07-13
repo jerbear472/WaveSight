@@ -623,33 +623,319 @@ class WaveSightDashboard {
     this.updateElement('statusText', '🌊 WaveScope Timeline Active');
   }
 
-  // Create a reliable timeline that ALWAYS shows
+  // Create a reliable timeline that ALWAYS shows with Trend Tiles
   createReliableTimeline() {
     const container = document.getElementById('trendChart');
     if (!container) return;
 
     const currentData = this.state.currentData || this.generateMockTopTrends();
     
-    // Create a comprehensive timeline view
+    // Normalize data for Trend Tiles
+    const normalizedTrends = this.normalizeDataForTrendTiles(currentData);
+    
+    // Create a comprehensive timeline view with Trend Tiles
     container.innerHTML = `
       <div class="reliable-timeline" style="background: #13131f; border-radius: 16px; padding: 2rem; margin: 2rem 0; border: 1px solid #2e2e45;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-          <h3 style="color: #5ee3ff; margin: 0;">📊 Live Trending Timeline</h3>
-          <div style="color: #10b981; font-size: 0.9rem;">🟢 ${currentData.length} trends loaded</div>
+          <h3 style="color: #5ee3ff; margin: 0;">🧩 Trend Tiles - Normalized Cross-Platform Analytics</h3>
+          <div style="color: #10b981; font-size: 0.9rem;">🟢 ${normalizedTrends.length} trends normalized</div>
         </div>
         
-        <div class="timeline-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+        ${this.createTrendTilesSection(normalizedTrends)}
+        
+        <div class="timeline-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin: 2rem 0;">
           ${this.generateCategoryCards(currentData)}
         </div>
         
         <div class="trending-list">
-          <h4 style="color: #f1f1f1; margin-bottom: 1rem;">🔥 Top Viral Trends Right Now</h4>
-          <div id="liveTrendsList">${this.generateTrendsList(currentData.slice(0, 10))}</div>
+          <h4 style="color: #f1f1f1; margin-bottom: 1rem;">📊 Detailed Analytics</h4>
+          <div id="liveTrendsList">${this.generateNormalizedTrendsList(normalizedTrends.slice(0, 10))}</div>
         </div>
       </div>
     `;
     
-    console.log('✅ Reliable timeline created and populated');
+    console.log('✅ Reliable timeline with Trend Tiles created and populated');
+  }
+
+  // Create Trend Tiles section
+  createTrendTilesSection(normalizedTrends) {
+    const topTrends = normalizedTrends.slice(0, 12); // Show top 12 tiles
+    
+    return `
+      <div class="trend-tiles-container" style="margin-bottom: 2rem;">
+        <div class="tiles-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h4 style="color: #f1f1f1; margin: 0;">🔥 Top Trending Tiles</h4>
+          <div style="color: #9ca3af; font-size: 0.8rem;">Normalized scores for cross-platform comparison</div>
+        </div>
+        
+        <div class="trend-tiles-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          ${topTrends.map(trend => this.generateTrendTile(trend)).join('')}
+        </div>
+        
+        <div class="normalization-info" style="background: rgba(94, 227, 255, 0.05); border: 1px solid rgba(94, 227, 255, 0.2); border-radius: 8px; padding: 1rem; margin-top: 1.5rem;">
+          <div style="color: #5ee3ff; font-weight: 600; margin-bottom: 0.5rem;">🔧 Normalization Applied:</div>
+          <div style="color: #9ca3af; font-size: 0.85rem; line-height: 1.4;">
+            Views (Z-score by category) • Engagement (ratio to views) • Growth Rate (% change/hour, smoothed) • 
+            Sentiment (like ratio scaled 0-100) • Recency (log decay curve)
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Generate a single Trend Tile
+  generateTrendTile(trend) {
+    const trajectoryConfig = this.getTrajectoryConfig(trend.trajectory);
+    const waveScore = trend.unified_wave_score || 0;
+    const breakdown = trend.wave_score_breakdown || {};
+    
+    // Generate thumbnail placeholder or use actual thumbnail
+    const thumbnail = trend.thumbnail_url || this.generateThumbnailPlaceholder(trend);
+    
+    return `
+      <div class="trend-tile" style="
+        background: linear-gradient(135deg, #2e2e45 0%, #1a1a2e 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        border: 1px solid ${this.getScoreColor(waveScore)};
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        cursor: pointer;
+      " onclick="waveSightDashboard.showTrendDetails('${trend.video_id || trend.id}')">
+        
+        <!-- Thumbnail Section -->
+        <div class="tile-thumbnail" style="
+          width: 100%;
+          height: 120px;
+          background: ${thumbnail.startsWith('http') ? `url(${thumbnail})` : thumbnail};
+          background-size: cover;
+          background-position: center;
+          border-radius: 12px;
+          margin-bottom: 1rem;
+          position: relative;
+        ">
+          <div style="
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+          ">${trend.trend_category || 'General'}</div>
+          
+          <div style="
+            position: absolute;
+            bottom: 8px;
+            left: 8px;
+            background: ${trajectoryConfig.bgColor};
+            color: ${trajectoryConfig.textColor};
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+          ">${trajectoryConfig.icon} ${trajectoryConfig.label}</div>
+        </div>
+        
+        <!-- Content Section -->
+        <div class="tile-content">
+          <div class="tile-title" style="
+            color: #f1f1f1;
+            font-weight: 600;
+            font-size: 1rem;
+            line-height: 1.3;
+            margin-bottom: 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          ">${trend.title || 'Untitled Trend'}</div>
+          
+          <!-- WaveScore Display -->
+          <div class="wave-score-display" style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+          ">
+            <div>
+              <div style="color: #9ca3af; font-size: 0.8rem;">WaveScore</div>
+              <div style="
+                color: ${this.getScoreColor(waveScore)};
+                font-size: 1.8rem;
+                font-weight: 700;
+                line-height: 1;
+              ">${waveScore}</div>
+            </div>
+            
+            <div class="score-breakdown" style="text-align: right; font-size: 0.7rem;">
+              <div style="color: #5ee3ff;">Views: ${breakdown.views || 0}</div>
+              <div style="color: #8b5cf6;">Engagement: ${breakdown.engagement || 0}</div>
+              <div style="color: #ec4899;">Growth: ${breakdown.growth_rate || 0}</div>
+              <div style="color: #f97316;">Sentiment: ${breakdown.sentiment || 0}</div>
+            </div>
+          </div>
+          
+          <!-- Metrics Row -->
+          <div class="tile-metrics" style="
+            display: flex;
+            justify-content: space-between;
+            color: #9ca3af;
+            font-size: 0.8rem;
+            margin-bottom: 0.5rem;
+          ">
+            <span>👁️ ${this.formatNumber(trend.view_count || 0)}</span>
+            <span>💬 ${this.formatNumber(trend.comment_count || 0)}</span>
+            <span>⏱️ ${this.formatTimeAgo(trend.published_at)}</span>
+          </div>
+          
+          <!-- Platform Icon -->
+          <div style="
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 32px;
+            height: 32px;
+            background: rgba(94, 227, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #5ee3ff;
+            font-size: 0.9rem;
+          ">${this.getPlatformIcon(trend.platform || 'youtube')}</div>
+        </div>
+        
+        <!-- Hover Effect Overlay -->
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, ${this.getScoreColor(waveScore)}20, transparent);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+        " class="tile-hover-overlay"></div>
+      </div>
+    `;
+  }
+
+  // Get trajectory configuration
+  getTrajectoryConfig(trajectory) {
+    const configs = {
+      rising: { icon: '📈', label: 'Rising', bgColor: '#10b981', textColor: '#ffffff' },
+      peaking: { icon: '🚀', label: 'Peaking', bgColor: '#f59e0b', textColor: '#000000' },
+      stable: { icon: '📊', label: 'Stable', bgColor: '#6366f1', textColor: '#ffffff' },
+      cooling: { icon: '📉', label: 'Cooling', bgColor: '#ef4444', textColor: '#ffffff' },
+      declining: { icon: '⬇️', label: 'Declining', bgColor: '#64748b', textColor: '#ffffff' }
+    };
+    
+    return configs[trajectory] || configs.stable;
+  }
+
+  // Get color based on WaveScore
+  getScoreColor(score) {
+    if (score >= 90) return '#ff1744'; // Red - Mega viral
+    if (score >= 80) return '#ff6b35'; // Orange-red - Ultra viral
+    if (score >= 70) return '#ffaa00'; // Orange - Highly viral
+    if (score >= 60) return '#ffd54f'; // Yellow - Viral
+    if (score >= 40) return '#81c784'; // Green - Growing
+    if (score >= 20) return '#64b5f6'; // Blue - Stable
+    return '#90a4ae'; // Gray - Low activity
+  }
+
+  // Generate thumbnail placeholder
+  generateThumbnailPlaceholder(trend) {
+    const colors = ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981'];
+    const color = colors[Math.abs(trend.title?.charCodeAt(0) || 0) % colors.length];
+    return `linear-gradient(135deg, ${color}40, ${color}80)`;
+  }
+
+  // Get platform icon
+  getPlatformIcon(platform) {
+    const icons = {
+      youtube: '📺',
+      reddit: '🟠',
+      tiktok: '🎵',
+      twitter: '🐦',
+      instagram: '📷',
+      twitch: '💜'
+    };
+    return icons[platform.toLowerCase()] || '📱';
+  }
+
+  // Format time ago
+  formatTimeAgo(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
+
+  // Generate normalized trends list
+  generateNormalizedTrendsList(trends) {
+    return trends.map((trend, index) => `
+      <div class="normalized-trend-item" style="
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        margin-bottom: 0.5rem;
+        background: #2e2e45;
+        border-radius: 8px;
+        border: 1px solid ${this.getScoreColor(trend.unified_wave_score || 0)};
+        transition: all 0.3s ease;
+      ">
+        <span class="trend-rank" style="
+          font-weight: 700;
+          color: #5ee3ff;
+          min-width: 3rem;
+          text-align: center;
+          font-size: 1.1rem;
+        ">#${index + 1}</span>
+        
+        <div style="flex: 1; margin-left: 1rem;">
+          <div style="color: #f1f1f1; font-weight: 600; margin-bottom: 0.25rem; font-size: 1rem;">
+            ${trend.title || 'Untitled'}
+          </div>
+          <div style="color: #9ca3af; font-size: 0.875rem;">
+            🔧 ${this.formatNumber(trend.view_count || 0)} views • 
+            ${trend.trend_category || 'General'} • 
+            ${trend.trajectory} • 
+            ${this.formatTimeAgo(trend.published_at)}
+          </div>
+          
+          <!-- Normalized Metrics Breakdown -->
+          <div style="margin-top: 0.5rem; font-size: 0.75rem;">
+            <span style="color: #5ee3ff;">V:${trend.normalized_metrics?.views || 0}</span> • 
+            <span style="color: #8b5cf6;">E:${trend.normalized_metrics?.engagement || 0}</span> • 
+            <span style="color: #ec4899;">G:${trend.normalized_metrics?.growth_rate || 0}</span> • 
+            <span style="color: #f97316;">S:${trend.normalized_metrics?.sentiment || 0}</span> • 
+            <span style="color: #10b981;">R:${trend.normalized_metrics?.recency || 0}</span>
+          </div>
+        </div>
+        
+        <div style="
+          font-weight: 700;
+          color: ${this.getScoreColor(trend.unified_wave_score || 0)};
+          font-size: 1.2rem;
+          min-width: 4rem;
+          text-align: right;
+        ">
+          ${trend.unified_wave_score || 0}
+        </div>
+      </div>
+    `).join('');
   }
 
   // Generate category cards showing trend counts
@@ -2185,69 +2471,196 @@ class WaveSightDashboard {
     }
   }
 
-  // Calculate proprietary WaveScore (0-100 scale)
-  calculateWaveScore(video, previousPeriodData = null) {
-    const views = parseInt(video.view_count) || 0;
-    const likes = parseInt(video.like_count) || 0;
-    const comments = parseInt(video.comment_count) || 0;
-    const shares = parseInt(video.share_count) || Math.floor(comments * 0.1); // Estimate shares
-    const publishedDate = new Date(video.published_at || Date.now());
+  // 🧩 Comprehensive Data Normalization System
+  normalizeDataForTrendTiles(rawTrends, category = 'all') {
+    if (!rawTrends || rawTrends.length === 0) return [];
+
+    console.log(`🔧 Normalizing ${rawTrends.length} trends for category: ${category}`);
+
+    // Step 1: Extract raw features and calculate baselines
+    const categoryData = this.getCategoryBaselines(rawTrends, category);
+    
+    // Step 2: Normalize each trend
+    const normalizedTrends = rawTrends.map(trend => {
+      return this.normalizeSingleTrend(trend, categoryData);
+    });
+
+    // Step 3: Calculate unified WaveScore
+    return normalizedTrends.map(trend => {
+      trend.unified_wave_score = this.calculateUnifiedWaveScore(trend);
+      return trend;
+    }).sort((a, b) => b.unified_wave_score - a.unified_wave_score);
+  }
+
+  // Get statistical baselines for normalization by category
+  getCategoryBaselines(trends, category) {
+    const filteredTrends = category === 'all' ? trends : 
+      trends.filter(t => t.trend_category === category);
+
+    const views = filteredTrends.map(t => parseInt(t.view_count) || 0);
+    const likes = filteredTrends.map(t => parseInt(t.like_count) || 0);
+    const comments = filteredTrends.map(t => parseInt(t.comment_count) || 0);
+    const ages = filteredTrends.map(t => {
+      const published = new Date(t.published_at || Date.now());
+      return (Date.now() - published.getTime()) / (1000 * 60 * 60); // hours
+    });
+
+    return {
+      views: this.getStatistics(views),
+      likes: this.getStatistics(likes),
+      comments: this.getStatistics(comments),
+      ages: this.getStatistics(ages),
+      category: category,
+      count: filteredTrends.length
+    };
+  }
+
+  // Calculate statistical measures for normalization
+  getStatistics(values) {
+    if (values.length === 0) return { mean: 0, std: 1, min: 0, max: 1, median: 0 };
+    
+    const sorted = [...values].sort((a, b) => a - b);
+    const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+    const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+    const std = Math.sqrt(variance) || 1; // Avoid division by zero
+    
+    return {
+      mean: mean,
+      std: std,
+      min: sorted[0],
+      max: sorted[sorted.length - 1],
+      median: sorted[Math.floor(sorted.length / 2)],
+      q75: sorted[Math.floor(sorted.length * 0.75)],
+      q25: sorted[Math.floor(sorted.length * 0.25)]
+    };
+  }
+
+  // Normalize a single trend using various methods
+  normalizeSingleTrend(trend, categoryBaselines) {
+    const views = parseInt(trend.view_count) || 0;
+    const likes = parseInt(trend.like_count) || 0;
+    const comments = parseInt(trend.comment_count) || 0;
+    const shares = parseInt(trend.share_count) || Math.floor(comments * 0.1);
+    const publishedDate = new Date(trend.published_at || Date.now());
     const hoursOld = (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60);
-    
-    // 🔹 REACH Component (40% weight) - Raw engagement volume
-    const totalEngagement = views + (likes * 10) + (comments * 20) + (shares * 50);
-    const reachScore = Math.min((Math.log10(totalEngagement + 1) / Math.log10(100000000)) * 100, 100);
-    
-    // 🔹 VELOCITY Component (30% weight) - Rate of growth
-    let velocityScore = 0;
-    if (hoursOld > 0) {
-      const viewsPerHour = views / Math.max(hoursOld, 1);
-      const engagementPerHour = totalEngagement / Math.max(hoursOld, 1);
-      
-      // Compare with previous period if available
-      let growthRate = 1;
-      if (previousPeriodData) {
-        const prevEngagement = previousPeriodData.view_count + (previousPeriodData.like_count * 10);
-        growthRate = prevEngagement > 0 ? totalEngagement / prevEngagement : 1;
-      }
-      
-      velocityScore = Math.min((Math.log10(engagementPerHour + 1) / Math.log10(1000000)) * 100 * growthRate, 100);
-    }
-    
-    // 🔹 SENTIMENT Component (20% weight) - Engagement quality
-    const engagementRate = views > 0 ? ((likes + comments) / views) : 0;
+
+    // 1. VIEWS - Z-score normalization by category
+    const normalizedViews = this.zScoreNormalization(views, categoryBaselines.views);
+
+    // 2. ENGAGEMENT - Ratio-based normalization  
+    const engagementRate = views > 0 ? ((likes + comments * 2 + shares * 5) / views) : 0;
+    const normalizedEngagement = Math.min(engagementRate * 1000, 100); // Scale to 0-100
+
+    // 3. GROWTH RATE - Velocity calculation with smoothing
+    const viewsPerHour = hoursOld > 0 ? views / Math.max(hoursOld, 1) : views;
+    const velocityScore = Math.min((Math.log10(viewsPerHour + 1) / Math.log10(1000000)) * 100, 100);
+    const normalizedGrowthRate = this.smoothGrowthRate(velocityScore, hoursOld);
+
+    // 4. SENTIMENT - NLP scaling (-1 to 1 → 0 to 100)
     const likeRatio = (likes + comments) > 0 ? likes / (likes + comments) : 0.5;
-    const sentimentScore = (engagementRate * 10000 + likeRatio * 50) * 2;
+    const sentimentProxy = (likeRatio * 2 - 1); // Convert to -1 to 1 range
+    const normalizedSentiment = ((sentimentProxy + 1) / 2) * 100; // Scale to 0-100
+
+    // 5. RECENCY - Time decay curve prioritizing recent content
+    const recencyWeight = this.calculateRecencyWeight(hoursOld);
+
+    // 6. TRAJECTORY - Momentum indicator
+    const trajectory = this.calculateTrajectory(views, engagementRate, hoursOld, velocityScore);
+
+    return {
+      ...trend,
+      normalized_metrics: {
+        views: Math.max(0, Math.min(100, normalizedViews)),
+        engagement: Math.max(0, Math.min(100, normalizedEngagement)),
+        growth_rate: Math.max(0, Math.min(100, normalizedGrowthRate)),
+        sentiment: Math.max(0, Math.min(100, normalizedSentiment)),
+        recency: Math.max(0, Math.min(100, recencyWeight))
+      },
+      trajectory: trajectory,
+      hours_old: hoursOld,
+      engagement_rate: engagementRate
+    };
+  }
+
+  // Z-score normalization with outlier handling
+  zScoreNormalization(value, stats) {
+    if (stats.std === 0) return 50; // Default if no variance
+    const zScore = (value - stats.mean) / stats.std;
+    // Convert to 0-100 scale, capping extreme outliers
+    return Math.max(0, Math.min(100, 50 + (zScore * 15)));
+  }
+
+  // Smooth growth rate calculation to handle recency bias
+  smoothGrowthRate(velocityScore, hoursOld) {
+    // Apply smoothing factor based on content age
+    let smoothingFactor = 1;
     
-    // 🔹 MOMENTUM BOOST Component (10% weight) - Virality triggers
-    let momentumBoost = 0;
+    if (hoursOld < 1) smoothingFactor = 0.7; // Very new content penalty
+    else if (hoursOld < 6) smoothingFactor = 0.9; // Recent content slight penalty
+    else if (hoursOld > 168) smoothingFactor = 1.2; // Week-old content bonus for sustained growth
     
-    // Sudden spike detection
-    if (hoursOld < 24 && viewsPerHour > 100000) momentumBoost += 20; // Ultra-viral
-    if (hoursOld < 6 && viewsPerHour > 500000) momentumBoost += 30;  // Mega-viral
+    return velocityScore * smoothingFactor;
+  }
+
+  // Calculate recency weight with logarithmic decay
+  calculateRecencyWeight(hoursOld) {
+    // Logarithmic decay favoring recent content
+    if (hoursOld <= 0) return 100;
+    if (hoursOld <= 1) return 95;
+    if (hoursOld <= 6) return 85;
+    if (hoursOld <= 24) return 70;
+    if (hoursOld <= 168) return 50; // 1 week
+    if (hoursOld <= 720) return 25; // 1 month
+    return 10; // Older content
+  }
+
+  // Calculate trajectory indicator
+  calculateTrajectory(views, engagementRate, hoursOld, velocityScore) {
+    if (velocityScore > 80 && hoursOld < 24) return 'rising';
+    if (velocityScore > 60 && engagementRate > 0.05) return 'peaking';
+    if (hoursOld > 72 && velocityScore < 30) return 'cooling';
+    if (velocityScore > 40) return 'stable';
+    return 'declining';
+  }
+
+  // Calculate unified WaveScore using weighted factors
+  calculateUnifiedWaveScore(normalizedTrend) {
+    const metrics = normalizedTrend.normalized_metrics;
     
-    // High engagement velocity
-    if (engagementRate > 0.1) momentumBoost += 15; // Exceptional engagement
-    if (comments > views * 0.05) momentumBoost += 10; // High discussion
-    
-    // Combine all components
+    // Configurable weights - can be tuned based on desired bias
+    const weights = {
+      views: 0.25,        // w1 - Reach importance
+      engagement: 0.30,   // w2 - Engagement quality
+      growth_rate: 0.25,  // w3 - Velocity/momentum
+      sentiment: 0.15,    // w4 - Sentiment quality
+      recency: 0.05       // w5 - Recency boost
+    };
+
     const waveScore = (
-      reachScore * 0.4 +
-      velocityScore * 0.3 +
-      Math.min(sentimentScore, 100) * 0.2 +
-      Math.min(momentumBoost, 100) * 0.1
+      weights.views * metrics.views +
+      weights.engagement * metrics.engagement +
+      weights.growth_rate * metrics.growth_rate +
+      weights.sentiment * metrics.sentiment +
+      weights.recency * metrics.recency
     );
-    
-    // Store component breakdown for debugging
-    video.waveScore_breakdown = {
-      reach: Math.round(reachScore),
-      velocity: Math.round(velocityScore),
-      sentiment: Math.round(sentimentScore),
-      momentum: Math.round(momentumBoost),
+
+    // Store component breakdown for transparency
+    normalizedTrend.wave_score_breakdown = {
+      views: Math.round(metrics.views * weights.views),
+      engagement: Math.round(metrics.engagement * weights.engagement),
+      growth_rate: Math.round(metrics.growth_rate * weights.growth_rate),
+      sentiment: Math.round(metrics.sentiment * weights.sentiment),
+      recency: Math.round(metrics.recency * weights.recency),
       total: Math.round(waveScore)
     };
-    
-    return Math.min(Math.round(waveScore), 100);
+
+    return Math.round(waveScore);
+  }
+
+  // Legacy method - maintained for backward compatibility
+  calculateWaveScore(video, previousPeriodData = null) {
+    const normalized = this.normalizeSingleTrend(video, this.getCategoryBaselines([video], 'general'));
+    return this.calculateUnifiedWaveScore(normalized);
   }
 
   // Legacy viral score for backward compatibility
