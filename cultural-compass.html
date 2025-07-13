@@ -225,24 +225,31 @@
     </style>
 </head>
 <body>
-    <div class="header-bar">
-        <div class="logo-group">
-            <img src="logo2.png" alt="WaveSight" class="logo-icon">
-            <div class="logo-text">WAVESIGHT</div>
-        </div>
-        <div class="nav-links" id="navLinks">
-            <a href="index.html" class="nav-link">Trends</a>
-            <a href="sentiment-dashboard.html" class="nav-link">Sentiment</a>
-            <a href="cultural-compass.html" class="nav-link active">Cultural Compass</a>
-            <a href="alerts-dashboard.html" class="nav-link">Alerts</a>
-            <a href="#about" class="nav-link" onclick="showAboutModal()">About Us</a>
-            <a href="#settings" class="nav-link" onclick="showSettingsModal()">Settings</a>
-            <a href="#developers" class="nav-link" onclick="showDevelopersModal()">For Developers</a>
-        </div>
-        <button class="menu-btn" onclick="toggleMobileMenu()" id="menuBtn">☰</button>
-    </div>
-
     <div class="container">
+        <div class="header-bar">
+            <div class="logo-group">
+                <img src="logo2.png" alt="Logo" class="logo-icon">
+                <span class="logo-text">WAVESIGHT</span>
+            </div>
+            <div class="nav-links" id="navLinks">
+                <a href="index.html" class="nav-link">Trends</a>
+                <a href="sentiment-dashboard.html" class="nav-link">Sentiment</a>
+                <a href="cultural-compass.html" class="nav-link active">Cultural Compass</a>
+                <a href="alerts-dashboard.html" class="nav-link">Alerts</a>
+                <a href="#about" class="nav-link" onclick="showAboutModal()">About Us</a>
+                <a href="#settings" class="nav-link" onclick="showSettingsModal()">Settings</a>
+                <a href="#developers" class="nav-link" onclick="showDevelopersModal()">For Developers</a>
+            </div>
+            <div class="auth-section">
+                <div id="userSection" class="user-section" style="display: none;">
+                    <!-- User info will be populated by JavaScript -->
+                </div>
+                <div id="loginSection" class="login-section">
+                    <script authed="handleAuthSuccess(window.replit.user)" src="https://auth.util.repl.co/script.js"></script>
+                </div>
+            </div>
+            <button class="menu-btn" onclick="toggleMobileMenu()">☰</button>
+        </div>
         <div class="hero-text">
             <h1 class="hero-title">🧭 Cultural Compass</h1>
             <div class="hero-subtitle">Interactive Cultural Trend Mapping</div>

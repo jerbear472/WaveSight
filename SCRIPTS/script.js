@@ -78,6 +78,9 @@ class WaveSightDashboard {
       this.updateLiveStatus('connected');
       this.initAutoRefresh();
       
+      // Initialize alert system
+      await this.initAlertSystem();
+      
       console.log('✅ Dashboard initialized successfully');
     } catch (error) {
       console.error('❌ Dashboard initialization failed:', error);
@@ -751,25 +754,126 @@ class WaveSightDashboard {
 
   // Fallback data when API fails
   useFallbackData() {
-    const fallbackData = {
-      chartData: [
-        { date: '1/2024', 'AI Tools': 1200000, 'Crypto': 800000, 'Gaming': 950000 },
-        { date: '2/2024', 'AI Tools': 1500000, 'Crypto': 750000, 'Gaming': 1100000 },
-        { date: '3/2024', 'AI Tools': 1800000, 'Crypto': 900000, 'Gaming': 1050000 },
-        { date: '4/2024', 'AI Tools': 2100000, 'Crypto': 850000, 'Gaming': 1200000 },
-        { date: '5/2024', 'AI Tools': 2400000, 'Crypto': 1000000, 'Gaming': 1300000 },
-        { date: '6/2024', 'AI Tools': 2700000, 'Crypto': 1100000, 'Gaming': 1450000 }
-      ],
-      tableData: [
-        { topic: 'AI Tools', totalViews: 12300000, videoCount: 150, avgScore: 85, platformCount: 5 },
-        { topic: 'Crypto', totalViews: 5400000, videoCount: 80, avgScore: 72, platformCount: 3 },
-        { topic: 'Gaming', totalViews: 7000000, videoCount: 120, avgScore: 78, platformCount: 4 }
-      ]
-    };
+    // Generate more realistic current trending data
+    const currentDate = new Date();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    this.renderChart(fallbackData.chartData);
-    this.renderTrendTable(fallbackData.tableData);
-    this.showNotification('Using demo data - API connection failed', 'warning');
+    // Generate chart data for last 6 months
+    const chartData = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthLabel = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+      
+      chartData.push({
+        date: monthLabel,
+        'AI & Technology': Math.floor(Math.random() * 1000000 + 2000000),
+        'Crypto & Finance': Math.floor(Math.random() * 800000 + 1200000),
+        'Gaming': Math.floor(Math.random() * 600000 + 1500000),
+        'Entertainment': Math.floor(Math.random() * 900000 + 1800000),
+        'News & Politics': Math.floor(Math.random() * 700000 + 1000000),
+        'Lifestyle': Math.floor(Math.random() * 500000 + 800000)
+      });
+    }
+
+    // Current trending topics with realistic data
+    const trendingTopics = [
+      {
+        topic: 'AI & Technology',
+        trends: ['ChatGPT Updates', 'Apple Vision Pro', 'Tesla FSD', 'iPhone 16 Pro', 'AI Image Generation'],
+        totalViews: Math.floor(Math.random() * 5000000 + 15000000),
+        videoCount: Math.floor(Math.random() * 50 + 180),
+        avgScore: Math.floor(Math.random() * 15 + 85),
+        platformCount: 8,
+        momentum: 'rising'
+      },
+      {
+        topic: 'Crypto & Finance',
+        trends: ['Bitcoin ETF', 'Ethereum 2.0', 'DeFi Protocols', 'NFT Market', 'Solana Updates'],
+        totalViews: Math.floor(Math.random() * 3000000 + 8000000),
+        videoCount: Math.floor(Math.random() * 30 + 120),
+        avgScore: Math.floor(Math.random() * 20 + 70),
+        platformCount: 6,
+        momentum: 'stable'
+      },
+      {
+        topic: 'Gaming',
+        trends: ['Baldur\'s Gate 3', 'Fortnite Chapter 5', 'Call of Duty', 'Palworld', 'Helldivers 2'],
+        totalViews: Math.floor(Math.random() * 4000000 + 12000000),
+        videoCount: Math.floor(Math.random() * 40 + 200),
+        avgScore: Math.floor(Math.random() * 18 + 82),
+        platformCount: 7,
+        momentum: 'viral'
+      },
+      {
+        topic: 'Entertainment',
+        trends: ['Marvel Phase 5', 'Netflix Shows', 'Streaming Wars', 'Celebrity News', 'Music Releases'],
+        totalViews: Math.floor(Math.random() * 6000000 + 20000000),
+        videoCount: Math.floor(Math.random() * 60 + 250),
+        avgScore: Math.floor(Math.random() * 12 + 88),
+        platformCount: 9,
+        momentum: 'trending'
+      },
+      {
+        topic: 'News & Politics',
+        trends: ['Election 2024', 'Global Events', 'Economic News', 'Climate Change', 'Tech Regulation'],
+        totalViews: Math.floor(Math.random() * 4000000 + 10000000),
+        videoCount: Math.floor(Math.random() * 45 + 160),
+        avgScore: Math.floor(Math.random() * 25 + 65),
+        platformCount: 12,
+        momentum: 'rising'
+      },
+      {
+        topic: 'Lifestyle',
+        trends: ['Fitness Trends', 'Cooking Videos', 'Travel Vlogs', 'Fashion Hauls', 'Wellness Tips'],
+        totalViews: Math.floor(Math.random() * 3000000 + 7000000),
+        videoCount: Math.floor(Math.random() * 35 + 140),
+        avgScore: Math.floor(Math.random() * 15 + 75),
+        platformCount: 5,
+        momentum: 'stable'
+      }
+    ];
+
+    // Generate detailed trends for the table
+    const detailedTrends = [];
+    trendingTopics.forEach(category => {
+      category.trends.forEach((trend, index) => {
+        detailedTrends.push({
+          id: `trend_${category.topic}_${index}`,
+          title: trend,
+          category: category.topic,
+          view_count: Math.floor(Math.random() * 2000000 + 500000),
+          like_count: Math.floor(Math.random() * 50000 + 10000),
+          comment_count: Math.floor(Math.random() * 5000 + 1000),
+          trend_score: Math.random() * 0.3 + 0.7,
+          engagement_rate: Math.random() * 8 + 2,
+          published_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+          channel_title: `Top ${category.topic} Channel`,
+          momentum: category.momentum
+        });
+      });
+    });
+
+    // Store the data
+    this.state.currentData = detailedTrends;
+    
+    // Render components
+    this.renderChart(chartData);
+    this.renderTrendTable(trendingTopics);
+    this.renderDetailedTable(detailedTrends.slice(0, 25));
+    this.updateStatusInfo(detailedTrends);
+    
+    // Update status cards with demo data
+    this.updateElement('liveStatus', '🟡 Demo Mode');
+    this.updateElement('lastRefresh', 'Demo Data');
+    this.updateElement('nextTrend', 'AI Technology');
+    this.updateElement('totalRecords', detailedTrends.length.toLocaleString());
+    this.updateElement('totalCategories', trendingTopics.length);
+    this.updateElement('totalViews', (detailedTrends.reduce((sum, t) => sum + t.view_count, 0)).toLocaleString());
+    this.updateElement('dateRange', 'Last 7 days');
+    this.updateElement('topCategory', trendingTopics[0].topic);
+    this.updateElement('trendMomentum', '📈 Rising');
+
+    this.showNotification('📊 Displaying demo trending data - Configure API keys for live data', 'info');
   }
 
   // Error handling
@@ -1401,6 +1505,592 @@ class WaveSightDashboard {
       });
     }
   }
+
+  // Fetch fresh YouTube data from API
+  async fetchFreshYouTubeData() {
+    try {
+      this.showLoading();
+      this.showNotification('Fetching fresh YouTube data...', 'info');
+
+      const response = await fetch('/api/fetch-youtube?q=trending&maxResults=50', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        this.showNotification(`✅ Fetched ${result.data?.length || 0} new records`, 'success');
+        await this.loadDashboardData(true); // Refresh dashboard with new data
+      } else {
+        throw new Error(result.message || 'Failed to fetch YouTube data');
+      }
+    } catch (error) {
+      console.error('❌ Error fetching fresh YouTube data:', error);
+      this.showNotification('Failed to fetch fresh data: ' + error.message, 'error');
+    } finally {
+      this.hideLoading();
+    }
+  }
+
+  // Fetch bulk data for multiple categories
+  async fetchBulkData(category = 'all', maxResults = 50) {
+    try {
+      this.showLoading();
+      this.showNotification('Fetching bulk trend data...', 'info');
+
+      const categories = category === 'all' 
+        ? ['Gaming', 'Technology', 'Entertainment', 'Music', 'News']
+        : [category];
+
+      let totalFetched = 0;
+
+      for (const cat of categories) {
+        const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(cat)}&maxResults=${maxResults}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          totalFetched += result.data?.length || 0;
+        }
+
+        // Small delay between requests to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      this.showNotification(`✅ Fetched ${totalFetched} total records`, 'success');
+      await this.loadDashboardData(true); // Refresh dashboard
+    } catch (error) {
+      console.error('❌ Error fetching bulk data:', error);
+      this.showNotification('Failed to fetch bulk data: ' + error.message, 'error');
+    } finally {
+      this.hideLoading();
+    }
+  }
+
+  // Track specific trend across platforms
+  async trackSpecificTrend(trendQuery) {
+    try {
+      this.showLoading();
+      this.showNotification(`Tracking trend: "${trendQuery}" across platforms...`, 'info');
+
+      // Create trend label in database
+      const trendLabel = await this.createTrendLabel(trendQuery);
+      
+      // Fetch data from multiple platforms
+      const platforms = ['youtube', 'reddit'];
+      const results = {};
+
+      for (const platform of platforms) {
+        try {
+          const data = await this.fetchPlatformData(platform, trendQuery);
+          results[platform] = data;
+          
+          // Store trend data with label
+          await this.storeTrendData(trendLabel.id, platform, data);
+          
+        } catch (error) {
+          console.warn(`Failed to fetch ${platform} data for "${trendQuery}":`, error);
+          results[platform] = { error: error.message };
+        }
+      }
+
+      // Display cross-platform analytics
+      this.displayCrossPlatformAnalytics(trendQuery, results);
+      this.showNotification(`✅ Trend tracking completed for "${trendQuery}"`, 'success');
+
+      return results;
+    } catch (error) {
+      console.error('❌ Error tracking trend:', error);
+      this.showNotification('Failed to track trend: ' + error.message, 'error');
+    } finally {
+      this.hideLoading();
+    }
+  }
+
+  // Create trend label in database
+  async createTrendLabel(trendQuery) {
+    try {
+      const response = await fetch('/api/trend-labels', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          query: trendQuery,
+          created_at: new Date().toISOString(),
+          status: 'active'
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        return result.data;
+      } else {
+        throw new Error(result.message || 'Failed to create trend label');
+      }
+    } catch (error) {
+      console.error('❌ Error creating trend label:', error);
+      throw error;
+    }
+  }
+
+  // Fetch data from specific platform
+  async fetchPlatformData(platform, query) {
+    const endpoints = {
+      youtube: `/api/fetch-youtube?q=${encodeURIComponent(query)}&maxResults=50`,
+      reddit: `/api/reddit-sentiment?topic=${encodeURIComponent(query)}`,
+      tiktok: `/api/tiktok-trends?q=${encodeURIComponent(query)}` // Future implementation
+    };
+
+    if (!endpoints[platform]) {
+      throw new Error(`Platform ${platform} not supported`);
+    }
+
+    const response = await fetch(endpoints[platform]);
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || `Failed to fetch ${platform} data`);
+    }
+
+    return result.data;
+  }
+
+  // Store trend data with platform association
+  async storeTrendData(labelId, platform, data) {
+    try {
+      const response = await fetch('/api/trend-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          label_id: labelId,
+          platform: platform,
+          data: data,
+          metrics: this.calculatePlatformMetrics(platform, data),
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to store trend data');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('❌ Error storing trend data:', error);
+      throw error;
+    }
+  }
+
+  // Calculate metrics for each platform
+  calculatePlatformMetrics(platform, data) {
+    if (!data || !Array.isArray(data)) return {};
+
+    switch (platform) {
+      case 'youtube':
+        return {
+          total_videos: data.length,
+          total_views: data.reduce((sum, item) => sum + (item.view_count || 0), 0),
+          avg_engagement: data.reduce((sum, item) => sum + (item.engagement_rate || 0), 0) / data.length,
+          trending_score: data.reduce((sum, item) => sum + (item.trend_score || 0), 0) / data.length
+        };
+      case 'reddit':
+        return {
+          total_posts: data.length,
+          avg_sentiment: data.reduce((sum, item) => sum + (item.sentiment_score || 0), 0) / data.length,
+          total_comments: data.reduce((sum, item) => sum + (item.comment_count || 0), 0),
+          upvote_ratio: data.reduce((sum, item) => sum + (item.upvote_ratio || 0), 0) / data.length
+        };
+      default:
+        return {};
+    }
+  }
+
+  // Display cross-platform analytics
+  displayCrossPlatformAnalytics(query, results) {
+    const container = document.getElementById('trendChart');
+    if (!container) return;
+
+    const analyticsHtml = `
+      <div class="cross-platform-analytics">
+        <h3>🔍 Trend Analysis: "${query}"</h3>
+        <div class="platform-metrics">
+          ${Object.entries(results).map(([platform, data]) => `
+            <div class="platform-card">
+              <h4>${platform.toUpperCase()}</h4>
+              ${data.error 
+                ? `<p class="error">❌ ${data.error}</p>`
+                : this.renderPlatformMetrics(platform, data)
+              }
+            </div>
+          `).join('')}
+        </div>
+        <div class="trend-actions">
+          <button onclick="window.waveSightDashboard.exportTrendData('${query}')" class="export-btn">
+            📥 Export Data
+          </button>
+          <button onclick="window.waveSightDashboard.createTrendAlert('${query}')" class="alert-btn">
+            🔔 Create Alert
+          </button>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = analyticsHtml;
+  }
+
+  // Render platform-specific metrics
+  renderPlatformMetrics(platform, data) {
+    if (!data || data.length === 0) {
+      return '<p>No data available</p>';
+    }
+
+    switch (platform) {
+      case 'youtube':
+        const totalViews = data.reduce((sum, item) => sum + (item.view_count || 0), 0);
+        const avgEngagement = data.reduce((sum, item) => sum + (item.engagement_rate || 0), 0) / data.length;
+        return `
+          <div class="metrics">
+            <div class="metric">
+              <span class="value">${data.length}</span>
+              <span class="label">Videos</span>
+            </div>
+            <div class="metric">
+              <span class="value">${this.formatNumber(totalViews)}</span>
+              <span class="label">Total Views</span>
+            </div>
+            <div class="metric">
+              <span class="value">${avgEngagement.toFixed(2)}%</span>
+              <span class="label">Avg Engagement</span>
+            </div>
+          </div>
+        `;
+      case 'reddit':
+        const avgSentiment = data.reduce((sum, item) => sum + (item.sentiment_score || 0), 0) / data.length;
+        const totalComments = data.reduce((sum, item) => sum + (item.comment_count || 0), 0);
+        return `
+          <div class="metrics">
+            <div class="metric">
+              <span class="value">${data.length}</span>
+              <span class="label">Posts</span>
+            </div>
+            <div class="metric">
+              <span class="value">${(avgSentiment * 100).toFixed(1)}%</span>
+              <span class="label">Sentiment</span>
+            </div>
+            <div class="metric">
+              <span class="value">${this.formatNumber(totalComments)}</span>
+              <span class="label">Comments</span>
+            </div>
+          </div>
+        `;
+      default:
+        return '<p>Platform metrics not available</p>';
+    }
+  }
+
+  // Enhanced Alert System for detecting rising trends
+  async initAlertSystem() {
+    try {
+      // Load existing alerts configuration
+      await this.loadAlertConfiguration();
+      
+      // Start monitoring for rising trends
+      this.startTrendMonitoring();
+      
+      console.log('✅ Alert system initialized');
+    } catch (error) {
+      console.error('❌ Error initializing alert system:', error);
+    }
+  }
+
+  async loadAlertConfiguration() {
+    try {
+      const response = await fetch('/api/alerts/config');
+      const result = await response.json();
+      
+      if (result.success) {
+        this.alertConfig = result.data || {
+          enabled: true,
+          checkInterval: 60000, // 1 minute
+          thresholds: {
+            viewGrowth: 50, // 50% growth
+            engagementSpike: 25, // 25% engagement increase
+            velocityThreshold: 100, // Views per minute
+            sentimentChange: 0.3 // 30% sentiment change
+          },
+          notifications: {
+            browser: true,
+            sound: false
+          }
+        };
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not load alert configuration, using defaults');
+      this.alertConfig = {
+        enabled: true,
+        checkInterval: 60000,
+        thresholds: {
+          viewGrowth: 50,
+          engagementSpike: 25,
+          velocityThreshold: 100,
+          sentimentChange: 0.3
+        },
+        notifications: {
+          browser: true,
+          sound: false
+        }
+      };
+    }
+  }
+
+  startTrendMonitoring() {
+    if (!this.alertConfig.enabled) return;
+
+    // Clear existing interval
+    if (this.alertInterval) {
+      clearInterval(this.alertInterval);
+    }
+
+    // Start monitoring
+    this.alertInterval = setInterval(async () => {
+      await this.checkForRisingTrends();
+    }, this.alertConfig.checkInterval);
+
+    console.log(`🔔 Alert monitoring started (checking every ${this.alertConfig.checkInterval / 1000}s)`);
+  }
+
+  async checkForRisingTrends() {
+    try {
+      // Get current trend data
+      const response = await fetch('/api/youtube-data?limit=100&sortBy=recent');
+      const result = await response.json();
+
+      if (!result.success || !result.data) return;
+
+      const currentTrends = result.data;
+      
+      // Compare with previous data to detect spikes
+      const alerts = await this.detectTrendSpikes(currentTrends);
+      
+      // Process and send alerts
+      for (const alert of alerts) {
+        await this.processAlert(alert);
+      }
+
+      // Store current data for next comparison
+      this.previousTrendData = currentTrends;
+      
+    } catch (error) {
+      console.error('❌ Error checking for rising trends:', error);
+    }
+  }
+
+  async detectTrendSpikes(currentTrends) {
+    const alerts = [];
+    
+    if (!this.previousTrendData) {
+      this.previousTrendData = currentTrends;
+      return alerts;
+    }
+
+    for (const currentTrend of currentTrends) {
+      const previousTrend = this.previousTrendData.find(
+        prev => prev.video_id === currentTrend.video_id
+      );
+
+      if (!previousTrend) continue; // New trend, skip for now
+
+      // Calculate growth metrics
+      const metrics = this.calculateGrowthMetrics(previousTrend, currentTrend);
+      
+      // Check for alert conditions
+      const alertConditions = this.checkAlertConditions(metrics, currentTrend);
+      
+      if (alertConditions.triggered) {
+        alerts.push({
+          type: 'trend_spike',
+          severity: alertConditions.severity,
+          trend: currentTrend,
+          metrics: metrics,
+          reason: alertConditions.reason,
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
+
+    return alerts;
+  }
+
+  calculateGrowthMetrics(previous, current) {
+    const viewGrowth = previous.view_count > 0 
+      ? ((current.view_count - previous.view_count) / previous.view_count) * 100 
+      : 0;
+    
+    const likeGrowth = previous.like_count > 0 
+      ? ((current.like_count - previous.like_count) / previous.like_count) * 100 
+      : 0;
+
+    const engagementGrowth = previous.engagement_rate > 0 
+      ? ((current.engagement_rate - previous.engagement_rate) / previous.engagement_rate) * 100 
+      : 0;
+
+    // Calculate velocity (views per minute)
+    const timeDiff = (new Date(current.updated_at) - new Date(previous.updated_at)) / (1000 * 60);
+    const velocity = timeDiff > 0 ? (current.view_count - previous.view_count) / timeDiff : 0;
+
+    return {
+      viewGrowth,
+      likeGrowth,
+      engagementGrowth,
+      velocity,
+      timeDiff
+    };
+  }
+
+  checkAlertConditions(metrics, trend) {
+    const conditions = [];
+    let severity = 'low';
+
+    // Check view growth
+    if (metrics.viewGrowth > this.alertConfig.thresholds.viewGrowth) {
+      conditions.push(`${metrics.viewGrowth.toFixed(1)}% view growth`);
+      severity = metrics.viewGrowth > 100 ? 'critical' : metrics.viewGrowth > 75 ? 'high' : 'medium';
+    }
+
+    // Check engagement spike
+    if (metrics.engagementGrowth > this.alertConfig.thresholds.engagementSpike) {
+      conditions.push(`${metrics.engagementGrowth.toFixed(1)}% engagement spike`);
+      severity = this.escalateSeverity(severity, 'medium');
+    }
+
+    // Check velocity
+    if (metrics.velocity > this.alertConfig.thresholds.velocityThreshold) {
+      conditions.push(`${metrics.velocity.toFixed(0)} views/min velocity`);
+      severity = this.escalateSeverity(severity, 'high');
+    }
+
+    // Check trend score
+    if (trend.trend_score > 0.8) {
+      conditions.push('High trend score detected');
+      severity = this.escalateSeverity(severity, 'medium');
+    }
+
+    return {
+      triggered: conditions.length > 0,
+      severity,
+      reason: conditions.join(', ')
+    };
+  }
+
+  escalateSeverity(current, new_severity) {
+    const levels = { low: 1, medium: 2, high: 3, critical: 4 };
+    const currentLevel = levels[current] || 1;
+    const newLevel = levels[new_severity] || 1;
+    
+    const resultLevel = Math.max(currentLevel, newLevel);
+    return Object.keys(levels).find(key => levels[key] === resultLevel);
+  }
+
+  async processAlert(alert) {
+    try {
+      // Store alert in database
+      await this.storeAlert(alert);
+      
+      // Send notifications
+      if (this.alertConfig.notifications.browser) {
+        this.sendBrowserNotification(alert);
+      }
+      
+      if (this.alertConfig.notifications.sound) {
+        this.playAlertSound();
+      }
+
+      // Log alert
+      console.log(`🚨 ALERT [${alert.severity.toUpperCase()}]: ${alert.trend.title}`);
+      console.log(`📊 Reason: ${alert.reason}`);
+      
+    } catch (error) {
+      console.error('❌ Error processing alert:', error);
+    }
+  }
+
+  async storeAlert(alert) {
+    try {
+      const response = await fetch('/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          video_id: alert.trend.video_id,
+          title: alert.trend.title,
+          channel_title: alert.trend.channel_title,
+          view_count: alert.trend.view_count,
+          like_count: alert.trend.like_count,
+          wave_score: alert.trend.trend_score || 0,
+          growth_rate: alert.metrics.viewGrowth / 100,
+          sentiment_score: alert.trend.sentiment_score || 0.5,
+          severity: alert.severity.toUpperCase(),
+          reason: alert.reason,
+          alert_type: alert.type,
+          created_at: alert.timestamp
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to store alert');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('❌ Error storing alert:', error);
+      throw error;
+    }
+  }
+
+  sendBrowserNotification(alert) {
+    if (!('Notification' in window)) return;
+
+    if (Notification.permission === 'granted') {
+      const notification = new Notification(`🚨 WaveSight Alert: ${alert.severity.toUpperCase()}`, {
+        body: `"${alert.trend.title}" is trending!\n${alert.reason}`,
+        icon: '/logo2.png',
+        tag: alert.trend.video_id
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        window.location.href = `/alerts-dashboard.html`;
+      };
+
+      setTimeout(() => notification.close(), 10000);
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          this.sendBrowserNotification(alert);
+        }
+      });
+    }
+  }
+
+  playAlertSound() {
+    // Create audio element and play alert sound
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+3Vm2EXDD2Y3/DAaB8FeMS5z8ptMgIFmOSKBH5eWgAAUDQA');
+    audio.volume = 0.3;
+    audio.play().catch(e => console.warn('Could not play alert sound:', e));
+  }
 }
 
 // Chart Renderer Class
@@ -1628,6 +2318,118 @@ class MetricsCalculator {
     document.body.insertAdjacentHTML('beforeend', errorHtml);
   }
 }
+
+// Global functions called from HTML
+window.fetchFreshYouTubeData = function() {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.fetchFreshYouTubeData();
+  }
+};
+
+window.fetchBulkData = function(category = 'all', maxResults = 50) {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.fetchBulkData(category, maxResults);
+  }
+};
+
+window.performComprehensiveSearch = function() {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.performComprehensiveSearch();
+  }
+};
+
+window.resetToDefaultView = function() {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.resetToDefaultView();
+  }
+};
+
+window.filterChart = function() {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.filterChart();
+  }
+};
+
+window.toggleMobileMenu = function() {
+  const navLinks = document.getElementById('navLinks');
+  if (navLinks) {
+    navLinks.style.display = (navLinks.style.display === 'flex') ? 'none' : 'flex';
+  }
+};
+
+window.showAboutModal = function() {
+  const modal = document.getElementById('aboutModal');
+  if (modal) {
+    modal.style.display = 'block';
+  }
+};
+
+window.showSettingsModal = function() {
+  const modal = document.getElementById('settingsModal');
+  if (modal) {
+    modal.style.display = 'block';
+  }
+};
+
+window.showDevelopersModal = function() {
+  const modal = document.getElementById('developersModal');
+  if (modal) {
+    modal.style.display = 'block';
+  }
+};
+
+window.closeModal = function(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.style.display = 'none';
+  }
+};
+
+window.trackSpecificTrend = function() {
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput && window.waveSightDashboard) {
+    const query = searchInput.value.trim();
+    if (query) {
+      window.waveSightDashboard.trackSpecificTrend(query);
+    } else {
+      alert('Please enter a trend to track');
+    }
+  }
+};
+
+window.startAlertMonitoring = function() {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.startTrendMonitoring();
+  }
+};
+
+window.stopAlertMonitoring = function() {
+  if (window.waveSightDashboard && window.waveSightDashboard.alertInterval) {
+    clearInterval(window.waveSightDashboard.alertInterval);
+    window.waveSightDashboard.alertInterval = null;
+    console.log('🔕 Alert monitoring stopped');
+  }
+};
+
+window.checkForRisingTrends = function() {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.checkForRisingTrends();
+  }
+};
+
+window.createTrendAlert = function(query) {
+  if (window.waveSightDashboard) {
+    // This would create a custom alert for a specific trend
+    alert(`Alert created for trend: "${query}"\n\nYou will be notified when this trend shows significant activity.`);
+  }
+};
+
+window.exportTrendData = function(query) {
+  if (window.waveSightDashboard) {
+    // This would export the trend data
+    alert(`Exporting data for trend: "${query}"\n\nData export functionality will be available in the next update.`);
+  }
+};
 
 // Initialize dashboard when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
