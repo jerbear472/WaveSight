@@ -93,6 +93,9 @@ class WaveSightDashboard {
       // Set up real-time viral trend monitoring
       this.startViralTrendMonitoring();
       
+      // Set up aggressive auto-refresh to hit API limits
+      this.startAggressiveDataFetching();
+      
       console.log('✅ Dashboard initialized successfully with viral trend detection');
     } catch (error) {
       console.error('❌ Dashboard initialization failed:', error);
@@ -2392,61 +2395,155 @@ class WaveSightDashboard {
   async fetchFreshYouTubeData() {
     try {
       this.showLoading();
-      this.showNotification('🔄 Fetching comprehensive YouTube trending data...', 'info');
+      this.showNotification('🔥 AGGRESSIVE DATA FETCH: Hitting API limits for real-time trends...', 'info');
 
-      // Comprehensive trending categories for diverse data
+      // MASSIVE trending categories - hitting quota limits
       const trendingCategories = [
-        { query: 'trending', region: 'US', category: 'all' },
-        { query: 'viral', region: 'US', category: 'all' },
-        { query: 'AI artificial intelligence', region: 'US', category: 'Technology' },
-        { query: 'gaming', region: 'US', category: 'Gaming' },
-        { query: 'entertainment movie film', region: 'US', category: 'Entertainment' },
-        { query: 'crypto bitcoin', region: 'US', category: 'Crypto' },
-        { query: 'music', region: 'US', category: 'Music' },
-        { query: 'news politics', region: 'US', category: 'News' },
-        { query: 'technology tech', region: 'US', category: 'Technology' },
-        { query: 'sports', region: 'US', category: 'Sports' },
-        { query: 'education tutorial', region: 'US', category: 'Education' },
-        { query: 'health fitness', region: 'US', category: 'Health' }
+        // Core trending searches (high volume)
+        { query: 'trending', region: 'US', category: 'all', maxResults: 50 },
+        { query: 'viral', region: 'US', category: 'all', maxResults: 50 },
+        { query: 'breaking news', region: 'US', category: 'all', maxResults: 50 },
+        
+        // AI & Technology (current hot topics)
+        { query: 'ChatGPT OpenAI', region: 'US', category: 'AI', maxResults: 50 },
+        { query: 'Claude AI Anthropic', region: 'US', category: 'AI', maxResults: 50 },
+        { query: 'AI tools 2024', region: 'US', category: 'AI', maxResults: 50 },
+        { query: 'machine learning', region: 'US', category: 'AI', maxResults: 50 },
+        { query: 'artificial intelligence news', region: 'US', category: 'AI', maxResults: 50 },
+        
+        // Film & Entertainment
+        { query: 'movie trailer 2024', region: 'US', category: 'Film', maxResults: 50 },
+        { query: 'Netflix series', region: 'US', category: 'Film', maxResults: 50 },
+        { query: 'Disney Plus', region: 'US', category: 'Film', maxResults: 50 },
+        { query: 'Marvel DC movies', region: 'US', category: 'Film', maxResults: 50 },
+        { query: 'box office', region: 'US', category: 'Film', maxResults: 50 },
+        
+        // Gaming (massive category)
+        { query: 'gaming news', region: 'US', category: 'Gaming', maxResults: 50 },
+        { query: 'Fortnite updates', region: 'US', category: 'Gaming', maxResults: 50 },
+        { query: 'Call of Duty', region: 'US', category: 'Gaming', maxResults: 50 },
+        { query: 'Minecraft', region: 'US', category: 'Gaming', maxResults: 50 },
+        { query: 'PlayStation Xbox', region: 'US', category: 'Gaming', maxResults: 50 },
+        { query: 'gaming review', region: 'US', category: 'Gaming', maxResults: 50 },
+        
+        // Crypto & Finance
+        { query: 'Bitcoin price', region: 'US', category: 'Crypto', maxResults: 50 },
+        { query: 'Ethereum crypto', region: 'US', category: 'Crypto', maxResults: 50 },
+        { query: 'crypto news', region: 'US', category: 'Crypto', maxResults: 50 },
+        { query: 'NFT market', region: 'US', category: 'Crypto', maxResults: 50 },
+        { query: 'DeFi yield farming', region: 'US', category: 'Crypto', maxResults: 50 },
+        
+        // Music & Audio
+        { query: 'new music 2024', region: 'US', category: 'Music', maxResults: 50 },
+        { query: 'Taylor Swift', region: 'US', category: 'Music', maxResults: 50 },
+        { query: 'hip hop rap', region: 'US', category: 'Music', maxResults: 50 },
+        { query: 'Billboard charts', region: 'US', category: 'Music', maxResults: 50 },
+        { query: 'music festival', region: 'US', category: 'Music', maxResults: 50 },
+        
+        // Technology & Gadgets
+        { query: 'iPhone 15 review', region: 'US', category: 'Technology', maxResults: 50 },
+        { query: 'tech news', region: 'US', category: 'Technology', maxResults: 50 },
+        { query: 'Apple Vision Pro', region: 'US', category: 'Technology', maxResults: 50 },
+        { query: 'Samsung Galaxy', region: 'US', category: 'Technology', maxResults: 50 },
+        { query: 'electric car Tesla', region: 'US', category: 'Technology', maxResults: 50 },
+        
+        // Social Media & Culture
+        { query: 'TikTok viral', region: 'US', category: 'Social', maxResults: 50 },
+        { query: 'Instagram reels', region: 'US', category: 'Social', maxResults: 50 },
+        { query: 'Twitter X news', region: 'US', category: 'Social', maxResults: 50 },
+        { query: 'social media trends', region: 'US', category: 'Social', maxResults: 50 },
+        { query: 'influencer drama', region: 'US', category: 'Social', maxResults: 50 },
+        
+        // Lifestyle & Health
+        { query: 'fitness workout', region: 'US', category: 'Lifestyle', maxResults: 50 },
+        { query: 'healthy recipes', region: 'US', category: 'Lifestyle', maxResults: 50 },
+        { query: 'mental health', region: 'US', category: 'Lifestyle', maxResults: 50 },
+        { query: 'productivity tips', region: 'US', category: 'Lifestyle', maxResults: 50 },
+        { query: 'fashion trends 2024', region: 'US', category: 'Lifestyle', maxResults: 50 },
+        
+        // Viral & Memes
+        { query: 'meme compilation', region: 'US', category: 'Viral', maxResults: 50 },
+        { query: 'viral video', region: 'US', category: 'Viral', maxResults: 50 },
+        { query: 'challenge dance', region: 'US', category: 'Viral', maxResults: 50 },
+        { query: 'funny moments', region: 'US', category: 'Viral', maxResults: 50 },
+        { query: 'internet drama', region: 'US', category: 'Viral', maxResults: 50 }
       ];
 
+      console.log(`🚀 AGGRESSIVE FETCH: Processing ${trendingCategories.length} categories in parallel batches`);
+      
       let totalFetched = 0;
       const allTrendData = [];
+      
+      // Process in batches of 5 concurrent requests to maximize throughput
+      const batchSize = 5;
+      for (let i = 0; i < trendingCategories.length; i += batchSize) {
+        const batch = trendingCategories.slice(i, i + batchSize);
+        
+        console.log(`📡 Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(trendingCategories.length/batchSize)} - ${batch.length} categories`);
+        
+        // Execute batch requests concurrently
+        const batchPromises = batch.map(async (category) => {
+          try {
+            const timeFilters = [
+              this.getDateDaysAgo(1),   // Last 24 hours
+              this.getDateDaysAgo(3),   // Last 3 days  
+              this.getDateDaysAgo(7)    // Last week
+            ];
+            
+            // Try multiple time ranges for maximum data capture
+            const allResults = [];
+            for (const timeFilter of timeFilters) {
+              try {
+                const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(category.query)}&maxResults=${category.maxResults}&order=relevance&publishedAfter=${timeFilter}`, {
+                  method: 'GET',
+                  headers: { 'Content-Type': 'application/json' },
+                  timeout: 15000
+                });
 
-      // Fetch from multiple categories to get comprehensive data
-      for (const category of trendingCategories) {
-        try {
-          console.log(`🔍 Fetching ${category.category} trends: "${category.query}"`);
-          
-          const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(category.query)}&maxResults=50&order=relevance&publishedAfter=${this.getDateDaysAgo(7)}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
+                const result = await response.json();
+                if (result.success && result.data && result.data.length > 0) {
+                  allResults.push(...result.data);
+                }
+              } catch (timeError) {
+                console.warn(`⚠️ Time filter ${timeFilter} failed for ${category.query}`);
+              }
             }
-          });
-
-          const result = await response.json();
-
-          if (result.success && result.data && result.data.length > 0) {
-            // Add category metadata to each video
-            const categorizedData = result.data.map(video => ({
+            
+            // Deduplicate and process results
+            const uniqueResults = this.deduplicateVideos(allResults);
+            const categorizedData = uniqueResults.map(video => ({
               ...video,
               trend_category: category.category,
               search_query: category.query,
               fetch_timestamp: new Date().toISOString(),
-              viral_score: this.calculateViralScore(video)
+              viral_score: this.calculateViralScore(video),
+              engagement_velocity: this.calculateEngagementVelocity(video),
+              trend_momentum: this.calculateTrendMomentum(video)
             }));
 
-            allTrendData.push(...categorizedData);
-            totalFetched += result.data.length;
+            console.log(`✅ ${category.category}: ${categorizedData.length} unique videos`);
+            return categorizedData;
             
-            console.log(`✅ Fetched ${result.data.length} videos for ${category.category}`);
+          } catch (categoryError) {
+            console.warn(`❌ Failed to fetch ${category.category} trends:`, categoryError);
+            return [];
           }
-
-          // Respectful delay between API calls
-          await new Promise(resolve => setTimeout(resolve, 1200));
-        } catch (queryError) {
-          console.warn(`⚠️ Failed to fetch ${category.category} trends:`, queryError);
+        });
+        
+        // Wait for batch to complete
+        const batchResults = await Promise.allSettled(batchPromises);
+        
+        // Process batch results
+        batchResults.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.length > 0) {
+            allTrendData.push(...result.value);
+            totalFetched += result.value.length;
+          }
+        });
+        
+        // Short delay between batches (not between individual requests)
+        if (i + batchSize < trendingCategories.length) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 
@@ -2489,6 +2586,75 @@ class WaveSightDashboard {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // ENHANCED DATA PROCESSING METHODS
+  // ═══════════════════════════════════════════════════════════════
+
+  // Remove duplicate videos from different searches
+  deduplicateVideos(videos) {
+    const seen = new Map();
+    const unique = [];
+    
+    videos.forEach(video => {
+      const key = video.video_id || video.id;
+      if (key && !seen.has(key)) {
+        seen.set(key, true);
+        unique.push(video);
+      }
+    });
+    
+    return unique;
+  }
+
+  // Calculate enhanced viral score
+  calculateViralScore(video) {
+    const views = parseInt(video.view_count) || 0;
+    const likes = parseInt(video.like_count) || 0;
+    const comments = parseInt(video.comment_count) || 0;
+    
+    // Age factor (newer = higher score)
+    const published = new Date(video.published_at || Date.now());
+    const hoursOld = (Date.now() - published.getTime()) / (1000 * 60 * 60);
+    const ageFactor = Math.max(0, 1 - hoursOld / (24 * 7)); // Decay over 1 week
+    
+    // Engagement rate
+    const engagementRate = views > 0 ? ((likes + comments) / views) : 0;
+    
+    // Viral score calculation
+    const baseScore = Math.log10(views + 1) * 10; // Log scale for views
+    const engagementBonus = engagementRate * 20;
+    const timeBonus = ageFactor * 15;
+    
+    return Math.min(100, baseScore + engagementBonus + timeBonus);
+  }
+
+  // Calculate engagement velocity (engagement per hour)
+  calculateEngagementVelocity(video) {
+    const views = parseInt(video.view_count) || 0;
+    const likes = parseInt(video.like_count) || 0;
+    const comments = parseInt(video.comment_count) || 0;
+    
+    const published = new Date(video.published_at || Date.now());
+    const hoursOld = Math.max(1, (Date.now() - published.getTime()) / (1000 * 60 * 60));
+    
+    const totalEngagement = views + (likes * 2) + (comments * 3);
+    return totalEngagement / hoursOld;
+  }
+
+  // Calculate trend momentum
+  calculateTrendMomentum(video) {
+    const viral_score = this.calculateViralScore(video);
+    const velocity = this.calculateEngagementVelocity(video);
+    
+    // Recent content gets momentum boost
+    const published = new Date(video.published_at || Date.now());
+    const hoursOld = (Date.now() - published.getTime()) / (1000 * 60 * 60);
+    const recentBoost = hoursOld < 24 ? 1.5 : hoursOld < 72 ? 1.2 : 1.0;
+    
+    return (viral_score * 0.6 + Math.log10(velocity + 1) * 8) * recentBoost;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // 🧩 Comprehensive Data Normalization System
   normalizeDataForTrendTiles(rawTrends, category = 'all') {
     if (!rawTrends || rawTrends.length === 0) return [];
@@ -3543,6 +3709,115 @@ class WaveSightDashboard {
     audio.volume = 0.3;
     audio.play().catch(e => console.warn('Could not play alert sound:', e));
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // AGGRESSIVE AUTO-FETCHING SYSTEM
+  // ═══════════════════════════════════════════════════════════════
+
+  startAggressiveDataFetching() {
+    console.log('🚀 STARTING AGGRESSIVE DATA FETCHING - HITTING API LIMITS');
+    
+    // Immediate fetch on startup
+    setTimeout(() => {
+      this.fetchFreshYouTubeData();
+    }, 3000);
+    
+    // Heavy refresh every 10 minutes (600k/day ÷ 144 = ~4200 calls per session)
+    const aggressiveInterval = setInterval(async () => {
+      try {
+        console.log('🔥 AGGRESSIVE REFRESH: Fetching maximum data...');
+        await this.fetchFreshYouTubeData();
+        
+        // Update category trends with latest data
+        if (this.wavescopeChart) {
+          this.wavescopeChart.refreshCategoryTrends();
+        }
+        
+        this.showNotification('🔥 Data refresh complete - staying current with trends', 'success');
+      } catch (error) {
+        console.warn('⚠️ Aggressive fetch cycle failed:', error);
+        this.showNotification('⚠️ Data refresh encountered issues, but continuing...', 'warning');
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+    
+    // Ultra-rapid checks for breaking/viral content every 2 minutes
+    const rapidViralCheck = setInterval(async () => {
+      try {
+        console.log('⚡ RAPID VIRAL CHECK: Scanning for breaking trends...');
+        
+        // Quick searches for breaking content
+        const breakingQueries = [
+          'breaking news',
+          'viral now',
+          'trending today',
+          'just happened',
+          'live now',
+          'urgent',
+          'emergency',
+          'scandal',
+          'leaked',
+          'exposed'
+        ];
+        
+        const promises = breakingQueries.slice(0, 3).map(async (query) => {
+          try {
+            const response = await fetch(`/api/fetch-youtube?q=${encodeURIComponent(query)}&maxResults=10&order=date&publishedAfter=${this.getDateDaysAgo(0.05)}`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 8000
+            });
+            const result = await response.json();
+            return result.success ? result.data : [];
+          } catch (error) {
+            return [];
+          }
+        });
+        
+        const allBreaking = await Promise.all(promises);
+        const breakingContent = allBreaking.flat();
+        
+        if (breakingContent.length > 0) {
+          // Check for ultra-viral content (>100k views in last hour)
+          const ultraViral = breakingContent.filter(item => {
+            const views = parseInt(item.view_count) || 0;
+            const published = new Date(item.published_at || Date.now());
+            const hoursOld = (Date.now() - published.getTime()) / (1000 * 60 * 60);
+            return views > 100000 && hoursOld < 1;
+          });
+          
+          if (ultraViral.length > 0) {
+            console.log(`🚨 ULTRA-VIRAL DETECTED: ${ultraViral.length} breaking trends`);
+            this.showNotification(`🚨 BREAKING: ${ultraViral.length} ultra-viral trends detected!`, 'warning');
+            
+            // Immediately trigger full data refresh
+            this.fetchFreshYouTubeData();
+          }
+        }
+        
+      } catch (error) {
+        console.warn('⚠️ Rapid viral check failed:', error);
+      }
+    }, 2 * 60 * 1000); // 2 minutes
+    
+    // Store intervals for cleanup
+    this.aggressiveInterval = aggressiveInterval;
+    this.rapidViralCheck = rapidViralCheck;
+    
+    console.log('✅ Aggressive data fetching system active - maximizing trend detection');
+  }
+
+  // Clean up intervals when needed
+  stopAggressiveDataFetching() {
+    if (this.aggressiveInterval) {
+      clearInterval(this.aggressiveInterval);
+      this.aggressiveInterval = null;
+    }
+    if (this.rapidViralCheck) {
+      clearInterval(this.rapidViralCheck);
+      this.rapidViralCheck = null;
+    }
+    console.log('🛑 Aggressive data fetching stopped');
+  }
 }
 
 // Chart Renderer Class
@@ -4187,14 +4462,33 @@ class WaveScopeChart {
   }
 
   render() {
-    const width = this.canvas.offsetWidth;
-    const height = this.canvas.offsetHeight;
+    // Get proper canvas dimensions accounting for device pixel ratio
+    const dpr = window.devicePixelRatio || 1;
+    const width = this.canvas.width / dpr;
+    const height = this.canvas.height / dpr;
     
-    // Clear canvas
+    // Clear entire canvas
     this.ctx.clearRect(0, 0, width, height);
+    
+    // Ensure we have data to render
+    if (!this.data || Object.keys(this.data).length === 0) {
+      this.drawNoDataMessage(width, height);
+      return;
+    }
     
     // Draw advanced WaveScope Timeline
     this.drawWaveScopeTimeline(width, height);
+  }
+
+  drawNoDataMessage(width, height) {
+    this.ctx.fillStyle = 'rgba(26, 26, 46, 0.95)';
+    this.ctx.fillRect(0, 0, width, height);
+    
+    this.ctx.fillStyle = '#9ca3af';
+    this.ctx.font = '16px Satoshi, sans-serif';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('Initializing WaveScope Timeline...', width / 2, height / 2);
+    this.ctx.fillText('Loading trend data...', width / 2, height / 2 + 30);
   }
 
   drawWaveScopeTimeline(width, height) {
