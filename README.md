@@ -23,13 +23,13 @@ WaveSight is an advanced social intelligence platform that combines real-time da
 
 ### ✨ Key Features
 
-- 🔥 **Real-Time Trend Tracking** - Monitor YouTube trending videos across multiple regions
-- 🧠 **AI Sentiment Analysis** - Analyze Reddit discussions for cultural sentiment patterns
-- 🧭 **Cultural Compass** - Map trends on 2D cultural axes (Mainstream↔Underground, Traditional↔Disruptive)
-- 🌊 **Wave Score Algorithm** - Proprietary scoring system predicting viral potential
-- 📊 **Interactive Dashboards** - Real-time visualizations with Canvas-based charts
-- 🚨 **Custom Alerts** - Get notified when trends match your criteria
-- 📈 **Multi-Platform Insights** - Combines YouTube, Reddit, and more data sources
+- 🌊 **WaveScope Timeline** - Advanced viral trend detection with proprietary WaveScore algorithm (0-100 scale)
+- 📊 **Reddit Sentiment Dashboard** - Real-time community sentiment analysis with topic tiles and heatmaps
+- 🧭 **Cultural Compass** - Interactive multi-dimensional cultural trend mapping with 6 positioning axes
+- 🧩 **Trend Tiles System** - Cross-platform normalized analytics with Z-score standardization
+- ⚠️ **Intelligent Alerts** - Advanced alert system with severity levels and watchlist functionality
+- 📈 **Real-Time Analytics** - 30-second refresh intervals with viral detection algorithms
+- 🎯 **Multi-Platform Intelligence** - Unified scoring across YouTube, Reddit, TikTok data sources
 
 ---
 
@@ -65,12 +65,12 @@ Visit [http://localhost:8080](http://localhost:8080) 🎉
 
 ### Live Dashboards
 
-| Dashboard | Purpose | Screenshot |
-|-----------|---------|------------|
-| **Trends** | Real-time trending analysis | [View Demo](http://localhost:8080) |
-| **Sentiment** | AI sentiment forecasting | [View Demo](http://localhost:8080/sentiment-dashboard.html) |
-| **Cultural Compass** | Cultural trend mapping | [View Demo](http://localhost:8080/cultural-compass.html) |
-| **Alerts** | Custom trend notifications | [View Demo](http://localhost:8080/alerts-dashboard.html) |
+| Dashboard | Purpose | Key Features |
+|-----------|---------|-------------|
+| **🌊 WaveScope Timeline** | Advanced viral trend detection | WaveScore algorithm, Trend Tiles, 10-category tracking |
+| **📊 Reddit Sentiment** | Real-time community analysis | Topic tiles, sentiment heatmaps, comment drill-down |
+| **🧭 Cultural Compass** | Multi-dimensional trend mapping | 6 cultural axes, interactive positioning, momentum tracking |
+| **⚠️ Alerts Intelligence** | Custom trend notifications | Severity levels, watchlist, viral detection alerts |
 
 ### Example Analysis
 
@@ -188,64 +188,70 @@ python3 -m http.server 8080
 
 ## 📊 Features Deep Dive
 
-### 🔥 Real-Time Trend Tracking
-- Monitor YouTube trending across US, UK, Canada
-- Automatic categorization (AI Tools, Crypto, Gaming, etc.)
-- Historical data with 3-year timeline
-- Engagement metrics and growth tracking
+### 🌊 WaveScope Timeline - Advanced Viral Detection
+- **Proprietary WaveScore Algorithm**: 0-100 scale with 4 weighted components
+  - 🔹 **Reach (40%)**: Views, upvotes, shares, engagement volume
+  - 🔹 **Velocity (30%)**: Rate of growth vs. previous periods
+  - 🔹 **Sentiment (20%)**: Public emotional tone & engagement quality
+  - 🔹 **Momentum (10%)**: Sudden spikes & virality triggers
+- **Trend Tiles System**: Cross-platform normalized analytics with Z-score standardization
+- **10-Category Tracking**: Viral, AI, Entertainment, Music, Gaming, Sports, News, Crypto, Education, Health
+- **Interactive Timeline**: Canvas-based visualization with time periods (1M, 3M, 6M, 1Y, 5Y, MAX)
 
-### 🧠 AI Sentiment Analysis
-- Reddit comment analysis with VADER + GPT
-- Confidence scoring and momentum tracking
-- Cultural context understanding
-- Predictive sentiment forecasting
+### 📊 Reddit Sentiment Dashboard - Community Intelligence
+- **Top-Level Metrics**: Trending subreddits, negative topic surge detection, high-engagement threads
+- **Time-Series Analysis**: Multi-topic sentiment tracking with confidence bands and comparison tools
+- **Live Topic Tiles**: Reddit posts with sentiment meters, engagement stats, momentum badges
+- **Subreddit Heatmap**: Cross-community sentiment correlation visualization (8 subreddits × 5 topics)
+- **Comment Drill-Down**: Top comments analysis with emotion tags (🧠 Thoughtful, 💥 Controversial, 😂 Funny)
+- **Alerts & Watchlist**: Keyword monitoring with volume and sentiment shift notifications
 
-### 🧭 Cultural Compass
-- 2D mapping: Mainstream ↔ Underground × Traditional ↔ Disruptive
-- Real-time trend positioning
-- Cultural velocity and momentum
-- Cross-platform trend correlation
+### 🧭 Cultural Compass - Multi-Dimensional Mapping
+- **6 Cultural Dimensions**: Configurable axis pairs for comprehensive trend positioning
+  - Mainstream ↔ Underground × Traditional ↔ Disruptive
+  - Mass Appeal ↔ Subcultural Depth × High Energy ↔ Chill/Laid Back
+  - Early Adopter ↔ Late Majority × Sentimental ↔ Ironic/Detached
+- **Interactive Positioning**: Clickable trend points with detailed cultural metrics and tooltips
+- **Advanced Scoring**: Community engagement pattern analysis and cultural momentum tracking
+- **15 Trend Categories**: Technology, Entertainment, Fashion, Lifestyle, Politics, Environment, Culture
 
-### 🌊 Wave Score Algorithm
-- **Growth Factor** (30%): View count increases
-- **Engagement Factor** (25%): Likes/comments ratio
-- **Volume Factor** (25%): Absolute reach
-- **Sentiment Factor** (20%): Public perception
-- **Result**: 0-1 score predicting viral potential
+### ⚠️ Intelligent Alerts - Proactive Monitoring
+- **Severity Levels**: Critical, High, Medium, Low with visual indicators and trend classification
+- **Multi-Criteria Detection**: Volume thresholds, sentiment shifts, growth rate spikes, viral momentum
+- **Alert Management**: Dismissal system with alert history tracking and filtering capabilities
+- **Real-Time Monitoring**: 30-second refresh intervals with automated trend scanning
 
 ---
 
 ## 🔬 API Reference
 
-### Sentiment Analysis
+### WaveScope Timeline API
 ```bash
-POST /api/analyze-sentiment
-{
-  "topic": "string",
-  "limit": 50
-}
+GET /api/youtube-data           # Fetch trending YouTube data
+GET /api/fetch-youtube          # Search specific content with filters
+POST /api/process-trends        # Trigger cultural analysis processing
+GET /api/health                 # API health and configuration status
 ```
 
-### Cultural Compass
+### Reddit Sentiment API  
 ```bash
-POST /api/cultural-compass
-{
-  "topics": ["AI", "crypto", "remote work"]
-}
+GET /api/reddit-sentiment       # Fetch Reddit sentiment data
+POST /api/analyze-topic         # Analyze specific topic sentiment
+GET /api/subreddit-stats        # Get subreddit statistics and trends
 ```
 
-### Wave Score
+### Cultural Compass API
 ```bash
-POST /api/wave-score
-{
-  "topic": "string",
-  "video_id": "optional"
-}
+GET /api/cultural-trends        # Fetch cultural trend positioning data
+POST /api/cultural-analysis     # Run cultural positioning analysis
+GET /api/trend-dimensions       # Get multi-dimensional scoring
 ```
 
-### Health Check
+### Alerts System API
 ```bash
-GET /api/health
+GET /api/alerts                 # Fetch alert data with filtering
+POST /api/run-alert-scan        # Trigger alert generation scan
+POST /api/alerts/:id/dismiss    # Dismiss specific alert by ID
 ```
 
 ---
