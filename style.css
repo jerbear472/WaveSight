@@ -1589,6 +1589,57 @@ h1, h2, h3, .logo, .header-title {
     }
 }
 
+/* Fallback Timeline Trend Items */
+.trend-item {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  background: #2e2e45;
+  border-radius: 8px;
+  border: 1px solid rgba(94, 227, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.trend-item:hover {
+  border-color: #5ee3ff;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(94, 227, 255, 0.2);
+}
+
+.trend-rank {
+  font-weight: 700;
+  color: #5ee3ff;
+  min-width: 3rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.trend-info {
+  flex: 1;
+  margin-left: 1rem;
+}
+
+.trend-title {
+  color: #f1f1f1;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.trend-stats {
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.trend-score {
+  font-weight: 700;
+  color: #10b981;
+  font-size: 1rem;
+  min-width: 4rem;
+  text-align: right;
+}
+
 /* Detailed Trends Table Styles */
 .detailed-trends-container {
   overflow-x: auto;
@@ -2277,6 +2328,72 @@ h1, h2, h3, .logo, .header-title {
 .refresh-data-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+}
+
+/* Fallback Timeline Styles */
+.fallback-timeline {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 1.5rem 0;
+}
+
+.fallback-timeline h3 {
+  color: #5ee3ff;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.2rem;
+}
+
+.trend-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+.trend-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(5px);
+}
+
+.trend-rank {
+  background: #5ee3ff;
+  color: #1a1a2e;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  min-width: 40px;
+  text-align: center;
+}
+
+.trend-info {
+  flex: 1;
+}
+
+.trend-title {
+  color: #f1f1f1;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  font-size: 1rem;
+}
+
+.trend-stats {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.trend-score {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.9rem;
 }
 
 .timeline-header {
