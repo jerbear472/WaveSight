@@ -1189,7 +1189,7 @@ class WaveSightDashboard {
     `;
   }
 
-  // Enhanced search functionality
+  // Enhanced cross-platform search functionality with viral scoring
   async searchTrends() {
     const searchInput = document.getElementById('searchInput');
     const searchTerm = searchInput?.value.trim();
@@ -1200,26 +1200,51 @@ class WaveSightDashboard {
     }
 
     this.showLoading();
-    this.showNotification(`🔍 Searching for "${searchTerm}" across all platforms...`, 'info');
+    this.showNotification(`🔍 Searching for "${searchTerm}" across YouTube, TikTok, and local data...`, 'info');
 
     try {
-      // Search in current data first
-      let localResults = this.searchInCurrentData(searchTerm);
-      
-      // Always fetch fresh data from YouTube API for comprehensive results
-      let freshResults = await this.fetchSearchResults(searchTerm);
-      
-      // Combine and deduplicate results
-      const combinedResults = this.combineAndRankResults(localResults, freshResults, searchTerm);
+      // Get data source toggle state
+      const activeDataSources = this.getActiveDataSources();
+      console.log('🔍 Active data sources:', activeDataSources);
 
-      if (combinedResults.length > 0) {
-        this.displaySearchResults(combinedResults, searchTerm);
-        this.showNotification(`✅ Found ${combinedResults.length} trends for "${searchTerm}" (${freshResults.length} new from YouTube)`, 'success');
+      // Execute parallel searches across all enabled platforms
+      const searchPromises = [];
+      
+      if (activeDataSources.includes('local')) {
+        searchPromises.push(this.searchInCurrentData(searchTerm));
+      }
+      
+      if (activeDataSources.includes('youtube')) {
+        searchPromises.push(this.fetchYouTubeSearchResults(searchTerm));
+      }
+      
+      if (activeDataSources.includes('tiktok')) {
+        searchPromises.push(this.fetchTikTokSearchResults(searchTerm));
+      }
+
+      // Wait for all searches to complete
+      const searchResults = await Promise.allSettled(searchPromises);
+      
+      // Process results and calculate viral scores
+      const processedResults = await this.processSearchResults(searchResults, activeDataSources, searchTerm);
+      
+      if (processedResults.length > 0) {
+        // Display results with viral information
+        this.displaySearchResultsWithViralInfo(processedResults, searchTerm);
+        
+        const totalPlatforms = activeDataSources.length;
+        const viralCount = processedResults.filter(r => r.viralScore >= 70).length;
+        
+        this.showNotification(
+          `✅ Found ${processedResults.length} trends across ${totalPlatforms} platforms (${viralCount} viral)`, 
+          'success'
+        );
       } else {
         this.showNoResults(searchTerm);
       }
+      
     } catch (error) {
-      console.error('❌ Search error:', error);
+      console.error('❌ Cross-platform search error:', error);
       // Fallback to local search only
       const localResults = this.searchInCurrentData(searchTerm);
       if (localResults.length > 0) {
@@ -1249,14 +1274,237 @@ class WaveSightDashboard {
     });
   }
 
-  // Fetch search results from API
-  async fetchSearchResults(searchTerm) {
-    const response = await this.fetchWithTimeout(
-      `/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`
-    );
+  // Get active data sources from UI toggles
+  getActiveDataSources() {
+    const dataSourceToggles = document.querySelectorAll('.data-source-toggle');
+    const active = ['local']; // Always include local search
     
-    const result = await response.json();
-    return result.success ? result.data : [];
+    dataSourceToggles.forEach(toggle => {
+      if (toggle.checked && toggle.dataset.source) {
+        active.push(toggle.dataset.source);
+      }
+    });
+    
+    // Default to all sources if no toggles found
+    if (active.length === 1) {
+      return ['local', 'youtube', 'tiktok'];
+    }
+    
+    return active;
+  }
+
+  // Fetch YouTube search results
+  async fetchYouTubeSearchResults(searchTerm) {
+    try {
+      const response = await this.fetchWithTimeout(
+        `/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`
+      );
+      const result = await response.json();
+      return {
+        platform: 'youtube',
+        success: result.success,
+        data: result.success ? result.data : [],
+        error: result.error
+      };
+    } catch (error) {
+      return {
+        platform: 'youtube',
+        success: false,
+        data: [],
+        error: error.message
+      };
+    }
+  }
+
+  // Fetch TikTok search results
+  async fetchTikTokSearchResults(searchTerm) {
+    try {
+      // Check if TikTok server is available
+      const healthResponse = await fetch('http://localhost:5002/health');
+      if (!healthResponse.ok) {
+        throw new Error('TikTok server not available');
+      }
+
+      // Search TikTok viral content
+      const response = await fetch(`http://localhost:5002/api/tiktok-viral?categories=viral,trending,music&limit=30`);
+      const result = await response.json();
+      
+      if (result.success) {
+        // Filter results by search term
+        const filteredData = result.data.videos.filter(video => {
+          const searchableContent = [
+            video.video_description || '',
+            video.username || '',
+            (video.hashtag_names || []).join(' ')
+          ].join(' ').toLowerCase();
+          
+          return searchableContent.includes(searchTerm.toLowerCase());
+        });
+        
+        return {
+          platform: 'tiktok',
+          success: true,
+          data: filteredData,
+          analysis: result.data.analysis || []
+        };
+      } else {
+        throw new Error(result.error || 'TikTok search failed');
+      }
+    } catch (error) {
+      console.warn('⚠️ TikTok search unavailable:', error.message);
+      return {
+        platform: 'tiktok',
+        success: false,
+        data: [],
+        error: error.message
+      };
+    }
+  }
+
+  // Process search results from all platforms
+  async processSearchResults(searchResults, activeDataSources, searchTerm) {
+    const allResults = [];
+    
+    searchResults.forEach((result, index) => {
+      const platform = activeDataSources[index];
+      
+      if (result.status === 'fulfilled') {
+        let data = result.value;
+        
+        // Handle different data structures
+        if (platform === 'local') {
+          // Local data is already in the right format
+          data.forEach(item => {
+            allResults.push({
+              ...item,
+              platform: 'local',
+              viralScore: this.calculateLocalViralScore(item),
+              reach: item.view_count || 0,
+              source: 'WaveSight Database'
+            });
+          });
+        } else if (platform === 'youtube' && data.success) {
+          // YouTube data
+          data.data.forEach(item => {
+            allResults.push({
+              ...item,
+              platform: 'youtube',
+              viralScore: this.calculateYouTubeViralScore(item),
+              reach: item.view_count || 0,
+              source: 'YouTube API'
+            });
+          });
+        } else if (platform === 'tiktok' && data.success) {
+          // TikTok data with analysis
+          data.data.forEach((item, idx) => {
+            const analysis = data.analysis?.find(a => a.video_id === item.id) || {};
+            allResults.push({
+              id: item.id,
+              title: item.video_description || `TikTok by @${item.username}`,
+              description: item.video_description,
+              platform: 'tiktok',
+              viralScore: analysis.viral_score || this.calculateTikTokViralScore(item),
+              reach: item.view_count || 0,
+              username: item.username,
+              hashtags: item.hashtag_names || [],
+              source: 'TikTok Research API',
+              created_at: new Date(item.create_time * 1000).toISOString()
+            });
+          });
+        }
+      } else {
+        console.warn(`❌ ${platform} search failed:`, result.reason);
+      }
+    });
+    
+    // Sort by viral score and remove duplicates
+    return this.deduplicateAndRankResults(allResults, searchTerm);
+  }
+
+  // Calculate viral scores for different platforms
+  calculateLocalViralScore(item) {
+    // Use existing engagement metrics
+    const views = parseInt(item.view_count) || 0;
+    const engagement = parseInt(item.like_count) || 0;
+    const comments = parseInt(item.comment_count) || 0;
+    
+    if (views === 0) return 0;
+    
+    const engagementRate = ((engagement + comments) / views) * 100;
+    const recencyBoost = this.getRecencyBoost(item.published_at);
+    
+    return Math.min(100, (engagementRate * 0.7 + recencyBoost * 0.3));
+  }
+
+  calculateYouTubeViralScore(item) {
+    const views = parseInt(item.view_count) || 0;
+    const likes = parseInt(item.like_count) || 0;
+    const comments = parseInt(item.comment_count) || 0;
+    
+    if (views === 0) return 0;
+    
+    // Calculate engagement rate
+    const engagementRate = ((likes + comments) / views) * 100;
+    
+    // View velocity (views per day since publish)
+    const publishedAt = new Date(item.published_at);
+    const daysSincePublish = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+    const viewVelocity = daysSincePublish > 0 ? views / daysSincePublish : views;
+    
+    // Viral score calculation
+    const viewScore = Math.min(30, Math.log10(views) * 3);
+    const engagementScore = Math.min(40, engagementRate * 4);
+    const velocityScore = Math.min(30, Math.log10(viewVelocity + 1) * 5);
+    
+    return Math.round(viewScore + engagementScore + velocityScore);
+  }
+
+  calculateTikTokViralScore(item) {
+    // Basic TikTok viral scoring if no analysis available
+    const views = parseInt(item.view_count) || 0;
+    const likes = parseInt(item.like_count) || 0;
+    const shares = parseInt(item.share_count) || 0;
+    const comments = parseInt(item.comment_count) || 0;
+    
+    if (views === 0) return 0;
+    
+    // TikTok specific viral metrics
+    const engagementRate = ((likes + comments + shares) / views) * 100;
+    const shareRate = shares > 0 ? (shares / views) * 100 : 0;
+    
+    // TikTok tends to have higher engagement rates
+    const engagementScore = Math.min(50, engagementRate * 2);
+    const shareScore = Math.min(30, shareRate * 10);
+    const viewScore = Math.min(20, Math.log10(views) * 2);
+    
+    return Math.round(engagementScore + shareScore + viewScore);
+  }
+
+  getRecencyBoost(publishedAt) {
+    if (!publishedAt) return 0;
+    
+    const published = new Date(publishedAt);
+    const hoursAgo = (Date.now() - published.getTime()) / (1000 * 60 * 60);
+    
+    // Recent content gets boost
+    if (hoursAgo < 24) return 20;
+    if (hoursAgo < 72) return 10;
+    if (hoursAgo < 168) return 5; // 1 week
+    return 0;
+  }
+
+  // Remove duplicates and rank by viral score
+  deduplicateAndRankResults(results, searchTerm) {
+    const seen = new Set();
+    const unique = results.filter(item => {
+      const key = `${item.platform}-${item.title || item.description}`.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    
+    // Sort by viral score descending
+    return unique.sort((a, b) => (b.viralScore || 0) - (a.viralScore || 0));
   }
 
   // Trend comparison functionality
@@ -2254,6 +2502,208 @@ class WaveSightDashboard {
     });
 
     return Array.from(dateMap.values());
+  }
+
+  // Enhanced display for search results with viral information
+  displaySearchResultsWithViralInfo(results, searchTerm) {
+    const searchTermDisplay = searchTerm.charAt(0).toUpperCase() + searchTerm.slice(1);
+    
+    // Update state
+    this.state.filteredData = results;
+    this.state.selectedTrends = searchTermDisplay;
+    
+    // Create enhanced chart with platform breakdown
+    const chartData = this.createCrossPlatformChartData(results, searchTermDisplay);
+    this.renderChart(chartData, `${searchTermDisplay} - Cross-Platform Analysis`);
+    
+    // Render enhanced table with viral scores
+    this.renderViralTrendTable(results);
+    
+    // Update status with platform breakdown
+    this.updateCrossPlatformStatus(results, searchTerm);
+    
+    // Update filter dropdown
+    const filterSelect = document.getElementById('trendFilter');
+    if (filterSelect) {
+      filterSelect.innerHTML = '<option value="all">All Trends</option>';
+      const option = document.createElement('option');
+      option.value = searchTermDisplay;
+      option.textContent = `${searchTermDisplay} (Cross-Platform)`;
+      option.selected = true;
+      filterSelect.appendChild(option);
+    }
+  }
+
+  // Create cross-platform chart data
+  createCrossPlatformChartData(results, searchTerm) {
+    const platforms = ['youtube', 'tiktok', 'local'];
+    const dates = this.generateDateIntervals(
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+      new Date()
+    );
+    
+    const chartData = dates.map(date => {
+      const dataPoint = { date };
+      platforms.forEach(platform => {
+        dataPoint[`${searchTerm}_${platform}`] = 0;
+      });
+      return dataPoint;
+    });
+    
+    // Aggregate data by platform and date
+    results.forEach(item => {
+      const itemDate = this.getDateKey(item.created_at || item.published_at, { daysBack: 30 });
+      const chartPoint = chartData.find(point => point.date === itemDate);
+      
+      if (chartPoint) {
+        const platformKey = `${searchTerm}_${item.platform}`;
+        chartPoint[platformKey] = (chartPoint[platformKey] || 0) + (item.viralScore || 0);
+      }
+    });
+    
+    return chartData;
+  }
+
+  // Render viral trend table with platform indicators
+  renderViralTrendTable(results) {
+    const tableContainer = document.getElementById('trendTable');
+    if (!tableContainer) return;
+    
+    const platformColors = {
+      youtube: '#FF0000',
+      tiktok: '#00F2EA', 
+      local: '#5ee3ff'
+    };
+    
+    const platformIcons = {
+      youtube: '📺',
+      tiktok: '🎵',
+      local: '💾'
+    };
+    
+    tableContainer.innerHTML = `
+      <div class="viral-trends-header">
+        <h3>🔥 Cross-Platform Viral Analysis</h3>
+        <div class="platform-legend">
+          ${Object.entries(platformIcons).map(([platform, icon]) => 
+            `<span class="platform-badge" style="border-color: ${platformColors[platform]}">
+              ${icon} ${platform.toUpperCase()}
+            </span>`
+          ).join('')}
+        </div>
+      </div>
+      
+      <div class="viral-trends-table">
+        <div class="viral-table-header">
+          <div class="viral-col-platform">Platform</div>
+          <div class="viral-col-content">Content</div>
+          <div class="viral-col-viral">Viral Score</div>
+          <div class="viral-col-reach">Reach</div>
+          <div class="viral-col-source">Source</div>
+        </div>
+        
+        ${results.slice(0, 20).map(item => {
+          const viralLevel = item.viralScore >= 80 ? 'ultra-viral' : 
+                           item.viralScore >= 70 ? 'viral' : 
+                           item.viralScore >= 50 ? 'trending' : 'moderate';
+                           
+          return `
+            <div class="viral-trend-row ${viralLevel}">
+              <div class="viral-col-platform">
+                <span class="platform-indicator" style="background-color: ${platformColors[item.platform]}">
+                  ${platformIcons[item.platform]}
+                </span>
+              </div>
+              
+              <div class="viral-col-content">
+                <div class="trend-title">${item.title || 'Untitled'}</div>
+                <div class="trend-meta">
+                  ${item.username ? `@${item.username}` : item.channel_title || ''}
+                  ${item.hashtags ? `<span class="hashtags">${item.hashtags.slice(0, 3).map(tag => `#${tag}`).join(' ')}</span>` : ''}
+                </div>
+              </div>
+              
+              <div class="viral-col-viral">
+                <div class="viral-score-container">
+                  <div class="viral-score ${viralLevel}">${Math.round(item.viralScore || 0)}</div>
+                  <div class="viral-bar">
+                    <div class="viral-fill ${viralLevel}" style="width: ${(item.viralScore || 0)}%"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="viral-col-reach">
+                ${this.formatNumber(item.reach || 0)} views
+              </div>
+              
+              <div class="viral-col-source">
+                <span class="source-badge">${item.source || 'Unknown'}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // Update status with cross-platform breakdown
+  updateCrossPlatformStatus(results, searchTerm) {
+    const statusContainer = document.getElementById('statusInfo');
+    if (!statusContainer) return;
+    
+    const platformStats = results.reduce((stats, item) => {
+      const platform = item.platform;
+      if (!stats[platform]) {
+        stats[platform] = { count: 0, totalViralScore: 0, totalReach: 0 };
+      }
+      stats[platform].count++;
+      stats[platform].totalViralScore += item.viralScore || 0;
+      stats[platform].totalReach += item.reach || 0;
+      return stats;
+    }, {});
+    
+    const totalViral = results.filter(r => r.viralScore >= 70).length;
+    const avgViralScore = results.length > 0 ? 
+      Math.round(results.reduce((sum, r) => sum + (r.viralScore || 0), 0) / results.length) : 0;
+    
+    statusContainer.innerHTML = `
+      <div class="cross-platform-status">
+        <div class="status-header">
+          <h4>📊 "${searchTerm}" Analysis</h4>
+          <div class="overall-metrics">
+            <span class="metric">
+              <strong>${results.length}</strong> total results
+            </span>
+            <span class="metric viral">
+              <strong>${totalViral}</strong> viral (70+ score)
+            </span>
+            <span class="metric">
+              Avg Score: <strong>${avgViralScore}</strong>
+            </span>
+          </div>
+        </div>
+        
+        <div class="platform-breakdown">
+          ${Object.entries(platformStats).map(([platform, stats]) => {
+            const avgScore = stats.count > 0 ? Math.round(stats.totalViralScore / stats.count) : 0;
+            const platformIcons = { youtube: '📺', tiktok: '🎵', local: '💾' };
+            
+            return `
+              <div class="platform-stat">
+                <div class="platform-name">
+                  ${platformIcons[platform]} ${platform.toUpperCase()}
+                </div>
+                <div class="platform-metrics">
+                  <span>${stats.count} results</span>
+                  <span>Avg: ${avgScore}</span>
+                  <span>${this.formatNumber(stats.totalReach)} total reach</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
   }
 
   // Show no results message

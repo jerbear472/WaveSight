@@ -55,6 +55,27 @@
                 <!-- Basic Search and Filters -->
                 <div class="filter-group">
                     <input type="text" placeholder="Search trends... (Type to search)" id="searchInput" class="search-input">
+                    
+                    <!-- Data Source Toggles for Cross-Platform Search -->
+                    <div class="data-source-toggles">
+                        <span class="toggle-label">Data Sources:</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" class="data-source-toggle" data-source="youtube" checked>
+                            <span class="toggle-slider youtube"></span>
+                            <span class="toggle-text">📺 YouTube</span>
+                        </label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" class="data-source-toggle" data-source="tiktok" checked>
+                            <span class="toggle-slider tiktok"></span>
+                            <span class="toggle-text">🎵 TikTok</span>
+                        </label>
+                        <label class="toggle-switch cross-platform">
+                            <input type="checkbox" id="crossPlatformMode" checked>
+                            <span class="toggle-slider cross-platform"></span>
+                            <span class="toggle-text">🌐 Cross-Platform Scoring</span>
+                        </label>
+                    </div>
+                    
                     <select id="trendFilter" onchange="filterChart()">
                         <option value="all">All Trends</option>
                     </select>
