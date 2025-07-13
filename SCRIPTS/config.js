@@ -17,14 +17,14 @@ window.WaveSightConfig = {
   // API Configuration
   api: {
     baseUrl: isDevelopment ? 'http://localhost' : window.location.origin,
-    sentimentServer: isDevelopment ? 'http://localhost:5001' : window.location.origin,
-    youtubeServer: isDevelopment ? 'http://localhost:5000' : window.location.origin,
+    sentimentServer: isDevelopment ? 'http://localhost:5001' : null,
+    youtubeServer: isDevelopment ? 'http://localhost:5000' : null,
     timeout: 30000
   },
   
   // Supabase Configuration (Public values only)
   supabase: {
-    // These will be set by a configuration endpoint or build process
+    // These will be set by environment variables or configuration
     url: null,
     anonKey: null
   },
@@ -70,6 +70,28 @@ window.WaveSightConfig = {
     timeRange: '1_week',
     maxResults: 50
   }
+};
+
+// Simple mock data for when APIs aren't available
+window.WaveSightConfig.generateMockTrends = function(count = 20) {
+  const categories = ['Technology', 'Gaming', 'Entertainment', 'News', 'Music'];
+  const titles = [
+    'AI Revolution Changes Everything',
+    'New Gaming Technology Breakthrough', 
+    'Viral Video Takes Internet by Storm',
+    'Breaking Tech News Update',
+    'Music Video Hits 1 Billion Views'
+  ];
+  
+  return Array.from({length: count}, (_, i) => ({
+    id: `trend_${i}`,
+    title: titles[Math.floor(Math.random() * titles.length)] + ` ${i + 1}`,
+    category: categories[Math.floor(Math.random() * categories.length)],
+    view_count: Math.floor(Math.random() * 5000000) + 100000,
+    published_date: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+    trend_score: Math.random(),
+    engagement_rate: Math.random() * 10
+  }));
 };
 
 // Configuration loader function
