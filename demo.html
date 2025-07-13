@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaveSight Demo - Social Intelligence Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
+    
+    <!-- Load demo configuration first -->
+    <script src="demo-config.js"></script>
+    
+    <!-- Load required libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js"></script>
+    
+    <style>
+        .demo-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .demo-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .demo-feature {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border: 1px solid #e0e7ff;
+        }
+        
+        .demo-feature h3 {
+            color: #4f46e5;
+            margin-bottom: 15px;
+        }
+        
+        .demo-chart {
+            width: 100%;
+            height: 300px;
+            background: #f8fafc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+            border: 2px dashed #cbd5e1;
+        }
+        
+        .sentiment-result {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 15px 0;
+        }
+        
+        .cultural-compass-demo {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .compass-axes {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            height: 80%;
+        }
+        
+        .compass-point {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .demo-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .demo-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #e0e7ff;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #4f46e5;
+        }
+        
+        .stat-label {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Demo Banner -->
+        <div class="demo-banner">
+            <h2>🌊 WaveSight Demo - Social Intelligence Platform</h2>
+            <p>Explore trending analysis, sentiment forecasting, and cultural mapping with live demo data</p>
+            <a href="https://github.com/jerbear472/WaveSight/blob/main/LIVE-DEMO-GUIDE.md" 
+               style="color: #FFE066; text-decoration: underline; font-weight: 600;">
+                📖 Get Live Data Setup Guide
+            </a>
+        </div>
+
+        <!-- Header -->
+        <div class="header-bar">
+            <div class="logo-group">
+                <img src="logo2.png" alt="WaveSight Logo" class="logo-icon">
+                <span class="logo-text">WAVESIGHT</span>
+                <span style="background: #ff6b6b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 10px;">DEMO</span>
+            </div>
+            <div class="nav-links">
+                <a href="demo.html" class="nav-link active">🔥 Demo Dashboard</a>
+                <a href="sentiment-dashboard.html" class="nav-link">🧠 Sentiment</a>
+                <a href="cultural-compass.html" class="nav-link">🧭 Cultural Compass</a>
+                <a href="https://github.com/jerbear472/WaveSight" class="nav-link">📂 GitHub</a>
+            </div>
+        </div>
+
+        <!-- Live Demo Features -->
+        <div class="demo-features">
+            <!-- Trending Analysis -->
+            <div class="demo-feature">
+                <h3>📈 Trending Analysis</h3>
+                <p>Real-time tracking of viral content with Wave Score algorithm</p>
+                <div class="demo-chart">
+                    <div style="text-align: center;">
+                        <div class="loading-spinner"></div>
+                        <p style="margin-top: 10px; color: #64748b;">Loading trending data...</p>
+                    </div>
+                </div>
+                <button class="demo-button" onclick="loadTrendingDemo()">🔄 Load Trending Videos</button>
+                <div id="trending-results"></div>
+            </div>
+
+            <!-- Sentiment Analysis -->
+            <div class="demo-feature">
+                <h3>🧠 Sentiment Analysis</h3>
+                <p>AI-powered sentiment forecasting from Reddit discussions</p>
+                <input type="text" id="sentiment-topic" placeholder="Enter topic (e.g., artificial intelligence)" 
+                       style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; margin: 10px 0;">
+                <button class="demo-button" onclick="analyzeSentimentDemo()">🔍 Analyze Sentiment</button>
+                <div id="sentiment-results"></div>
+            </div>
+
+            <!-- Cultural Compass -->
+            <div class="demo-feature">
+                <h3>🧭 Cultural Compass</h3>
+                <p>Map trends on cultural axes: Mainstream ↔ Underground × Traditional ↔ Disruptive</p>
+                <div class="cultural-compass-demo" id="cultural-compass">
+                    <div style="position: absolute; top: 10px; left: 10px; font-size: 0.8rem; color: #64748b;">Traditional</div>
+                    <div style="position: absolute; top: 10px; right: 10px; font-size: 0.8rem; color: #64748b;">Disruptive</div>
+                    <div style="position: absolute; bottom: 10px; left: 10px; font-size: 0.8rem; color: #64748b;">Mainstream</div>
+                    <div style="position: absolute; bottom: 10px; right: 10px; font-size: 0.8rem; color: #64748b;">Underground</div>
+                    <div class="compass-axes"></div>
+                </div>
+                <button class="demo-button" onclick="loadCulturalCompass()">🗺️ Map Cultural Trends</button>
+            </div>
+        </div>
+
+        <!-- Live Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="demo-videos">-</div>
+                <div class="stat-label">Demo Videos Analyzed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="demo-sentiment">-</div>
+                <div class="stat-label">Sentiment Predictions</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="demo-trends">-</div>
+                <div class="stat-label">Cultural Trends Mapped</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="demo-score">-</div>
+                <div class="stat-label">Avg Wave Score</div>
+            </div>
+        </div>
+
+        <!-- GitHub Integration -->
+        <div style="background: #f8fafc; padding: 30px; border-radius: 12px; margin: 30px 0; text-align: center;">
+            <h3>🚀 Ready for Live Data?</h3>
+            <p>This demo uses mock data. Get the full experience with real YouTube, Reddit, and cultural analysis!</p>
+            <div style="margin: 20px 0;">
+                <a href="https://github.com/jerbear472/WaveSight" class="demo-button" style="text-decoration: none; margin: 0 10px;">
+                    📂 View on GitHub
+                </a>
+                <a href="https://github.com/jerbear472/WaveSight/blob/main/LIVE-DEMO-GUIDE.md" class="demo-button" style="text-decoration: none; margin: 0 10px;">
+                    📖 Setup Guide
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo functionality
+        let demoStats = {
+            videos: 0,
+            sentiment: 0,
+            trends: 0,
+            totalScore: 0
+        };
+
+        function updateStats() {
+            document.getElementById('demo-videos').textContent = demoStats.videos;
+            document.getElementById('demo-sentiment').textContent = demoStats.sentiment;
+            document.getElementById('demo-trends').textContent = demoStats.trends;
+            const avgScore = demoStats.videos > 0 ? (demoStats.totalScore / demoStats.videos).toFixed(2) : '0.00';
+            document.getElementById('demo-score').textContent = avgScore;
+        }
+
+        async function loadTrendingDemo() {
+            const resultsDiv = document.getElementById('trending-results');
+            resultsDiv.innerHTML = '<div class="loading-spinner"></div> Loading trending videos...';
+            
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const videos = window.MockDataGenerator.generateTrendingVideos(8);
+            demoStats.videos += videos.length;
+            demoStats.totalScore += videos.reduce((sum, v) => sum + v.wave_score, 0);
+            
+            resultsDiv.innerHTML = `
+                <div style="margin-top: 15px;">
+                    <h4>📊 Latest Trending Videos</h4>
+                    ${videos.slice(0, 3).map(video => `
+                        <div style="background: #f8fafc; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 4px solid #4f46e5;">
+                            <strong>${video.title}</strong><br>
+                            <small>👁️ ${(video.view_count / 1000000).toFixed(1)}M views • 🌊 Wave Score: ${video.wave_score.toFixed(2)} • 📂 ${video.category}</small>
+                        </div>
+                    `).join('')}
+                    <p style="color: #64748b; font-size: 0.9rem;">+ ${videos.length - 3} more videos analyzed</p>
+                </div>
+            `;
+            
+            updateStats();
+        }
+
+        async function analyzeSentimentDemo() {
+            const topic = document.getElementById('sentiment-topic').value || 'artificial intelligence';
+            const resultsDiv = document.getElementById('sentiment-results');
+            
+            resultsDiv.innerHTML = '<div class="loading-spinner"></div> Analyzing sentiment...';
+            
+            const result = await window.DemoAPI.analyzeSentiment(topic);
+            demoStats.sentiment++;
+            
+            resultsDiv.innerHTML = `
+                <div class="sentiment-result">
+                    <h4>📊 Sentiment Analysis: "${topic}"</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 15px 0;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 700;">${result.data.sentiment_yes}</div>
+                            <div>👍 Positive</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 700;">${result.data.sentiment_no}</div>
+                            <div>👎 Negative</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; font-weight: 700;">${result.data.sentiment_unclear}</div>
+                            <div>🤷 Unclear</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <strong>Confidence: ${result.data.confidence}% • Momentum: ${result.data.cultural_momentum}</strong>
+                    </div>
+                </div>
+            `;
+            
+            updateStats();
+        }
+
+        async function loadCulturalCompass() {
+            const compass = document.getElementById('cultural-compass');
+            const topics = ['AI', 'Cryptocurrency', 'Remote Work', 'Climate Change', 'Gaming', 'Social Media'];
+            
+            // Clear existing points
+            compass.querySelectorAll('.compass-point').forEach(p => p.remove());
+            
+            const trends = await window.DemoAPI.culturalCompass(topics);
+            demoStats.trends += trends.data.length;
+            
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#fd79a8'];
+            
+            trends.data.forEach((trend, index) => {
+                const point = document.createElement('div');
+                point.className = 'compass-point';
+                point.style.backgroundColor = colors[index % colors.length];
+                
+                // Convert coordinates (-1 to 1) to percentage (0% to 100%)
+                const x = ((trend.coordinates.x + 1) / 2) * 100;
+                const y = ((1 - trend.coordinates.y) / 2) * 100; // Invert Y axis
+                
+                point.style.left = `${x}%`;
+                point.style.top = `${y}%`;
+                point.title = `${trend.name}: (${trend.coordinates.x}, ${trend.coordinates.y})`;
+                
+                compass.appendChild(point);
+            });
+            
+            updateStats();
+        }
+
+        // Auto-load demo on page load
+        window.addEventListener('load', () => {
+            setTimeout(loadTrendingDemo, 1000);
+            setTimeout(() => {
+                document.getElementById('sentiment-topic').value = 'artificial intelligence';
+                analyzeSentimentDemo();
+            }, 3000);
+            setTimeout(loadCulturalCompass, 5000);
+        });
+    </script>
+</body>
+</html>
