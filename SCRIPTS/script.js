@@ -247,7 +247,7 @@ class WaveSightDashboard {
         comment_count: 45000,
         viral_score: 9.2,
         trend_category: 'AI Tools',
-        published_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+        published_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
         channel_title: 'Tech Insider',
         is_viral: true
       },
@@ -258,11 +258,98 @@ class WaveSightDashboard {
         comment_count: 38000,
         viral_score: 8.9,
         trend_category: 'Gaming',
-        published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+        published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
         channel_title: 'GameSpot',
         is_viral: true
       },
-      // Add more viral demo data...
+      {
+        title: 'Viral Dance Takes Over TikTok and YouTube',
+        view_count: 22500000,
+        like_count: 1200000,
+        comment_count: 67000,
+        viral_score: 9.8,
+        trend_category: 'Entertainment',
+        published_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'Viral Trends',
+        is_viral: true
+      },
+      {
+        title: 'NEW MUSIC: Artist Drops Surprise Album',
+        view_count: 8900000,
+        like_count: 650000,
+        comment_count: 28000,
+        viral_score: 8.3,
+        trend_category: 'Music',
+        published_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'Music Central',
+        is_viral: true
+      },
+      {
+        title: 'SPORTS: Incredible Last-Second Victory',
+        view_count: 11200000,
+        like_count: 780000,
+        comment_count: 42000,
+        viral_score: 8.7,
+        trend_category: 'Sports',
+        published_at: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'ESPN',
+        is_viral: true
+      },
+      {
+        title: 'Crypto Market EXPLODES: Bitcoin Hits New High',
+        view_count: 6700000,
+        like_count: 420000,
+        comment_count: 31000,
+        viral_score: 7.9,
+        trend_category: 'Crypto',
+        published_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'Crypto News',
+        is_viral: true
+      },
+      {
+        title: 'Educational: How to Master Any Skill in 30 Days',
+        view_count: 5200000,
+        like_count: 380000,
+        comment_count: 19000,
+        viral_score: 7.4,
+        trend_category: 'Education',
+        published_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'Learning Hub',
+        is_viral: true
+      },
+      {
+        title: 'HEALTH: Revolutionary Fitness Method Goes Viral',
+        view_count: 4800000,
+        like_count: 320000,
+        comment_count: 15000,
+        viral_score: 7.1,
+        trend_category: 'Health',
+        published_at: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'Fitness Today',
+        is_viral: true
+      },
+      {
+        title: 'BREAKING NEWS: Major Political Development',
+        view_count: 9800000,
+        like_count: 520000,
+        comment_count: 87000,
+        viral_score: 8.5,
+        trend_category: 'News',
+        published_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'News Network',
+        is_viral: true
+      },
+      {
+        title: 'Tech Review: iPhone 16 First Look',
+        view_count: 7300000,
+        like_count: 465000,
+        comment_count: 23000,
+        viral_score: 8.0,
+        trend_category: 'Technology',
+        published_at: new Date(Date.now() - 60 * 60 * 60 * 1000).toISOString(),
+        channel_title: 'Tech Reviews',
+        is_viral: true
+      }
     ];
     
     // Add viral scores and metadata to demo data
@@ -275,6 +362,11 @@ class WaveSightDashboard {
     
     this.state.currentData = enhancedData;
     this.processDashboardData(enhancedData);
+    
+    // Force timeline creation immediately
+    setTimeout(() => {
+      this.createReliableTimeline();
+    }, 100);
     
     console.log('📊 Using enhanced viral demo data with realistic metrics');
   }
@@ -391,7 +483,8 @@ class WaveSightDashboard {
     this.updateStatusInfo(data);
     this.updateFilters(chartData);
     
-    // Update real trends list
+    // ALWAYS ensure timeline is visible with current data
+    this.createReliableTimeline();
     this.updateRealTrendsList();
   }
 
@@ -504,35 +597,122 @@ class WaveSightDashboard {
 
   // Initialize WaveScope Timeline
   initWaveScopeTimeline() {
+    console.log('🌊 Initializing WaveScope Timeline...');
+    
+    // Always show BOTH canvas and fallback for reliability
+    this.createReliableTimeline();
+    
     const canvas = document.getElementById('wavescopeCanvas');
-    if (!canvas) {
-      console.log('❌ WaveScope canvas not found, creating fallback timeline');
-      this.createFallbackTimeline();
-      return;
+    if (canvas) {
+      setTimeout(() => {
+        try {
+          this.wavescopeChart = new WaveScopeChart(canvas, this.state.currentData);
+          this.wavescopeChart.init();
+          console.log('✅ Canvas WaveScope Timeline initialized');
+        } catch (error) {
+          console.warn('⚠️ Canvas failed, fallback timeline active:', error);
+        }
+      }, 100);
     }
+    
+    // Update status to show timeline is active
+    this.updateElement('youtubeStatus', '🟢');
+    this.updateElement('statusText', '🌊 WaveScope Timeline Active');
+  }
 
-    // Use setTimeout to ensure DOM is fully rendered
-    setTimeout(() => {
-      try {
-        // Always create the chart, even if we fail later
-        console.log('🌊 Initializing WaveScope Timeline...');
+  // Create a reliable timeline that ALWAYS shows
+  createReliableTimeline() {
+    const container = document.getElementById('trendChart');
+    if (!container) return;
+
+    const currentData = this.state.currentData || this.generateMockTopTrends();
+    
+    // Create a comprehensive timeline view
+    container.innerHTML = `
+      <div class="reliable-timeline" style="background: #13131f; border-radius: 16px; padding: 2rem; margin: 2rem 0; border: 1px solid #2e2e45;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+          <h3 style="color: #5ee3ff; margin: 0;">📊 Live Trending Timeline</h3>
+          <div style="color: #10b981; font-size: 0.9rem;">🟢 ${currentData.length} trends loaded</div>
+        </div>
         
-        // Create chart with current data
-        this.wavescopeChart = new WaveScopeChart(canvas, this.state.currentData);
-        this.wavescopeChart.init();
+        <div class="timeline-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+          ${this.generateCategoryCards(currentData)}
+        </div>
         
-        console.log('✅ WaveScope Timeline initialized successfully with real data');
-        
-        // Update status to show timeline is active
-        this.updateElement('youtubeStatus', '🟢');
-        this.updateElement('statusText', '🌊 WaveScope Timeline Active - Real data flowing');
-        
-      } catch (error) {
-        console.error('❌ Error initializing WaveScope Timeline:', error);
-        // Always show fallback if canvas fails
-        this.createFallbackTimeline();
+        <div class="trending-list">
+          <h4 style="color: #f1f1f1; margin-bottom: 1rem;">🔥 Top Viral Trends Right Now</h4>
+          <div id="liveTrendsList">${this.generateTrendsList(currentData.slice(0, 10))}</div>
+        </div>
+      </div>
+    `;
+    
+    console.log('✅ Reliable timeline created and populated');
+  }
+
+  // Generate category cards showing trend counts
+  generateCategoryCards(data) {
+    const categories = {};
+    
+    data.forEach(item => {
+      const category = item.trend_category || 'General';
+      if (!categories[category]) {
+        categories[category] = { count: 0, totalViews: 0, topTrend: null };
       }
-    }, 100);
+      categories[category].count++;
+      categories[category].totalViews += item.view_count || 0;
+      if (!categories[category].topTrend || (item.viral_score || 0) > (categories[category].topTrend.viral_score || 0)) {
+        categories[category].topTrend = item;
+      }
+    });
+
+    const categoryColors = {
+      'AI Tools': '#5ee3ff',
+      'Gaming': '#8b5cf6', 
+      'Entertainment': '#ec4899',
+      'Music': '#f59e0b',
+      'Sports': '#84cc16',
+      'News': '#10b981',
+      'Crypto': '#f97316',
+      'Education': '#ef4444',
+      'Health': '#06b6d4',
+      'General': '#9ca3af'
+    };
+
+    return Object.entries(categories).map(([category, stats]) => `
+      <div style="background: #2e2e45; border-radius: 12px; padding: 1.5rem; border: 1px solid ${categoryColors[category] || '#9ca3af'};">
+        <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 1rem;">
+          <h5 style="color: ${categoryColors[category] || '#f1f1f1'}; margin: 0; font-size: 1rem;">${category}</h5>
+          <span style="color: #9ca3af; font-size: 0.8rem;">${stats.count} trends</span>
+        </div>
+        <div style="color: #f1f1f1; font-size: 0.9rem; margin-bottom: 0.5rem;">
+          Top: ${stats.topTrend?.title?.substring(0, 40)}...
+        </div>
+        <div style="color: #9ca3af; font-size: 0.8rem;">
+          ${this.formatNumber(stats.totalViews)} total views
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Generate trends list
+  generateTrendsList(trends) {
+    return trends.map((trend, index) => `
+      <div class="trend-item" style="display: flex; align-items: center; padding: 1rem; margin-bottom: 0.5rem; background: #2e2e45; border-radius: 8px; border: 1px solid rgba(94, 227, 255, 0.2); transition: all 0.3s ease;">
+        <span class="trend-rank" style="font-weight: 700; color: #5ee3ff; min-width: 3rem; text-align: center; font-size: 1.1rem;">#${index + 1}</span>
+        <div style="flex: 1; margin-left: 1rem;">
+          <div style="color: #f1f1f1; font-weight: 600; margin-bottom: 0.25rem; font-size: 1rem;">${trend.title || 'Untitled'}</div>
+          <div style="color: #9ca3af; font-size: 0.875rem;">
+            ${this.formatNumber(trend.view_count || 0)} views • 
+            ${trend.trend_category || 'General'} • 
+            ${trend.viral_score ? `🔥 ${trend.viral_score.toFixed(1)}` : ''} •
+            ${new Date(trend.published_at || Date.now()).toLocaleDateString()}
+          </div>
+        </div>
+        <div style="font-weight: 700; color: #10b981; font-size: 1rem; min-width: 4rem; text-align: right;">
+          ${((trend.trend_score || 0) * 100).toFixed(0)}%
+        </div>
+      </div>
+    `).join('');
   }
 
   // Create fallback timeline if canvas fails
@@ -1252,6 +1432,9 @@ class WaveSightDashboard {
     this.renderTrendTable(trendingTopics);
     this.renderDetailedTable(detailedTrends.slice(0, 25));
     this.updateStatusInfo(detailedTrends);
+    
+    // ALWAYS ensure timeline is visible
+    this.createReliableTimeline();
     
     // Update status cards with demo data
     this.updateElement('liveStatus', '🟡 Demo Mode');
