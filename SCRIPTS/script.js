@@ -82,6 +82,9 @@ class WaveSightDashboard {
       // Initialize alert system
       await this.initAlertSystem();
       
+      // Initialize WaveScope Timeline
+      this.initWaveScopeTimeline();
+      
       console.log('✅ Dashboard initialized successfully');
     } catch (error) {
       console.error('❌ Dashboard initialization failed:', error);
@@ -276,34 +279,23 @@ class WaveSightDashboard {
     return item.trend_category || 'General';
   }
 
-  // Render chart with simple HTML/CSS visualization
+  // Initialize WaveScope Timeline
+  initWaveScopeTimeline() {
+    const canvas = document.getElementById('wavescopeCanvas');
+    if (!canvas) return;
+
+    this.wavescopeChart = new WaveScopeChart(canvas);
+    this.wavescopeChart.init();
+    console.log('✅ WaveScope Timeline initialized successfully');
+  }
+
+  // Render chart - fallback for legacy code
   renderChart(data, filterTrend = 'all') {
-    const container = document.getElementById('trendChart');
-    if (!container) return;
-
-    // Create a simple, working chart visualization
-    const chartHTML = `
-      <div class="wavescope-timeline">
-        <div class="timeline-header">
-          <h3>🌊 WaveScope Timeline</h3>
-          <div class="timeline-controls">
-            <span class="timeline-period">Last 6 Months</span>
-            <span class="live-indicator">🔴 LIVE</span>
-          </div>
-        </div>
-        
-        <div class="timeline-chart">
-          ${this.createTimelineChart(data)}
-        </div>
-        
-        <div class="timeline-legend">
-          ${this.createTimelineLegend(data)}
-        </div>
-      </div>
-    `;
-
-    container.innerHTML = chartHTML;
-    console.log('✅ WaveScope Timeline rendered successfully');
+    // Initialize timeline if not already done
+    if (!this.wavescopeChart) {
+      this.initWaveScopeTimeline();
+    }
+    console.log('✅ Chart render called - WaveScope Timeline should be visible');
   }
 
   createTimelineChart(data) {
@@ -2553,6 +2545,348 @@ window.exportData = function() {
 
 window.filterByDateRange = function() {
   console.log('📅 Date range filter applied');
+};
+
+// WaveScope Timeline Chart Class
+class WaveScopeChart {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.currentPeriod = '1M';
+    this.activeTrends = {
+      ai: true,
+      gaming: true, 
+      entertainment: true,
+      crypto: true,
+      news: true
+    };
+    this.data = this.generateTrendData();
+  }
+
+  init() {
+    this.setupCanvas();
+    this.render();
+    this.setupEventListeners();
+  }
+
+  setupCanvas() {
+    const rect = this.canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    
+    this.canvas.width = rect.width * dpr;
+    this.canvas.height = rect.height * dpr;
+    
+    this.ctx.scale(dpr, dpr);
+    this.canvas.style.width = rect.width + 'px';
+    this.canvas.style.height = rect.height + 'px';
+  }
+
+  generateTrendData() {
+    const trends = {
+      ai: { name: 'AI & Technology', color: '#5ee3ff', data: [] },
+      gaming: { name: 'Gaming', color: '#8b5cf6', data: [] },
+      entertainment: { name: 'Entertainment', color: '#ec4899', data: [] },
+      crypto: { name: 'Crypto & Finance', color: '#f97316', data: [] },
+      news: { name: 'News & Politics', color: '#10b981', data: [] }
+    };
+
+    const periods = {
+      '1M': 30,
+      '3M': 90, 
+      '6M': 180,
+      '1Y': 365,
+      '5Y': 1825,
+      'MAX': 3650
+    };
+
+    Object.keys(trends).forEach(key => {
+      const trend = trends[key];
+      const days = periods[this.currentPeriod];
+      
+      for (let i = 0; i < days; i++) {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - i));
+        
+        // Generate realistic trend data with some volatility
+        const baseValue = this.getTrendBaseValue(key);
+        const volatility = Math.sin(i * 0.1) * 0.3 + Math.random() * 0.4 - 0.2;
+        const seasonality = Math.sin(i * 0.02) * 0.2;
+        const growth = i * 0.001; // Slight upward trend
+        
+        const value = Math.max(0, baseValue + (baseValue * (volatility + seasonality + growth)));
+        
+        trend.data.push({
+          date: new Date(date),
+          value: Math.round(value)
+        });
+      }
+    });
+
+    return trends;
+  }
+
+  getTrendBaseValue(trendKey) {
+    const baseValues = {
+      ai: 2800000,
+      gaming: 2100000,
+      entertainment: 3200000,
+      crypto: 1500000,
+      news: 1800000
+    };
+    return baseValues[trendKey] || 1000000;
+  }
+
+  render() {
+    const width = this.canvas.offsetWidth;
+    const height = this.canvas.offsetHeight;
+    
+    // Clear canvas
+    this.ctx.clearRect(0, 0, width, height);
+    
+    // Draw background
+    this.drawBackground(width, height);
+    
+    // Draw grid
+    this.drawGrid(width, height);
+    
+    // Draw trend lines
+    this.drawTrendLines(width, height);
+    
+    // Draw axes
+    this.drawAxes(width, height);
+  }
+
+  drawBackground(width, height) {
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, 'rgba(26, 26, 46, 0.8)');
+    gradient.addColorStop(1, 'rgba(37, 37, 69, 0.8)');
+    
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, width, height);
+  }
+
+  drawGrid(width, height) {
+    const padding = 60;
+    const gridColor = 'rgba(94, 227, 255, 0.1)';
+    
+    this.ctx.strokeStyle = gridColor;
+    this.ctx.lineWidth = 1;
+    
+    // Horizontal grid lines
+    for (let i = 0; i <= 5; i++) {
+      const y = padding + (height - padding * 2) * (i / 5);
+      this.ctx.beginPath();
+      this.ctx.moveTo(padding, y);
+      this.ctx.lineTo(width - padding, y);
+      this.ctx.stroke();
+    }
+    
+    // Vertical grid lines
+    const timePoints = this.getTimePoints();
+    for (let i = 0; i < timePoints; i++) {
+      const x = padding + (width - padding * 2) * (i / (timePoints - 1));
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, padding);
+      this.ctx.lineTo(x, height - padding);
+      this.ctx.stroke();
+    }
+  }
+
+  drawTrendLines(width, height) {
+    const padding = 60;
+    const chartWidth = width - padding * 2;
+    const chartHeight = height - padding * 2;
+    
+    Object.keys(this.activeTrends).forEach(key => {
+      if (!this.activeTrends[key]) return;
+      
+      const trend = this.data[key];
+      if (!trend || trend.data.length === 0) return;
+      
+      this.ctx.strokeStyle = trend.color;
+      this.ctx.lineWidth = 3;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      
+      // Add glow effect
+      this.ctx.shadowColor = trend.color;
+      this.ctx.shadowBlur = 10;
+      
+      this.ctx.beginPath();
+      
+      const maxValue = Math.max(...Object.values(this.data)
+        .filter(t => this.activeTrends[Object.keys(this.data).find(k => this.data[k] === t)])
+        .flatMap(t => t.data.map(d => d.value)));
+      
+      trend.data.forEach((point, index) => {
+        const x = padding + (chartWidth * index / (trend.data.length - 1));
+        const y = padding + chartHeight - (chartHeight * point.value / maxValue);
+        
+        if (index === 0) {
+          this.ctx.moveTo(x, y);
+        } else {
+          this.ctx.lineTo(x, y);
+        }
+      });
+      
+      this.ctx.stroke();
+      this.ctx.shadowBlur = 0;
+    });
+  }
+
+  drawAxes(width, height) {
+    const padding = 60;
+    
+    this.ctx.strokeStyle = 'rgba(94, 227, 255, 0.6)';
+    this.ctx.lineWidth = 2;
+    
+    // Y-axis
+    this.ctx.beginPath();
+    this.ctx.moveTo(padding, padding);
+    this.ctx.lineTo(padding, height - padding);
+    this.ctx.stroke();
+    
+    // X-axis  
+    this.ctx.beginPath();
+    this.ctx.moveTo(padding, height - padding);
+    this.ctx.lineTo(width - padding, height - padding);
+    this.ctx.stroke();
+    
+    // Draw labels
+    this.drawLabels(width, height);
+  }
+
+  drawLabels(width, height) {
+    const padding = 60;
+    
+    this.ctx.fillStyle = '#9ca3af';
+    this.ctx.font = '12px Satoshi, sans-serif';
+    this.ctx.textAlign = 'right';
+    
+    // Y-axis labels (view counts)
+    const maxValue = Math.max(...Object.values(this.data)
+      .filter(t => this.activeTrends[Object.keys(this.data).find(k => this.data[k] === t)])
+      .flatMap(t => t.data.map(d => d.value)));
+    
+    for (let i = 0; i <= 5; i++) {
+      const value = (maxValue / 5) * (5 - i);
+      const y = padding + (height - padding * 2) * (i / 5);
+      const label = this.formatNumber(value);
+      
+      this.ctx.fillText(label, padding - 10, y + 4);
+    }
+    
+    // X-axis labels (dates)
+    this.ctx.textAlign = 'center';
+    const timeLabels = this.getTimeLabels();
+    timeLabels.forEach((label, index) => {
+      const x = padding + (width - padding * 2) * (index / (timeLabels.length - 1));
+      this.ctx.fillText(label, x, height - padding + 20);
+    });
+  }
+
+  getTimePoints() {
+    const points = {
+      '1M': 7,
+      '3M': 6,
+      '6M': 6,
+      '1Y': 12,
+      '5Y': 5,
+      'MAX': 10
+    };
+    return points[this.currentPeriod] || 6;
+  }
+
+  getTimeLabels() {
+    const now = new Date();
+    const labels = [];
+    const points = this.getTimePoints();
+    
+    for (let i = points - 1; i >= 0; i--) {
+      const date = new Date(now);
+      
+      switch (this.currentPeriod) {
+        case '1M':
+          date.setDate(date.getDate() - (i * 5));
+          labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+          break;
+        case '3M':
+          date.setDate(date.getDate() - (i * 15));
+          labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+          break;
+        case '6M':
+          date.setMonth(date.getMonth() - i);
+          labels.push(date.toLocaleDateString('en-US', { month: 'short' }));
+          break;
+        case '1Y':
+          date.setMonth(date.getMonth() - i);
+          labels.push(date.toLocaleDateString('en-US', { month: 'short' }));
+          break;
+        case '5Y':
+          date.setFullYear(date.getFullYear() - i);
+          labels.push(date.getFullYear().toString());
+          break;
+        case 'MAX':
+          date.setFullYear(date.getFullYear() - (i * 2));
+          labels.push(date.getFullYear().toString());
+          break;
+      }
+    }
+    
+    return labels.reverse();
+  }
+
+  formatNumber(num) {
+    if (num >= 1e9) return (num / 1e9).toFixed(1) + 'B';
+    if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
+    if (num >= 1e3) return (num / 1e3).toFixed(0) + 'K';
+    return Math.round(num).toString();
+  }
+
+  setupEventListeners() {
+    // Canvas hover for tooltips
+    this.canvas.addEventListener('mousemove', (e) => {
+      // TODO: Implement tooltip on hover
+    });
+  }
+
+  updatePeriod(period) {
+    this.currentPeriod = period;
+    this.data = this.generateTrendData();
+    this.render();
+  }
+
+  toggleTrend(trendKey) {
+    this.activeTrends[trendKey] = !this.activeTrends[trendKey];
+    this.render();
+  }
+}
+
+// Global functions for timeline controls
+window.setTimePeriod = function(period) {
+  // Update active button
+  document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+  
+  // Update chart
+  if (window.waveSightDashboard && window.waveSightDashboard.wavescopeChart) {
+    window.waveSightDashboard.wavescopeChart.updatePeriod(period);
+  }
+};
+
+window.toggleTrendLine = function(trendKey) {
+  if (window.waveSightDashboard && window.waveSightDashboard.wavescopeChart) {
+    window.waveSightDashboard.wavescopeChart.toggleTrend(trendKey);
+  }
+};
+
+window.refreshYouTubeData = function() {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.showNotification('🔄 Refreshing YouTube data...', 'info');
+    window.waveSightDashboard.fetchFreshYouTubeData();
+  }
 };
 
 // Initialize dashboard when DOM is ready
