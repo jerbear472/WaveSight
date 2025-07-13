@@ -1,12 +1,38 @@
 {
-  "name": "wavesight-youtube-integration",
+  "name": "wavesight",
   "version": "1.0.0",
-  "description": "YouTube API integration for WAVESIGHT dashboard",
+  "description": "🌊 Social Intelligence & Trend Tracking Platform - Transform how you understand and predict digital trends with AI-powered social intelligence",
   "type": "module",
-  "main": "scripts/main.js",
+  "main": "index.html",
   "scripts": {
-    "start": "node scripts/main.js",
-    "dev": "node scripts/main.js"
+    "start": "python3 -m http.server 8080",
+    "dev": "concurrently \"python3 SERVER/sentiment_server.py\" \"python3 -m http.server 8080\"",
+    "setup": "python3 setup.py",
+    "verify": "python3 verify_setup.py",
+    "test-apis": "python3 test_apis.py",
+    "build": "echo 'No build step required - static frontend'",
+    "serve": "python3 -m http.server 8080 --bind 127.0.0.1",
+    "sentiment-server": "python3 SERVER/sentiment_server.py",
+    "youtube-server": "node SCRIPTS/youtubeToSupabase.js",
+    "youtube-collect": "node SCRIPTS/main.js"
+  },
+  "keywords": [
+    "trends",
+    "sentiment-analysis", 
+    "social-intelligence",
+    "youtube-api",
+    "reddit-api", 
+    "cultural-analysis",
+    "viral-prediction",
+    "dashboard",
+    "real-time",
+    "analytics"
+  ],
+  "author": "WaveSight Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/wavesight.git"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -15,7 +41,11 @@
     "@supabase/supabase-js": "^2.38.4",
     "dotenv": "^16.3.1"
   },
+  "devDependencies": {
+    "concurrently": "^7.0.0"
+  },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=14.0.0",
+    "python": ">=3.8.0"
   }
 }

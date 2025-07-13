@@ -1,7 +1,7 @@
 // Charting Trends Table Configuration
 const CONFIG = {
-  SUPABASE_URL: 'https://artdirswzxxskcdvstse.supabase.co',
-  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo',
+  SUPABASE_URL: window.WaveSightConfig?.supabase?.url || null,
+  SUPABASE_ANON_KEY: window.WaveSightConfig?.supabase?.anonKey || null,
   ITEMS_PER_PAGE: 50,
   MAX_RECORDS: 1000,
   DEBOUNCE_DELAY: 300

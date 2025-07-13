@@ -6,8 +6,8 @@ class WaveSightDashboard {
     // Configuration
     this.config = {
       supabase: {
-        url: 'https://artdirswzxxskcdvstse.supabase.co',
-        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo'
+        url: window.WaveSightConfig?.supabase?.url || null,
+        anonKey: window.WaveSightConfig?.supabase?.anonKey || null
       },
       api: {
         baseUrl: '/api',
@@ -43,6 +43,13 @@ class WaveSightDashboard {
       autoRefreshInterval: null,
       currentUser: null
     };
+
+    // Validate configuration
+    if (!this.config.supabase.url || !this.config.supabase.anonKey) {
+      console.error('❌ Supabase configuration missing. Please ensure config.js is loaded and configured.');
+      this.showConfigurationError();
+      return;
+    }
 
     // Services
     this.supabase = null;
@@ -1584,6 +1591,41 @@ class MetricsCalculator {
     if (num >= 1e6) return (num / 1e6).toFixed(1) + 'M';
     if (num >= 1e3) return (num / 1e3).toFixed(0) + 'K';
     return num.toString();
+  }
+
+  showConfigurationError() {
+    const errorHtml = `
+      <div class="configuration-error" style="
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+        background: rgba(0,0,0,0.9); z-index: 10000; 
+        display: flex; align-items: center; justify-content: center;
+        font-family: Arial, sans-serif; color: white;
+      ">
+        <div style="
+          background: #1f2937; border-radius: 12px; padding: 2rem; 
+          max-width: 500px; text-align: center; border: 1px solid #374151;
+        ">
+          <h2 style="color: #ef4444; margin-bottom: 1rem;">⚙️ Configuration Required</h2>
+          <p style="margin-bottom: 1rem; line-height: 1.6;">
+            WaveSight needs to be configured with your Supabase credentials to function properly.
+          </p>
+          <div style="background: #111827; padding: 1rem; border-radius: 8px; margin: 1rem 0; text-align: left;">
+            <p style="margin: 0; font-size: 0.9em; color: #9ca3af;">
+              1. Copy .env.example to .env<br>
+              2. Add your Supabase URL and key<br>
+              3. Refresh the page
+            </p>
+          </div>
+          <button onclick="location.reload()" style="
+            background: #3b82f6; color: white; border: none; 
+            padding: 0.75rem 1.5rem; border-radius: 6px; cursor: pointer;
+          ">
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', errorHtml);
   }
 }
 

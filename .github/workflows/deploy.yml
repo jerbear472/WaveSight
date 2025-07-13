@@ -1,0 +1,78 @@
+name: Deploy WaveSight to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flask flask-cors praw openai supabase vaderSentiment requests python-dotenv
+        
+    - name: Run setup verification
+      run: |
+        python verify_setup.py
+        
+    - name: Prepare deployment files
+      run: |
+        # Create a deployment configuration
+        cat > SCRIPTS/config-production.js << EOF
+        // Production configuration for GitHub Pages
+        window.WaveSightConfig = {
+          environment: 'production',
+          api: {
+            baseUrl: window.location.origin,
+            sentimentServer: 'https://your-backend-url.herokuapp.com',
+            youtubeServer: 'https://your-backend-url.herokuapp.com',
+            timeout: 30000
+          },
+          supabase: {
+            url: null, // Will be set via meta tags or API endpoint
+            anonKey: null
+          },
+          chart: {
+            maxTrends: 8,
+            animationDuration: 1500,
+            colors: ['#5ee3ff', '#8b5cf6', '#ec4899', '#f97316', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#84cc16', '#f472b6']
+          },
+          cache: { defaultTtl: 300000, trendsDataTtl: 60000, sentimentDataTtl: 180000 },
+          ui: { refreshInterval: 30000, maxRetries: 3, retryDelay: 2000, animationSpeed: 1500 },
+          features: { realTimeUpdates: true, culturalCompass: true, alertSystem: true, exportData: true, darkMode: true },
+          defaults: { region: 'US', category: 'all', timeRange: '1_week', maxResults: 50 }
+        };
+        EOF
+        
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./
+        exclude_assets: |
+          SERVER/
+          .env*
+          *.py
+          node_modules/
+          .git/
+          logs/
+          temp/

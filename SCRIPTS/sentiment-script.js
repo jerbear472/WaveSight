@@ -1,6 +1,6 @@
 // Sentiment Dashboard Configuration
-let SUPABASE_URL = 'https://artdirswzxxskcdvstse.supabase.co';
-let SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
+let SUPABASE_URL = window.WaveSightConfig?.supabase?.url || null;
+let SUPABASE_ANON_KEY = window.WaveSightConfig?.supabase?.anonKey || null;
 
 let supabase = null;
 let sentimentData = null;

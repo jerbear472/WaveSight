@@ -6,15 +6,19 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Configuration
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://artdirswzxxskcdvstse.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFydGRpcnN3enh4c2tjZHZzdHNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEwNDEyNzIsImV4cCI6MjA2NjYxNzI3Mn0.EMe92Rv83KHZajS155vH8PyZZWWD4TuzkCeR3UwGVHo';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const MAX_RESULTS = process.env.MAX_RESULTS || 50;
 const REGIONS = (process.env.REGIONS || 'US,GB,CA').split(',');
 
-// Validate API key
-if (!YOUTUBE_API_KEY) {
-  console.error('❌ Missing YOUTUBE_API_KEY environment variable');
+// Validate required environment variables
+if (!SUPABASE_URL || !SUPABASE_KEY || !YOUTUBE_API_KEY) {
+  console.error('❌ Missing required environment variables:');
+  console.error('   SUPABASE_URL:', SUPABASE_URL ? '✅' : '❌');
+  console.error('   SUPABASE_ANON_KEY:', SUPABASE_KEY ? '✅' : '❌');
+  console.error('   YOUTUBE_API_KEY:', YOUTUBE_API_KEY ? '✅' : '❌');
+  console.error('📝 Please check your .env file');
   process.exit(1);
 }
 

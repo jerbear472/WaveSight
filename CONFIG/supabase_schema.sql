@@ -207,6 +207,59 @@ CREATE INDEX IF NOT EXISTS idx_trend_insights_wave_score ON trend_insights(wave_
 CREATE INDEX IF NOT EXISTS idx_trend_insights_analysis_date ON trend_insights(analysis_date DESC);
 CREATE INDEX IF NOT EXISTS idx_trend_insights_total_reach ON trend_insights(total_reach DESC);
 
+-- Cultural Trends Table for Cultural Compass
+CREATE TABLE IF NOT EXISTS cultural_trends (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    topic TEXT NOT NULL,
+    name TEXT NOT NULL,
+    coordinates JSONB NOT NULL, -- {x: float, y: float}
+    sentiment_score FLOAT NOT NULL DEFAULT 0.5,
+    total_posts INTEGER NOT NULL DEFAULT 0,
+    total_engagement INTEGER NOT NULL DEFAULT 0,
+    avg_engagement FLOAT NOT NULL DEFAULT 0,
+    subreddit_spread INTEGER NOT NULL DEFAULT 0,
+    dominant_subreddits JSONB, -- Array of [subreddit, count] pairs
+    cultural_velocity FLOAT NOT NULL DEFAULT 0,
+    cultural_momentum TEXT NOT NULL DEFAULT 'Stable',
+    category TEXT NOT NULL DEFAULT 'Cultural',
+    mainstream_score FLOAT NOT NULL DEFAULT 0.5,
+    disruption_score FLOAT NOT NULL DEFAULT 0.5,
+    cultural_impact TEXT NOT NULL DEFAULT 'Low Impact',
+    temporal_trend TEXT NOT NULL DEFAULT 'Steady',
+    platform TEXT NOT NULL DEFAULT 'Reddit',
+    analysis_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    confidence FLOAT NOT NULL DEFAULT 0.5,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Cultural Compass Data Table (for storing compass visualization data)
+CREATE TABLE IF NOT EXISTS cultural_compass_data (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    topic TEXT NOT NULL,
+    name TEXT NOT NULL,
+    coordinates JSONB NOT NULL, -- {x: float, y: float}
+    sentiment_score FLOAT NOT NULL DEFAULT 0.5,
+    total_posts INTEGER NOT NULL DEFAULT 0,
+    total_engagement INTEGER NOT NULL DEFAULT 0,
+    avg_engagement FLOAT NOT NULL DEFAULT 0,
+    subreddit_spread INTEGER NOT NULL DEFAULT 0,
+    dominant_subreddits JSONB,
+    cultural_velocity FLOAT NOT NULL DEFAULT 0,
+    cultural_momentum TEXT NOT NULL DEFAULT 'Stable',
+    category TEXT NOT NULL DEFAULT 'Cultural',
+    mainstream_score FLOAT NOT NULL DEFAULT 0.5,
+    disruption_score FLOAT NOT NULL DEFAULT 0.5,
+    cultural_impact TEXT NOT NULL DEFAULT 'Low Impact',
+    temporal_trend TEXT NOT NULL DEFAULT 'Steady',
+    platform TEXT NOT NULL DEFAULT 'Reddit',
+    analysis_date TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    confidence FLOAT NOT NULL DEFAULT 0.5,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT unique_topic_analysis UNIQUE (topic, analysis_date)
+);
+
 -- Enable Row Level Security for trend insights
 ALTER TABLE trend_insights ENABLE ROW LEVEL SECURITY;
 
@@ -215,26 +268,45 @@ CREATE POLICY "Allow public access to trend_insights" ON trend_insights
     FOR ALL USING (true);
 
 -- Add any additional indexes as needed
-CREATE INDEX IF NOT EXISTS idx_youtube_data_published_date ON youtube_data(published_date);
-CREATE INDEX IF NOT EXISTS idx_youtube_data_category ON youtube_data(category);
-CREATE INDEX IF NOT EXISTS idx_youtube_data_view_count ON youtube_data(view_count);
-CREATE INDEX IF NOT EXISTS idx_sentiment_analysis_topic ON sentiment_analysis(topic);
-CREATE INDEX IF NOT EXISTS idx_sentiment_analysis_created_at ON sentiment_analysis(created_at);
+CREATE INDEX IF NOT EXISTS idx_youtube_trends_published_date ON youtube_trends(published_date);
+CREATE INDEX IF NOT EXISTS idx_youtube_trends_category ON youtube_trends(category);
+CREATE INDEX IF NOT EXISTS idx_youtube_trends_view_count ON youtube_trends(view_count);
+CREATE INDEX IF NOT EXISTS idx_sentiment_forecasts_topic ON sentiment_forecasts(topic);
+CREATE INDEX IF NOT EXISTS idx_sentiment_forecasts_date ON sentiment_forecasts(date);
 CREATE INDEX IF NOT EXISTS idx_youtube_alerts_severity ON youtube_alerts(severity);
 CREATE INDEX IF NOT EXISTS idx_youtube_alerts_triggered_at ON youtube_alerts(triggered_at);
 CREATE INDEX IF NOT EXISTS idx_youtube_alerts_dismissed ON youtube_alerts(dismissed);
+
+-- Cultural Compass indexes
+CREATE INDEX IF NOT EXISTS idx_cultural_trends_topic ON cultural_trends(topic);
+CREATE INDEX IF NOT EXISTS idx_cultural_trends_category ON cultural_trends(category);
+CREATE INDEX IF NOT EXISTS idx_cultural_trends_analysis_date ON cultural_trends(analysis_date DESC);
+CREATE INDEX IF NOT EXISTS idx_cultural_trends_coordinates ON cultural_trends USING GIN (coordinates);
+
+CREATE INDEX IF NOT EXISTS idx_cultural_compass_data_topic ON cultural_compass_data(topic);
+CREATE INDEX IF NOT EXISTS idx_cultural_compass_data_category ON cultural_compass_data(category);
+CREATE INDEX IF NOT EXISTS idx_cultural_compass_data_analysis_date ON cultural_compass_data(analysis_date DESC);
+CREATE INDEX IF NOT EXISTS idx_cultural_compass_data_coordinates ON cultural_compass_data USING GIN (coordinates);
 
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE youtube_trends ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sentiment_forecasts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE youtube_alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cultural_trends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cultural_compass_data ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies (Allow public access for demo purposes)
 CREATE POLICY "Allow public access to youtube_trends" ON youtube_trends
     FOR ALL USING (true);
 
 CREATE POLICY "Allow public access to sentiment_forecasts" ON sentiment_forecasts
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to cultural_trends" ON cultural_trends
+    FOR ALL USING (true);
+
+CREATE POLICY "Allow public access to cultural_compass_data" ON cultural_compass_data
     FOR ALL USING (true);
 
 CREATE POLICY "Allow public access to users" ON users

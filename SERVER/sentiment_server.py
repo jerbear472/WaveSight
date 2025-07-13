@@ -512,6 +512,145 @@ def calculate_mock_cultural_coordinates(topic):
     
     return {'x': round(x, 3), 'y': round(y, 3)}
 
+def analyze_reddit_sentiment(topic, limit_posts=50, limit_comments=20):
+    """Main function to analyze Reddit sentiment - the missing critical function"""
+    print(f"📊 Analyzing Reddit sentiment for: '{topic}' (posts: {limit_posts}, comments: {limit_comments})")
+    
+    if not reddit:
+        print("❌ Reddit not configured - using mock data")
+        return create_mock_sentiment_data(topic)
+    
+    try:
+        # Initialize sentiment counters
+        sentiment_yes = 0
+        sentiment_no = 0
+        sentiment_unclear = 0
+        total_analyzed = 0
+        all_comments = []
+        
+        # Search relevant subreddits
+        target_subreddits = [
+            'all', 'technology', 'futurology', 'artificial', 'MachineLearning',
+            'crypto', 'investing', 'news', 'explainlikeimfive', 'NoStupidQuestions',
+            'unpopularopinion', 'changemyview', 'AskReddit'
+        ]
+        
+        print(f"🔍 Searching across {len(target_subreddits)} subreddits...")
+        
+        for subreddit_name in target_subreddits[:5]:  # Limit to top 5 for API quota
+            try:
+                subreddit = reddit.subreddit(subreddit_name)
+                
+                # Search for posts about the topic
+                search_results = list(subreddit.search(topic, limit=limit_posts//5, time_filter='month'))
+                print(f"📋 Found {len(search_results)} posts in r/{subreddit_name}")
+                
+                for submission in search_results:
+                    try:
+                        # Analyze the post title and text
+                        post_content = f"{submission.title} {submission.selftext}"
+                        if len(post_content.strip()) > 10:
+                            post_sentiment = classify_sentiment_openai(post_content)
+                            if post_sentiment == "Yes":
+                                sentiment_yes += 1
+                            elif post_sentiment == "No":
+                                sentiment_no += 1
+                            else:
+                                sentiment_unclear += 1
+                            total_analyzed += 1
+                        
+                        # Analyze top comments
+                        submission.comments.replace_more(limit=0)
+                        comment_count = 0
+                        
+                        for comment in submission.comments[:limit_comments//5]:
+                            if hasattr(comment, 'body') and len(comment.body) > 15 and comment_count < 5:
+                                all_comments.append(comment.body)
+                                comment_sentiment = classify_sentiment_openai(comment.body)
+                                
+                                if comment_sentiment == "Yes":
+                                    sentiment_yes += 1
+                                elif comment_sentiment == "No":
+                                    sentiment_no += 1
+                                else:
+                                    sentiment_unclear += 1
+                                
+                                total_analyzed += 1
+                                comment_count += 1
+                                time.sleep(0.1)  # Rate limiting
+                        
+                    except Exception as post_error:
+                        print(f"⚠️ Error processing post: {post_error}")
+                        continue
+                        
+            except Exception as subreddit_error:
+                print(f"⚠️ Error accessing r/{subreddit_name}: {subreddit_error}")
+                continue
+        
+        # Ensure we have some data
+        if total_analyzed == 0:
+            print("⚠️ No data collected from Reddit - falling back to mock data")
+            return create_mock_sentiment_data(topic)
+        
+        # Calculate final metrics
+        total = sentiment_yes + sentiment_no + sentiment_unclear
+        confidence = round((sentiment_yes / total) * 100, 2) if total > 0 else 50
+        certainty_score = round(((sentiment_yes + sentiment_no) / total) * 100, 2) if total > 0 else 50
+        
+        # Determine outcomes
+        if confidence > 65:
+            prediction_outcome = "Likely"
+        elif confidence > 45:
+            prediction_outcome = "Uncertain"
+        else:
+            prediction_outcome = "Unlikely"
+        
+        if sentiment_yes > sentiment_no * 1.5:
+            cultural_momentum = "Rising"
+        elif sentiment_no > sentiment_yes * 1.5:
+            cultural_momentum = "Declining"
+        else:
+            cultural_momentum = "Stable"
+        
+        # Create result object
+        sentiment_data = {
+            "topic": topic,
+            "platform": "Reddit",
+            "date": datetime.now().date().isoformat(),
+            "sentiment_yes": sentiment_yes,
+            "sentiment_no": sentiment_no,
+            "sentiment_unclear": sentiment_unclear,
+            "confidence": confidence,
+            "certainty_score": certainty_score,
+            "prediction_outcome": prediction_outcome,
+            "cultural_momentum": cultural_momentum,
+            "total_responses": total,
+            "analyzed_posts": total_analyzed,
+            "comment_sample": all_comments[:10]  # Sample for verification
+        }
+        
+        print(f"✅ Reddit Analysis Complete:")
+        print(f"   📊 Total analyzed: {total_analyzed}")
+        print(f"   👍 Positive: {sentiment_yes}")
+        print(f"   👎 Negative: {sentiment_no}")
+        print(f"   🤷 Unclear: {sentiment_unclear}")
+        print(f"   🎯 Confidence: {confidence}%")
+        
+        # Store in Supabase
+        if supabase:
+            try:
+                result = supabase.table("sentiment_forecasts").insert(sentiment_data).execute()
+                print("✅ Real Reddit data saved to Supabase")
+            except Exception as e:
+                print(f"❌ Failed to save Reddit data to Supabase: {e}")
+        
+        return sentiment_data
+        
+    except Exception as e:
+        print(f"❌ Error in Reddit sentiment analysis: {e}")
+        print("🔄 Falling back to mock data")
+        return create_mock_sentiment_data(topic)
+
 def create_mock_sentiment_data(topic):
     """Create realistic mock sentiment data when Reddit API is unavailable"""
     print(f"🎭 Creating mock sentiment data for: {topic}")
