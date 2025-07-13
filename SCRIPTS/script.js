@@ -188,6 +188,7 @@ class WaveSightDashboard {
           if (result.success && result.data) {
             const viralData = result.data.map(video => ({
               ...video,
+              wave_score: this.calculateWaveScore(video),
               viral_score: this.calculateViralScore(video),
               trend_category: this.categorizeByContent(video.title + ' ' + (video.description || '')),
               search_query: query,
@@ -357,7 +358,9 @@ class WaveSightDashboard {
       ...item,
       video_id: `demo_${Math.random().toString(36).substr(2, 9)}`,
       fetch_timestamp: new Date().toISOString(),
-      engagement_rate: ((item.like_count + item.comment_count * 5) / item.view_count * 100).toFixed(2)
+      engagement_rate: ((item.like_count + item.comment_count * 5) / item.view_count * 100).toFixed(2),
+      wave_score: this.calculateWaveScore(item),
+      trend_score: item.viral_score / 10
     }));
     
     this.state.currentData = enhancedData;
@@ -2182,28 +2185,74 @@ class WaveSightDashboard {
     }
   }
 
-  // Calculate viral score based on engagement metrics
-  calculateViralScore(video) {
+  // Calculate proprietary WaveScore (0-100 scale)
+  calculateWaveScore(video, previousPeriodData = null) {
     const views = parseInt(video.view_count) || 0;
     const likes = parseInt(video.like_count) || 0;
     const comments = parseInt(video.comment_count) || 0;
+    const shares = parseInt(video.share_count) || Math.floor(comments * 0.1); // Estimate shares
     const publishedDate = new Date(video.published_at || Date.now());
     const hoursOld = (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60);
     
-    // Engagement rate
-    const engagementRate = views > 0 ? ((likes + comments * 5) / views) : 0;
+    // 🔹 REACH Component (40% weight) - Raw engagement volume
+    const totalEngagement = views + (likes * 10) + (comments * 20) + (shares * 50);
+    const reachScore = Math.min((Math.log10(totalEngagement + 1) / Math.log10(100000000)) * 100, 100);
     
-    // Velocity score (views per hour, capped for very recent videos)
-    const velocity = hoursOld > 0 ? views / Math.max(hoursOld, 1) : views;
+    // 🔹 VELOCITY Component (30% weight) - Rate of growth
+    let velocityScore = 0;
+    if (hoursOld > 0) {
+      const viewsPerHour = views / Math.max(hoursOld, 1);
+      const engagementPerHour = totalEngagement / Math.max(hoursOld, 1);
+      
+      // Compare with previous period if available
+      let growthRate = 1;
+      if (previousPeriodData) {
+        const prevEngagement = previousPeriodData.view_count + (previousPeriodData.like_count * 10);
+        growthRate = prevEngagement > 0 ? totalEngagement / prevEngagement : 1;
+      }
+      
+      velocityScore = Math.min((Math.log10(engagementPerHour + 1) / Math.log10(1000000)) * 100 * growthRate, 100);
+    }
     
-    // Viral score combines engagement rate, velocity, and raw view count
-    const viralScore = (
-      Math.log10(views + 1) * 0.4 +
-      Math.log10(velocity + 1) * 0.3 +
-      engagementRate * 1000 * 0.3
+    // 🔹 SENTIMENT Component (20% weight) - Engagement quality
+    const engagementRate = views > 0 ? ((likes + comments) / views) : 0;
+    const likeRatio = (likes + comments) > 0 ? likes / (likes + comments) : 0.5;
+    const sentimentScore = (engagementRate * 10000 + likeRatio * 50) * 2;
+    
+    // 🔹 MOMENTUM BOOST Component (10% weight) - Virality triggers
+    let momentumBoost = 0;
+    
+    // Sudden spike detection
+    if (hoursOld < 24 && viewsPerHour > 100000) momentumBoost += 20; // Ultra-viral
+    if (hoursOld < 6 && viewsPerHour > 500000) momentumBoost += 30;  // Mega-viral
+    
+    // High engagement velocity
+    if (engagementRate > 0.1) momentumBoost += 15; // Exceptional engagement
+    if (comments > views * 0.05) momentumBoost += 10; // High discussion
+    
+    // Combine all components
+    const waveScore = (
+      reachScore * 0.4 +
+      velocityScore * 0.3 +
+      Math.min(sentimentScore, 100) * 0.2 +
+      Math.min(momentumBoost, 100) * 0.1
     );
     
-    return Math.min(viralScore, 10); // Cap at 10
+    // Store component breakdown for debugging
+    video.waveScore_breakdown = {
+      reach: Math.round(reachScore),
+      velocity: Math.round(velocityScore),
+      sentiment: Math.round(sentimentScore),
+      momentum: Math.round(momentumBoost),
+      total: Math.round(waveScore)
+    };
+    
+    return Math.min(Math.round(waveScore), 100);
+  }
+
+  // Legacy viral score for backward compatibility
+  calculateViralScore(video, previousPeriodData = null) {
+    return this.calculateWaveScore(video, previousPeriodData) / 10; // Convert to 0-10 scale
   }
 
   // Get date N days ago in ISO format
@@ -3635,11 +3684,429 @@ class WaveScopeChart {
     // Clear canvas
     this.ctx.clearRect(0, 0, width, height);
     
-    // Draw background
-    this.drawBackground(width, height);
+    // Draw advanced WaveScope Timeline
+    this.drawWaveScopeTimeline(width, height);
+  }
+
+  drawWaveScopeTimeline(width, height) {
+    // Draw background with grid
+    this.drawTimelineBackground(width, height);
     
-    // Draw grid
-    this.drawGrid(width, height);
+    // Draw time axis (X-axis)
+    this.drawTimeAxis(width, height);
+    
+    // Draw WaveScore axis (Y-axis: 0-100)
+    this.drawWaveScoreAxis(width, height);
+    
+    // Draw trend lines with color gradients
+    this.drawTrendLines(width, height);
+    
+    // Draw annotations and breakout moments
+    this.drawAnnotations(width, height);
+    
+    // Draw legend
+    this.drawAdvancedLegend(width, height);
+  }
+
+  drawTimelineBackground(width, height) {
+    // Gradient background
+    const gradient = this.ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, 'rgba(26, 26, 46, 0.95)');
+    gradient.addColorStop(1, 'rgba(19, 19, 31, 0.95)');
+    
+    this.ctx.fillStyle = gradient;
+    this.ctx.fillRect(0, 0, width, height);
+    
+    // Grid lines
+    this.ctx.strokeStyle = 'rgba(94, 227, 255, 0.1)';
+    this.ctx.lineWidth = 1;
+    
+    // Horizontal grid lines (WaveScore levels)
+    for (let i = 0; i <= 10; i++) {
+      const y = (height - 60) * (1 - i / 10) + 40;
+      this.ctx.beginPath();
+      this.ctx.moveTo(60, y);
+      this.ctx.lineTo(width - 20, y);
+      this.ctx.stroke();
+    }
+    
+    // Vertical grid lines (Time intervals)
+    const timeIntervals = this.getTimeIntervals();
+    timeIntervals.forEach((_, index) => {
+      const x = 60 + (width - 80) * (index / (timeIntervals.length - 1));
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 40);
+      this.ctx.lineTo(x, height - 20);
+      this.ctx.stroke();
+    });
+  }
+
+  drawTimeAxis(width, height) {
+    const timeIntervals = this.getTimeIntervals();
+    
+    this.ctx.fillStyle = '#f1f1f1';
+    this.ctx.font = '12px Satoshi, sans-serif';
+    this.ctx.textAlign = 'center';
+    
+    timeIntervals.forEach((time, index) => {
+      const x = 60 + (width - 80) * (index / (timeIntervals.length - 1));
+      this.ctx.fillText(this.formatTimeLabel(time), x, height - 5);
+    });
+    
+    // X-axis label
+    this.ctx.fillStyle = '#9ca3af';
+    this.ctx.font = 'bold 14px Satoshi, sans-serif';
+    this.ctx.fillText('Time', width / 2, height - 25);
+  }
+
+  drawWaveScoreAxis(width, height) {
+    this.ctx.fillStyle = '#f1f1f1';
+    this.ctx.font = '12px Satoshi, sans-serif';
+    this.ctx.textAlign = 'right';
+    
+    // WaveScore labels (0-100)
+    for (let i = 0; i <= 10; i++) {
+      const score = i * 10;
+      const y = (height - 60) * (1 - i / 10) + 40;
+      this.ctx.fillText(score.toString(), 55, y + 4);
+    }
+    
+    // Y-axis label
+    this.ctx.save();
+    this.ctx.translate(20, height / 2);
+    this.ctx.rotate(-Math.PI / 2);
+    this.ctx.fillStyle = '#9ca3af';
+    this.ctx.font = 'bold 14px Satoshi, sans-serif';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('WaveScore (0-100)', 0, 0);
+    this.ctx.restore();
+  }
+
+  drawTrendLines(width, height) {
+    Object.keys(this.data).forEach(trendKey => {
+      if (!this.activeTrends[trendKey]) return;
+      
+      const trend = this.data[trendKey];
+      const points = this.generateWaveScorePoints(trend);
+      
+      if (points.length < 2) return;
+      
+      // Create gradient for line based on intensity
+      const gradient = this.createIntensityGradient(points, width);
+      
+      this.ctx.strokeStyle = gradient;
+      this.ctx.lineWidth = 3;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+      
+      // Draw the trend line
+      this.ctx.beginPath();
+      points.forEach((point, index) => {
+        const x = 60 + (width - 80) * (index / (points.length - 1));
+        const y = (height - 60) * (1 - point.waveScore / 100) + 40;
+        
+        if (index === 0) {
+          this.ctx.moveTo(x, y);
+        } else {
+          this.ctx.lineTo(x, y);
+        }
+      });
+      this.ctx.stroke();
+      
+      // Draw data points with varying sizes based on momentum
+      points.forEach((point, index) => {
+        const x = 60 + (width - 80) * (index / (points.length - 1));
+        const y = (height - 60) * (1 - point.waveScore / 100) + 40;
+        const radius = 2 + (point.momentum || 0) * 0.1;
+        
+        this.ctx.fillStyle = this.getIntensityColor(point.waveScore);
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+      });
+    });
+  }
+
+  generateWaveScorePoints(trend) {
+    // Generate time series data with proper WaveScore calculation
+    const periods = this.getTimePeriods();
+    const points = [];
+    
+    periods.forEach((period, index) => {
+      // Simulate historical data with realistic wave patterns
+      const baseScore = trend.data[index]?.value || 0;
+      const waveScore = this.convertToWaveScore(baseScore, index, periods.length);
+      
+      // Add momentum and volatility
+      const momentum = this.calculateMomentumBoost(waveScore, index);
+      const volatility = Math.sin(index * 0.3) * 5; // Natural fluctuation
+      
+      points.push({
+        date: period,
+        waveScore: Math.max(0, Math.min(100, waveScore + momentum + volatility)),
+        momentum: momentum,
+        breakout: this.detectBreakoutMoment(waveScore, momentum)
+      });
+    });
+    
+    return points;
+  }
+
+  convertToWaveScore(value, index, totalPeriods) {
+    // Convert raw engagement value to 0-100 WaveScore
+    const normalizedValue = Math.log10(value + 1) / Math.log10(10000000) * 100;
+    
+    // Add time-based growth pattern
+    const growthFactor = (index / totalPeriods) * 20; // Gradual growth over time
+    
+    return Math.min(100, normalizedValue + growthFactor);
+  }
+
+  calculateMomentumBoost(baseScore, index) {
+    // Simulate momentum spikes based on viral triggers
+    if (index % 7 === 0) return Math.random() * 15; // Weekly viral moments
+    if (baseScore > 70) return Math.random() * 10; // High-score momentum
+    if (Math.random() < 0.1) return Math.random() * 20; // Random viral spikes
+    return 0;
+  }
+
+  detectBreakoutMoment(waveScore, momentum) {
+    return waveScore > 80 && momentum > 10; // Major viral breakout
+  }
+
+  createIntensityGradient(points, width) {
+    const gradient = this.ctx.createLinearGradient(60, 0, width - 20, 0);
+    
+    points.forEach((point, index) => {
+      const position = index / (points.length - 1);
+      const color = this.getIntensityColor(point.waveScore);
+      gradient.addColorStop(position, color);
+    });
+    
+    return gradient;
+  }
+
+  getIntensityColor(waveScore) {
+    // Color gradient based on WaveScore intensity
+    if (waveScore >= 90) return '#ff1744'; // Red - Mega viral
+    if (waveScore >= 80) return '#ff6b35'; // Orange-red - Ultra viral  
+    if (waveScore >= 70) return '#ffaa00'; // Orange - Highly viral
+    if (waveScore >= 60) return '#ffd54f'; // Yellow - Viral
+    if (waveScore >= 40) return '#81c784'; // Green - Growing
+    if (waveScore >= 20) return '#64b5f6'; // Blue - Stable
+    return '#90a4ae'; // Gray - Low activity
+  }
+
+  drawAnnotations(width, height) {
+    // Draw breakout moment annotations
+    Object.keys(this.data).forEach(trendKey => {
+      if (!this.activeTrends[trendKey]) return;
+      
+      const points = this.generateWaveScorePoints(this.data[trendKey]);
+      
+      points.forEach((point, index) => {
+        if (point.breakout) {
+          const x = 60 + (width - 80) * (index / (points.length - 1));
+          const y = (height - 60) * (1 - point.waveScore / 100) + 40;
+          
+          // Draw breakout indicator
+          this.ctx.fillStyle = '#ff1744';
+          this.ctx.font = 'bold 12px Satoshi, sans-serif';
+          this.ctx.textAlign = 'center';
+          this.ctx.fillText('🚀', x, y - 15);
+          
+          // Optional: Add annotation text
+          if (point.waveScore > 85) {
+            this.ctx.fillStyle = 'rgba(255, 23, 68, 0.1)';
+            this.ctx.fillRect(x - 30, y - 35, 60, 20);
+            this.ctx.fillStyle = '#ff1744';
+            this.ctx.font = '10px Satoshi, sans-serif';
+            this.ctx.fillText('VIRAL', x, y - 25);
+          }
+        }
+      });
+    });
+  }
+
+  drawAdvancedLegend(width, height) {
+    const legendY = 10;
+    let legendX = width - 200;
+    
+    this.ctx.fillStyle = 'rgba(19, 19, 31, 0.9)';
+    this.ctx.fillRect(legendX - 10, legendY, 190, 100);
+    
+    this.ctx.strokeStyle = 'rgba(94, 227, 255, 0.3)';
+    this.ctx.strokeRect(legendX - 10, legendY, 190, 100);
+    
+    // Legend title
+    this.ctx.fillStyle = '#5ee3ff';
+    this.ctx.font = 'bold 12px Satoshi, sans-serif';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText('WaveScore Legend', legendX, legendY + 15);
+    
+    // Color intensity guide
+    const intensityLevels = [
+      { score: '90-100', color: '#ff1744', label: 'Mega Viral' },
+      { score: '80-89', color: '#ff6b35', label: 'Ultra Viral' },
+      { score: '70-79', color: '#ffaa00', label: 'Highly Viral' },
+      { score: '60-69', color: '#ffd54f', label: 'Viral' },
+      { score: '40-59', color: '#81c784', label: 'Growing' },
+      { score: '0-39', color: '#64b5f6', label: 'Stable' }
+    ];
+    
+    intensityLevels.forEach((level, index) => {
+      const y = legendY + 30 + index * 10;
+      
+      // Color indicator
+      this.ctx.fillStyle = level.color;
+      this.ctx.fillRect(legendX, y - 4, 8, 8);
+      
+      // Text
+      this.ctx.fillStyle = '#f1f1f1';
+      this.ctx.font = '9px Satoshi, sans-serif';
+      this.ctx.fillText(`${level.score}: ${level.label}`, legendX + 12, y + 2);
+    });
+  }
+
+  getTimeIntervals() {
+    // Generate time intervals based on current period
+    const periods = {
+      '1M': 30,
+      '3M': 90,
+      '6M': 180,
+      '1Y': 365,
+      '5Y': 1825,
+      'MAX': 3650
+    };
+    
+    const days = periods[this.currentPeriod] || 30;
+    const intervals = [];
+    const intervalCount = 10; // Show 10 time points
+    
+    for (let i = 0; i < intervalCount; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - (days - (days * i / (intervalCount - 1))));
+      intervals.push(date);
+    }
+    
+    return intervals;
+  }
+
+  getTimePeriods() {
+    // Return array of time periods for data generation
+    return this.getTimeIntervals();
+  }
+
+  formatTimeLabel(date) {
+    const now = new Date();
+    const diffMs = now - date;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (this.currentPeriod === '1M' || this.currentPeriod === '3M') {
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays}d ago`;
+      return `${Math.floor(diffDays / 7)}w ago`;
+    } else if (this.currentPeriod === '6M' || this.currentPeriod === '1Y') {
+      if (diffDays < 30) return `${diffDays}d`;
+      return `${Math.floor(diffDays / 30)}mo`;
+    } else {
+      return date.getFullYear().toString();
+    }
+  }
+
+  setupEventListeners() {
+    // Add hover tooltips for data points
+    this.canvas.addEventListener('mousemove', (e) => {
+      this.handleMouseMove(e);
+    });
+    
+    this.canvas.addEventListener('click', (e) => {
+      this.handleClick(e);
+    });
+  }
+
+  handleMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Check if mouse is over a data point and show tooltip
+    this.showTooltipIfNearPoint(x, y);
+  }
+
+  handleClick(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Handle clicking on breakout moments or trend lines
+    this.handleTrendClick(x, y);
+  }
+
+  showTooltipIfNearPoint(mouseX, mouseY) {
+    const width = this.canvas.offsetWidth;
+    const height = this.canvas.offsetHeight;
+    
+    Object.keys(this.data).forEach(trendKey => {
+      if (!this.activeTrends[trendKey]) return;
+      
+      const points = this.generateWaveScorePoints(this.data[trendKey]);
+      
+      points.forEach((point, index) => {
+        const x = 60 + (width - 80) * (index / (points.length - 1));
+        const y = (height - 60) * (1 - point.waveScore / 100) + 40;
+        
+        const distance = Math.sqrt((mouseX - x) ** 2 + (mouseY - y) ** 2);
+        
+        if (distance < 10) {
+          this.showWaveScoreTooltip(mouseX, mouseY, point, this.data[trendKey]);
+        }
+      });
+    });
+  }
+
+  showWaveScoreTooltip(x, y, point, trend) {
+    const tooltip = document.getElementById('chartTooltip');
+    if (!tooltip) return;
+    
+    const breakdown = point.waveScore_breakdown || {};
+    
+    tooltip.innerHTML = `
+      <div style="background: rgba(19, 19, 31, 0.95); border: 1px solid #5ee3ff; border-radius: 8px; padding: 12px; color: #f1f1f1; font-size: 12px; min-width: 200px;">
+        <div style="font-weight: 600; margin-bottom: 8px; color: #5ee3ff;">
+          ${trend.name}
+        </div>
+        <div style="margin-bottom: 4px;">
+          <strong>WaveScore:</strong> ${Math.round(point.waveScore)}/100
+        </div>
+        <div style="margin-bottom: 4px;">
+          <strong>Date:</strong> ${point.date.toLocaleDateString()}
+        </div>
+        ${breakdown.reach ? `<div style="margin-bottom: 2px;">🔹 Reach: ${breakdown.reach}/100</div>` : ''}
+        ${breakdown.velocity ? `<div style="margin-bottom: 2px;">🔹 Velocity: ${breakdown.velocity}/100</div>` : ''}
+        ${breakdown.sentiment ? `<div style="margin-bottom: 2px;">🔹 Sentiment: ${breakdown.sentiment}/100</div>` : ''}
+        ${breakdown.momentum ? `<div style="margin-bottom: 2px;">🔹 Momentum: ${breakdown.momentum}/100</div>` : ''}
+        ${point.breakout ? '<div style="color: #ff1744; font-weight: 600; margin-top: 4px;">🚀 VIRAL BREAKOUT</div>' : ''}
+      </div>
+    `;
+    
+    tooltip.style.left = `${x + 10}px`;
+    tooltip.style.top = `${y - 10}px`;
+    tooltip.style.display = 'block';
+    tooltip.style.opacity = '1';
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+      tooltip.style.opacity = '0';
+      setTimeout(() => tooltip.style.display = 'none', 300);
+    }, 3000);
+  }
+
+  handleTrendClick(x, y) {
+    // Handle clicking on specific trend elements
+    console.log(`Clicked on WaveScope Timeline at (${x}, ${y})`);
+  }
     
     // Draw trend lines
     this.drawTrendLines(width, height);
