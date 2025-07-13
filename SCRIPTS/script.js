@@ -3937,16 +3937,16 @@ class WaveScopeChart {
     this.currentPeriod = '1M';
     this.realData = realData;
     this.activeTrends = {
-      viral: true,
       ai: true,
-      gaming: true, 
-      entertainment: true,
+      film: true,
+      culture: true,
       crypto: true,
-      news: true,
+      technology: true,
       music: true,
-      education: true,
-      health: true,
-      sports: true
+      gaming: true,
+      social: true,
+      lifestyle: true,
+      viral: true
     };
     
     // Use real data if available, otherwise generate demo data
@@ -3972,17 +3972,80 @@ class WaveScopeChart {
   }
 
   generateTrendData() {
+    // Define 10 high-reach trend categories with specific trending topics
+    const categoryTrends = this.getCategoryBasedTrends();
+    
     const trends = {
-      ai: { name: 'AI & Technology', color: '#5ee3ff', data: [] },
-      gaming: { name: 'Gaming', color: '#8b5cf6', data: [] },
-      entertainment: { name: 'Entertainment', color: '#ec4899', data: [] },
-      crypto: { name: 'Crypto & Finance', color: '#f97316', data: [] },
-      news: { name: 'News & Politics', color: '#10b981', data: [] },
-      music: { name: 'Music', color: '#f59e0b', data: [] },
-      education: { name: 'Education', color: '#ef4444', data: [] },
-      health: { name: 'Health & Fitness', color: '#06b6d4', data: [] },
-      sports: { name: 'Sports', color: '#84cc16', data: [] },
-      viral: { name: 'Viral Content', color: '#f472b6', data: [] }
+      ai: { 
+        name: 'AI: ' + categoryTrends.ai.topic, 
+        color: '#5ee3ff', 
+        data: [],
+        category: 'AI & Technology',
+        currentTrend: categoryTrends.ai
+      },
+      film: { 
+        name: 'Film: ' + categoryTrends.film.topic, 
+        color: '#ec4899', 
+        data: [],
+        category: 'Film & Cinema',
+        currentTrend: categoryTrends.film
+      },
+      culture: { 
+        name: 'Culture: ' + categoryTrends.culture.topic, 
+        color: '#8b5cf6', 
+        data: [],
+        category: 'Cultural Trends',
+        currentTrend: categoryTrends.culture
+      },
+      crypto: { 
+        name: 'Crypto: ' + categoryTrends.crypto.topic, 
+        color: '#f97316', 
+        data: [],
+        category: 'Cryptocurrency',
+        currentTrend: categoryTrends.crypto
+      },
+      technology: { 
+        name: 'Tech: ' + categoryTrends.technology.topic, 
+        color: '#10b981', 
+        data: [],
+        category: 'Technology',
+        currentTrend: categoryTrends.technology
+      },
+      music: { 
+        name: 'Music: ' + categoryTrends.music.topic, 
+        color: '#f59e0b', 
+        data: [],
+        category: 'Music & Audio',
+        currentTrend: categoryTrends.music
+      },
+      gaming: { 
+        name: 'Gaming: ' + categoryTrends.gaming.topic, 
+        color: '#ef4444', 
+        data: [],
+        category: 'Gaming',
+        currentTrend: categoryTrends.gaming
+      },
+      social: { 
+        name: 'Social: ' + categoryTrends.social.topic, 
+        color: '#06b6d4', 
+        data: [],
+        category: 'Social Media',
+        currentTrend: categoryTrends.social
+      },
+      lifestyle: { 
+        name: 'Lifestyle: ' + categoryTrends.lifestyle.topic, 
+        color: '#84cc16', 
+        data: [],
+        category: 'Lifestyle',
+        currentTrend: categoryTrends.lifestyle
+      },
+      viral: { 
+        name: 'Viral: ' + categoryTrends.viral.topic, 
+        color: '#f472b6', 
+        data: [],
+        category: 'Viral Content',
+        currentTrend: categoryTrends.viral
+      }
     };
 
     const periods = {
@@ -4002,17 +4065,32 @@ class WaveScopeChart {
         const date = new Date();
         date.setDate(date.getDate() - (days - i));
         
-        // Generate realistic trend data with some volatility
-        const baseValue = this.getTrendBaseValue(key);
+        // Use trend-specific data for realistic chart generation
+        const trendInfo = trend.currentTrend;
+        const baseValue = trendInfo.reach / 1000; // Scale down for chart visibility
+        const trendVelocity = trendInfo.velocity;
+        
+        // Generate realistic trend data with velocity-based patterns
         const volatility = Math.sin(i * 0.1) * 0.3 + Math.random() * 0.4 - 0.2;
         const seasonality = Math.sin(i * 0.02) * 0.2;
-        const growth = i * 0.001; // Slight upward trend
+        const growth = i * (trendVelocity / 1000); // Growth based on trend velocity
+        const waveScore = trendInfo.wave_score / 100; // Scale wave score
         
-        const value = Math.max(0, baseValue + (baseValue * (volatility + seasonality + growth)));
+        // Recent trends should show more dramatic growth
+        const recentBoost = days - i < 7 ? (trendVelocity * 0.5) : 0;
+        
+        const value = Math.max(0, baseValue + (baseValue * (volatility + seasonality + growth + recentBoost)) * waveScore);
         
         trend.data.push({
           date: new Date(date),
-          value: Math.round(value)
+          value: Math.round(value),
+          metadata: {
+            reach: trendInfo.reach,
+            velocity: trendInfo.velocity,
+            wave_score: trendInfo.wave_score,
+            platform: trendInfo.platform_origin,
+            description: trendInfo.description
+          }
         });
       }
     });
@@ -4446,6 +4524,95 @@ class WaveScopeChart {
     }
   }
 
+  // Get current biggest trends for each category
+  getCategoryBasedTrends() {
+    // This would normally fetch from API, but for demo we'll use curated trending topics
+    const currentTrends = {
+      ai: {
+        topic: 'Claude Code for Vibecoding',
+        reach: 2847392,
+        velocity: 0.89,
+        description: 'Developers using Claude Code for creative coding workflows',
+        platform_origin: 'YouTube',
+        wave_score: 87
+      },
+      film: {
+        topic: 'Dune 3 Production Updates',
+        reach: 1924761,
+        velocity: 0.76,
+        description: 'Behind-the-scenes content from Denis Villeneuve\'s Dune: Part Three',
+        platform_origin: 'YouTube',
+        wave_score: 82
+      },
+      culture: {
+        topic: 'Gen Z Work-Life Balance Revolution',
+        reach: 3102847,
+        velocity: 0.81,
+        description: 'Cultural shift in workplace expectations and remote work advocacy',
+        platform_origin: 'TikTok',
+        wave_score: 85
+      },
+      crypto: {
+        topic: 'Bitcoin ETF Impact Analysis',
+        reach: 1647382,
+        velocity: 0.73,
+        description: 'Market analysis of institutional Bitcoin adoption effects',
+        platform_origin: 'Reddit',
+        wave_score: 79
+      },
+      technology: {
+        topic: 'Apple Vision Pro Review Wave',
+        reach: 4192847,
+        velocity: 0.94,
+        description: 'Comprehensive reviews and user experiences with Apple\'s VR headset',
+        platform_origin: 'YouTube',
+        wave_score: 91
+      },
+      music: {
+        topic: 'Taylor Swift Eras Tour Documentary',
+        reach: 5847392,
+        velocity: 0.97,
+        description: 'Behind-the-scenes documentary content from the record-breaking tour',
+        platform_origin: 'YouTube',
+        wave_score: 94
+      },
+      gaming: {
+        topic: 'Baldur\'s Gate 3 Speedrun Community',
+        reach: 2384761,
+        velocity: 0.68,
+        description: 'Competitive speedrunning strategies and world record attempts',
+        platform_origin: 'Twitch',
+        wave_score: 77
+      },
+      social: {
+        topic: 'Instagram Threads vs Twitter Migration',
+        reach: 3847291,
+        velocity: 0.86,
+        description: 'User migration patterns and platform comparison content',
+        platform_origin: 'TikTok',
+        wave_score: 88
+      },
+      lifestyle: {
+        topic: 'Minimalist Tech Setup Trends',
+        reach: 1923847,
+        velocity: 0.71,
+        description: 'Clean desk setups and minimalist productivity workflows',
+        platform_origin: 'YouTube',
+        wave_score: 81
+      },
+      viral: {
+        topic: 'AI-Generated Meme Templates',
+        reach: 4729384,
+        velocity: 0.92,
+        description: 'Creative use of AI tools for meme generation and viral content',
+        platform_origin: 'TikTok',
+        wave_score: 89
+      }
+    };
+    
+    return currentTrends;
+  }
+
   setupEventListeners() {
     // Add hover tooltips for data points
     this.canvas.addEventListener('mousemove', (e) => {
@@ -4503,22 +4670,58 @@ class WaveScopeChart {
     
     const breakdown = point.waveScore_breakdown || {};
     
+    const trendInfo = trend.currentTrend || {};
+    
     tooltip.innerHTML = `
-      <div style="background: rgba(19, 19, 31, 0.95); border: 1px solid #5ee3ff; border-radius: 8px; padding: 12px; color: #f1f1f1; font-size: 12px; min-width: 200px;">
-        <div style="font-weight: 600; margin-bottom: 8px; color: #5ee3ff;">
-          ${trend.name}
+      <div style="background: rgba(19, 19, 31, 0.95); border: 1px solid #5ee3ff; border-radius: 8px; padding: 12px; color: #f1f1f1; font-size: 12px; min-width: 280px; max-width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+        <div style="font-weight: 600; margin-bottom: 8px; color: #5ee3ff; font-size: 14px;">
+          ${trend.category || 'Trending Category'}
         </div>
-        <div style="margin-bottom: 4px;">
-          <strong>WaveScore:</strong> ${Math.round(point.waveScore)}/100
+        <div style="font-weight: 500; margin-bottom: 8px; line-height: 1.4; color: #f1f1f1;">
+          📈 ${trendInfo.topic || trend.name}
         </div>
-        <div style="margin-bottom: 4px;">
-          <strong>Date:</strong> ${point.date.toLocaleDateString()}
+        ${trendInfo.description ? `
+          <div style="color: #9ca3af; margin-bottom: 8px; font-size: 11px; line-height: 1.3; font-style: italic;">
+            ${trendInfo.description}
+          </div>
+        ` : ''}
+        <div style="border-top: 1px solid #2e2e45; padding-top: 8px; margin-top: 8px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+            <span>🌊 WaveScore:</span>
+            <span style="color: #5ee3ff; font-weight: 600;">${Math.round(point.waveScore)}/100</span>
+          </div>
+          ${trendInfo.reach ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>🎯 Total Reach:</span>
+              <span style="color: #f59e0b; font-weight: 600;">${trendInfo.reach.toLocaleString()}</span>
+            </div>
+          ` : ''}
+          ${trendInfo.velocity ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>⚡ Velocity:</span>
+              <span style="color: #ec4899; font-weight: 600;">${Math.round(trendInfo.velocity * 100)}%</span>
+            </div>
+          ` : ''}
+          ${trendInfo.platform_origin ? `
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>📱 Platform:</span>
+              <span style="color: #8b5cf6; font-weight: 600;">${trendInfo.platform_origin}</span>
+            </div>
+          ` : ''}
         </div>
-        ${breakdown.reach ? `<div style="margin-bottom: 2px;">🔹 Reach: ${breakdown.reach}/100</div>` : ''}
-        ${breakdown.velocity ? `<div style="margin-bottom: 2px;">🔹 Velocity: ${breakdown.velocity}/100</div>` : ''}
-        ${breakdown.sentiment ? `<div style="margin-bottom: 2px;">🔹 Sentiment: ${breakdown.sentiment}/100</div>` : ''}
-        ${breakdown.momentum ? `<div style="margin-bottom: 2px;">🔹 Momentum: ${breakdown.momentum}/100</div>` : ''}
-        ${point.breakout ? '<div style="color: #ff1744; font-weight: 600; margin-top: 4px;">🚀 VIRAL BREAKOUT</div>' : ''}
+        ${breakdown.reach || breakdown.velocity || breakdown.sentiment || breakdown.momentum ? `
+          <div style="border-top: 1px solid #2e2e45; padding-top: 8px; margin-top: 8px;">
+            <div style="color: #9ca3af; font-size: 11px; margin-bottom: 4px;">WaveScore Breakdown:</div>
+            ${breakdown.reach ? `<div style="margin-bottom: 2px; font-size: 11px;">🔹 Reach: ${breakdown.reach}/40</div>` : ''}
+            ${breakdown.velocity ? `<div style="margin-bottom: 2px; font-size: 11px;">🔹 Velocity: ${breakdown.velocity}/30</div>` : ''}
+            ${breakdown.sentiment ? `<div style="margin-bottom: 2px; font-size: 11px;">🔹 Sentiment: ${breakdown.sentiment}/20</div>` : ''}
+            ${breakdown.momentum ? `<div style="margin-bottom: 2px; font-size: 11px;">🔹 Momentum: ${breakdown.momentum}/10</div>` : ''}
+          </div>
+        ` : ''}
+        <div style="text-align: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2e2e45;">
+          <span style="color: #9ca3af; font-size: 10px;">📅 ${point.date.toLocaleDateString()}</span>
+        </div>
+        ${point.breakout ? '<div style="color: #ff1744; font-weight: 600; margin-top: 8px; text-align: center; padding: 4px; background: rgba(255, 23, 68, 0.1); border-radius: 4px;">🚀 VIRAL BREAKOUT MOMENT</div>' : ''}
       </div>
     `;
     
@@ -4749,6 +4952,67 @@ class WaveScopeChart {
   toggleTrend(trendKey) {
     this.activeTrends[trendKey] = !this.activeTrends[trendKey];
     this.render();
+  }
+
+  // Method to refresh category trends with new data
+  refreshCategoryTrends() {
+    const newCategoryTrends = this.getCategoryBasedTrends();
+    
+    // Update existing trend data with new trending topics
+    Object.keys(this.data).forEach(key => {
+      if (newCategoryTrends[key]) {
+        this.data[key].currentTrend = newCategoryTrends[key];
+        this.data[key].name = `${this.data[key].category.split(' ')[0]}: ${newCategoryTrends[key].topic}`;
+        
+        // Regenerate chart data with new trend info
+        this.regenerateTrendData(key);
+      }
+    });
+    
+    this.render();
+    console.log('🔄 Category trends refreshed with latest data');
+  }
+
+  // Regenerate chart data for a specific trend
+  regenerateTrendData(trendKey) {
+    const trend = this.data[trendKey];
+    const trendInfo = trend.currentTrend;
+    const periods = {
+      '1M': 30, '3M': 90, '6M': 180, '1Y': 365, '5Y': 1825, 'MAX': 3650
+    };
+    const days = periods[this.currentPeriod];
+    
+    // Clear existing data
+    trend.data = [];
+    
+    // Regenerate with new trend-specific parameters
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - (days - i));
+      
+      const baseValue = trendInfo.reach / 1000;
+      const trendVelocity = trendInfo.velocity;
+      
+      const volatility = Math.sin(i * 0.1) * 0.3 + Math.random() * 0.4 - 0.2;
+      const seasonality = Math.sin(i * 0.02) * 0.2;
+      const growth = i * (trendVelocity / 1000);
+      const waveScore = trendInfo.wave_score / 100;
+      
+      const recentBoost = days - i < 7 ? (trendVelocity * 0.5) : 0;
+      const value = Math.max(0, baseValue + (baseValue * (volatility + seasonality + growth + recentBoost)) * waveScore);
+      
+      trend.data.push({
+        date: new Date(date),
+        value: Math.round(value),
+        metadata: {
+          reach: trendInfo.reach,
+          velocity: trendInfo.velocity,
+          wave_score: trendInfo.wave_score,
+          platform: trendInfo.platform_origin,
+          description: trendInfo.description
+        }
+      });
+    }
   }
 }
 
