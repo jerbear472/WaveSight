@@ -1,5 +1,5 @@
 # Render Procfile for WaveSight
 # Defines how to run the application
 
-web: python SERVER/sentiment_server.py
+web: python app.py
 worker: node SERVER/tiktok-server.js

@@ -24,7 +24,7 @@ services:
     plan: starter
     region: oregon
     buildCommand: pip install -r requirements.txt
-    startCommand: python SERVER/sentiment_server.py
+    startCommand: python app.py
     envVars:
       - key: PORT
         value: 10000
