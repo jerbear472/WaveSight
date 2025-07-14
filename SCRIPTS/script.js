@@ -636,14 +636,26 @@ class WaveSightDashboard {
             this.wavescopeChart = new WaveScopeChart(canvas, this.state.currentData);
             this.wavescopeChart.init();
             
-            // Force immediate render with demo data if no real data
-            if (!this.state.currentData || this.state.currentData.length === 0) {
-              console.log('📊 Using demo data for timeline visualization');
+            // Always ensure we have data to display
+            console.log('📊 Ensuring timeline has data to display...');
+            
+            // Try to use real data first, then fallback to demo data
+            if (this.state.currentData && this.state.currentData.length > 0) {
+              console.log(`🚀 Using ${this.state.currentData.length} real trending videos for timeline`);
+              this.wavescopeChart.realData = this.state.currentData;
+              this.wavescopeChart.data = this.wavescopeChart.processRealDataForChart(this.state.currentData);
+            } else {
+              console.log('📊 Generating rich demo data for timeline visualization');
               this.wavescopeChart.data = this.wavescopeChart.generateTrendData();
             }
             
+            // Force render and log data info
             this.wavescopeChart.render();
-            console.log('✅ Canvas WaveScope Timeline initialized and rendered');
+            const dataKeys = Object.keys(this.wavescopeChart.data || {});
+            console.log(`✅ Timeline rendered with ${dataKeys.length} trend categories:`, dataKeys);
+            
+            // Also try to fetch fresh YouTube data in background
+            this.fetchAndUpdateTimelineData();
           } catch (error) {
             console.warn('⚠️ Canvas failed, creating fallback timeline:', error);
             this.createFallbackTimeline();
@@ -654,6 +666,10 @@ class WaveSightDashboard {
       // Update status to show timeline is active
       this.updateElement('youtubeStatus', '🟢');
       this.updateElement('statusText', '🌊 WaveScope Timeline Active with Real Data');
+      
+      // Ensure status indicators show data is loaded
+      this.updateElement('totalRecords', this.state.currentData?.length || 'Demo');
+      this.updateElement('lastRefresh', new Date().toLocaleTimeString());
       
     } catch (error) {
       console.error('❌ Timeline initialization failed:', error);
@@ -1147,6 +1163,49 @@ class WaveSightDashboard {
     URL.revokeObjectURL(url);
     
     this.showNotification('Timeline data exported successfully', 'success');
+  }
+
+  // Background data fetching for timeline updates
+  async fetchAndUpdateTimelineData() {
+    try {
+      console.log('🔄 Fetching fresh YouTube data in background...');
+      const response = await this.fetchWithTimeout('/api/fetch-youtube?maxResults=50&type=trending');
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.length > 0) {
+        console.log(`🆕 Updated with ${result.data.length} fresh trending videos`);
+        this.state.currentData = result.data;
+        
+        // Update the timeline chart with fresh data
+        if (this.wavescopeChart) {
+          this.wavescopeChart.realData = result.data;
+          this.wavescopeChart.data = this.wavescopeChart.processRealDataForChart(result.data);
+          this.wavescopeChart.render();
+        }
+        
+        this.showNotification(`🔄 Timeline updated with ${result.data.length} fresh trends`, 'success');
+      }
+    } catch (error) {
+      console.warn('⚠️ Background data fetch failed:', error);
+    }
+  }
+
+  // Generate rich demo data for timeline
+  generateDemoTimelineData() {
+    console.log('🎭 Generating rich demo timeline data...');
+    
+    const demoData = [
+      { title: 'AI Coding Revolution', category: 'AI Tools', view_count: 2500000, published_at: new Date(Date.now() - 86400000).toISOString() },
+      { title: 'React 19 Features', category: 'Technology', view_count: 1200000, published_at: new Date(Date.now() - 172800000).toISOString() },
+      { title: 'Gaming Industry Trends', category: 'Gaming', view_count: 3200000, published_at: new Date(Date.now() - 259200000).toISOString() },
+      { title: 'Crypto Market Analysis', category: 'Crypto', view_count: 890000, published_at: new Date(Date.now() - 345600000).toISOString() },
+      { title: 'Music Production AI', category: 'Music', view_count: 1800000, published_at: new Date(Date.now() - 432000000).toISOString() },
+      { title: 'Viral TikTok Trends', category: 'Entertainment', view_count: 4500000, published_at: new Date(Date.now() - 518400000).toISOString() }
+    ];
+    
+    this.state.currentData = demoData;
+    this.timelineData = this.processTimelineData(demoData);
+    console.log('✅ Generated demo timeline data with 6 trending items');
   }
 
   // Date range filtering functionality
@@ -6746,10 +6805,8 @@ class WaveScopeChart {
       
       if (points.length < 2) return;
       
-      // Create gradient for line based on intensity
-      const gradient = this.createIntensityGradient(points, width);
-      
-      this.ctx.strokeStyle = gradient;
+      // Use solid trend color for better visibility
+      this.ctx.strokeStyle = trend.color || '#5ee3ff';
       this.ctx.lineWidth = 3;
       this.ctx.lineCap = 'round';
       this.ctx.lineJoin = 'round';
@@ -6787,23 +6844,37 @@ class WaveScopeChart {
     const periods = this.getTimePeriods();
     const points = [];
     
+    // Create baseline trend scores with realistic variation
+    const baseScore = 30 + Math.random() * 40; // Base between 30-70
+    
     periods.forEach((period, index) => {
-      // Simulate historical data with realistic wave patterns
-      const baseScore = trend.data[index]?.value || 0;
-      const waveScore = this.convertToWaveScore(baseScore, index, periods.length);
+      // Create realistic trend pattern with growth and decline
+      const progressRatio = index / (periods.length - 1);
+      const growthCurve = Math.sin(progressRatio * Math.PI * 2) * 20; // Sine wave pattern
+      const randomVariation = (Math.random() - 0.5) * 15; // Random ±7.5
       
-      // Add momentum and volatility
-      const momentum = this.calculateMomentumBoost(waveScore, index);
-      const volatility = Math.sin(index * 0.3) * 5; // Natural fluctuation
+      // Calculate final wave score with trend data if available
+      let waveScore = baseScore + growthCurve + randomVariation;
+      
+      if (trend.data && trend.data[index]) {
+        const dataPoint = trend.data[index];
+        waveScore = this.convertToWaveScore(dataPoint.value || 0, index, periods.length);
+      }
+      
+      // Ensure score is within valid range
+      waveScore = Math.max(10, Math.min(95, waveScore));
+      
+      const momentum = Math.random() * 10; // Random momentum
       
       points.push({
         date: period,
-        waveScore: Math.max(0, Math.min(100, waveScore + momentum + volatility)),
+        waveScore: waveScore,
         momentum: momentum,
-        breakout: this.detectBreakoutMoment(waveScore, momentum)
+        breakout: waveScore > 80 && momentum > 5
       });
     });
     
+    console.log(`📈 Generated ${points.length} data points for trend: ${trend.name || 'Unknown'}`);
     return points;
   }
 
