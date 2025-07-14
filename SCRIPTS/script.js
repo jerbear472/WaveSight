@@ -420,7 +420,7 @@ class WaveSightDashboard {
 
       // Fallback to API if Supabase fails
       console.log('🔄 Trying API fallback...');
-      const response = await this.fetchWithTimeout('/api/youtube-data?limit=100');
+      const response = await this.fetchWithTimeout('http://localhost:5003/api/youtube-trending?maxResults=100');
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -684,7 +684,7 @@ class WaveSightDashboard {
     
     try {
       // Try to get fresh YouTube trending data
-      const response = await this.fetchWithTimeout('/api/fetch-youtube?maxResults=100&type=trending');
+      const response = await this.fetchWithTimeout('http://localhost:5003/api/youtube-trending?maxResults=100');
       const result = await response.json();
       
       if (result.success && result.data) {
@@ -1169,7 +1169,7 @@ class WaveSightDashboard {
   async fetchAndUpdateTimelineData() {
     try {
       console.log('🔄 Fetching fresh YouTube data in background...');
-      const response = await this.fetchWithTimeout('/api/fetch-youtube?maxResults=50&type=trending');
+      const response = await this.fetchWithTimeout('http://localhost:5003/api/youtube-trending?maxResults=50');
       const result = await response.json();
       
       if (result.success && result.data && result.data.length > 0) {
@@ -1355,7 +1355,7 @@ class WaveSightDashboard {
       
       // Fetch fresh data if needed
       const response = await this.fetchWithTimeout(
-        `/api/fetch-youtube?maxResults=200&publishedAfter=${dateRange.start}&publishedBefore=${dateRange.end}`
+        `http://localhost:5003/api/youtube-trending?maxResults=200`
       );
       const result = await response.json();
       
@@ -2018,7 +2018,7 @@ class WaveSightDashboard {
   async fetchYouTubeSearchResults(searchTerm) {
     try {
       const response = await this.fetchWithTimeout(
-        `/api/fetch-youtube?q=${encodeURIComponent(searchTerm)}&maxResults=50`
+        `http://localhost:5000/api/youtube-trending?maxResults=50`
       );
       const result = await response.json();
       return {
@@ -3038,7 +3038,10 @@ class WaveSightDashboard {
     const timeout = setTimeout(() => controller.abort(), this.config.api.timeout);
 
     try {
-      const response = await fetch(this.config.api.baseUrl + url, {
+      // Handle full URLs or relative URLs
+      const fullUrl = url.startsWith('http') ? url : this.config.api.baseUrl + url;
+      
+      const response = await fetch(fullUrl, {
         ...options,
         signal: controller.signal
       });
@@ -6600,73 +6603,131 @@ class WaveScopeChart {
 
   processRealDataForChart(realData) {
     if (!realData || realData.length === 0) {
-      return this.generateTrendData();
+      return this.generateWAVESITETrends();
     }
 
-    console.log(`🔄 Processing ${realData.length} real data points for WaveScope Timeline`);
+    console.log(`🔄 Processing ${realData.length} real YouTube data points for WAVESITE Timeline`);
 
+    // WAVESITE trend structure with real data integration
     const trends = {
-      ai: { name: 'AI & Technology', color: '#5ee3ff', data: [] },
-      gaming: { name: 'Gaming', color: '#8b5cf6', data: [] },
-      entertainment: { name: 'Entertainment', color: '#ec4899', data: [] },
-      crypto: { name: 'Crypto & Finance', color: '#f97316', data: [] },
-      news: { name: 'News & Politics', color: '#10b981', data: [] },
-      music: { name: 'Music', color: '#f59e0b', data: [] },
-      education: { name: 'Education', color: '#ef4444', data: [] },
-      health: { name: 'Health & Fitness', color: '#06b6d4', data: [] },
-      sports: { name: 'Sports', color: '#84cc16', data: [] },
-      viral: { name: 'Viral Content', color: '#f472b6', data: [] }
+      emerging: {
+        name: 'Emerging Trends',
+        color: '#5ee3ff',
+        data: [],
+        platforms: ['reddit', 'youtube', 'tiktok'],
+        confidenceScore: 85,
+        viralPrediction: 72,
+        engagementVelocity: 150,
+        status: 'emerging',
+        migrations: []
+      },
+      viral: {
+        name: 'Viral Content',
+        color: '#ff1744',
+        data: [],
+        platforms: ['tiktok', 'youtube', 'reddit'],
+        confidenceScore: 92,
+        viralPrediction: 88,
+        engagementVelocity: 280,
+        status: 'viral',
+        migrations: []
+      },
+      migrating: {
+        name: 'Cross-Platform Migration',
+        color: '#8b5cf6',
+        data: [],
+        platforms: ['youtube', 'reddit'],
+        confidenceScore: 78,
+        viralPrediction: 65,
+        engagementVelocity: 120,
+        status: 'migrating',
+        migrations: []
+      },
+      declining: {
+        name: 'Declining Trends',
+        color: '#9ca3af',
+        data: [],
+        platforms: ['reddit'],
+        confidenceScore: 45,
+        viralPrediction: 25,
+        engagementVelocity: 80,
+        status: 'declining',
+        migrations: []
+      }
     };
 
-    // Categorize real data by trend type
+    // Process real YouTube data into WAVESITE trend categories
     const categoryMap = {
-      'AI Tools': 'ai',
-      'Technology': 'ai',
-      'Gaming': 'gaming',
-      'Entertainment': 'entertainment',
-      'Crypto': 'crypto',
-      'News': 'news',
-      'Music': 'music',
-      'Education': 'education',
-      'Health': 'health',
-      'Health & Fitness': 'health',
-      'Sports': 'sports'
+      'AI': 'emerging',
+      'Technology': 'emerging', 
+      'Science': 'emerging',
+      'Business': 'emerging',
+      'Gaming': 'viral',
+      'Entertainment': 'viral',
+      'Music': 'viral',
+      'Lifestyle': 'viral',
+      'Crypto': 'migrating',
+      'News': 'migrating',
+      'Sports': 'migrating',
+      'General': 'declining'
     };
 
-    // Group data by date and category
-    const dateGroups = {};
-    
+    // Analyze real data to determine WAVESITE metrics
     realData.forEach(item => {
       const category = item.trend_category || 'General';
-      const trendKey = categoryMap[category] || 'entertainment';
-      const date = new Date(item.published_at || Date.now()).toDateString();
+      const trendType = categoryMap[category] || 'declining';
+      const trend = trends[trendType];
       
-      if (!dateGroups[date]) {
-        dateGroups[date] = {};
-      }
-      if (!dateGroups[date][trendKey]) {
-        dateGroups[date][trendKey] = 0;
-      }
+      if (!trend) return;
       
-      dateGroups[date][trendKey] += item.view_count || 0;
-    });
-
-    // Convert to timeline format
-    const sortedDates = Object.keys(dateGroups).sort((a, b) => new Date(a) - new Date(b));
-    
-    sortedDates.forEach(dateStr => {
-      const date = new Date(dateStr);
-      const dayData = dateGroups[dateStr];
+      // Calculate WAVESITE metrics from real data
+      const viewCount = item.view_count || 0;
+      const waveScore = item.wave_score || 50;
+      const engagementRate = item.engagement_rate || 0;
       
-      Object.keys(trends).forEach(trendKey => {
-        trends[trendKey].data.push({
-          date: new Date(date),
-          value: dayData[trendKey] || 0
-        });
+      // Update trend confidence based on real data
+      const dataConfidence = Math.min(95, Math.max(10, waveScore));
+      const dataViral = Math.min(100, engagementRate * 10 + 40);
+      const dataVelocity = Math.min(500, viewCount / 10000 + 50);
+      
+      // Update trend metrics with real data
+      trend.confidenceScore = Math.round((trend.confidenceScore + dataConfidence) / 2);
+      trend.viralPrediction = Math.round((trend.viralPrediction + dataViral) / 2);
+      trend.engagementVelocity = Math.round((trend.engagementVelocity + dataVelocity) / 2);
+      
+      // Add data point to trend timeline
+      const publishedAt = new Date(item.published_at || Date.now());
+      trend.data.push({
+        date: publishedAt,
+        value: Math.round(waveScore),
+        confidence: Math.round(dataConfidence),
+        viralPrediction: Math.round(dataViral),
+        engagementVelocity: Math.round(dataVelocity),
+        platforms: ['youtube'],
+        status: trendType,
+        metadata: {
+          title: item.title,
+          channel: item.channel_title,
+          views: viewCount
+        }
       });
     });
 
-    console.log('✅ Real data processed for WaveScope Timeline');
+    // Generate time series data for trends with sparse data
+    const timeRange = this.getTimeRangeData(this.currentPeriod);
+    Object.keys(trends).forEach(trendKey => {
+      const trend = trends[trendKey];
+      if (trend.data.length < 5) {
+        // Fill with generated data if insufficient real data
+        const additionalData = this.generateWAVESITETimeSeriesData(trend, timeRange);
+        trend.data = [...trend.data, ...additionalData.slice(0, 20 - trend.data.length)];
+      }
+      
+      // Sort by date
+      trend.data.sort((a, b) => new Date(a.date) - new Date(b.date));
+    });
+
+    console.log(`✅ Real YouTube data processed for WAVESITE Timeline: ${realData.length} videos analyzed`);
     return trends;
   }
 
