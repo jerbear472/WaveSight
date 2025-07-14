@@ -1,0 +1,23 @@
+# WaveSight Python Dependencies
+# Flask web framework and extensions
+flask==2.3.3
+flask-cors==4.0.0
+
+# API clients
+praw==7.7.1
+openai==0.28.1
+supabase==1.0.4
+requests==2.31.0
+
+# Data analysis and sentiment
+vaderSentiment==3.3.2
+pandas==2.0.3
+numpy==1.24.3
+
+# Environment and configuration
+python-dotenv==1.0.0
+schedule==1.2.0
+
+# Utilities
+urllib3==2.0.4
+certifi==2023.7.22

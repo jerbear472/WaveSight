@@ -1,51 +1,42 @@
 {
   "name": "wavesight",
   "version": "1.0.0",
-  "description": "🌊 Social Intelligence & Trend Tracking Platform - Transform how you understand and predict digital trends with AI-powered social intelligence",
-  "type": "module",
+  "description": "WaveSight Viral Trend Intelligence Platform",
   "main": "index.html",
   "scripts": {
-    "start": "python3 -m http.server 8080",
-    "dev": "concurrently \"python3 SERVER/sentiment_server.py\" \"python3 -m http.server 8080\"",
-    "setup": "python3 setup.py",
-    "verify": "python3 verify_setup.py",
-    "test-apis": "python3 test_apis.py",
-    "build": "echo 'No build step required - static frontend'",
-    "serve": "python3 -m http.server 8080 --bind 127.0.0.1",
-    "sentiment-server": "python3 SERVER/sentiment_server.py",
-    "youtube-server": "node SCRIPTS/youtubeToSupabase.js",
-    "youtube-collect": "node SCRIPTS/main.js"
-  },
-  "keywords": [
-    "trends",
-    "sentiment-analysis", 
-    "social-intelligence",
-    "youtube-api",
-    "reddit-api", 
-    "cultural-analysis",
-    "viral-prediction",
-    "dashboard",
-    "real-time",
-    "analytics"
-  ],
-  "author": "WaveSight Team",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/yourusername/wavesight.git"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "node-fetch": "^3.3.2",
-    "@supabase/supabase-js": "^2.38.4",
-    "dotenv": "^16.3.1"
-  },
-  "devDependencies": {
-    "concurrently": "^7.0.0"
+    "start": "node SERVER/tiktok-server.js",
+    "dev": "./start-servers.sh",
+    "build": "echo 'No build step required'",
+    "test": "echo 'Tests not configured yet'"
   },
   "engines": {
-    "node": ">=14.0.0",
-    "python": ">=3.8.0"
-  }
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.5",
+    "axios": "^1.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "node-fetch": "^2.7.0",
+    "redis": "^4.7.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jerbear472/WaveSight.git"
+  },
+  "keywords": [
+    "viral-trends",
+    "tiktok-api",
+    "youtube-analytics",
+    "social-intelligence",
+    "trend-prediction"
+  ],
+  "author": "Jeremy Uys",
+  "license": "MIT"
 }

@@ -1,0 +1,56 @@
+# WaveSight Render Deployment Configuration
+# Multi-service deployment for Render.com
+
+services:
+  # Frontend Static Site
+  - type: web
+    name: wavesight-frontend
+    env: static
+    buildCommand: echo "Building frontend..."
+    staticPublishPath: .
+    headers:
+      - key: X-Frame-Options
+        value: DENY
+      - key: X-Content-Type-Options
+        value: nosniff
+    envVars:
+      - key: NODE_ENV
+        value: production
+    
+  # Python Backend Service
+  - type: web
+    name: wavesight-backend
+    env: python
+    plan: starter
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: python SERVER/sentiment_server.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.9.16
+        
+  # Node.js TikTok Integration Service  
+  - type: web
+    name: wavesight-tiktok
+    env: node
+    plan: starter
+    region: oregon
+    buildCommand: cd SERVER && npm install
+    startCommand: cd SERVER && node tiktok-server.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: production
+      - key: TIKTOK_PORT
+        value: 10000
+
+# Database (if using Render's managed database)
+# databases:
+#   - name: wavesight-db
+#     databaseName: wavesight
+#     user: wavesight_user
