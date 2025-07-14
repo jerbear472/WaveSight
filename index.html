@@ -52,9 +52,36 @@
                     Search & Filters
                 </div>
 
-                <!-- Basic Search and Filters -->
+                <!-- Enhanced Search System -->
                 <div class="filter-group">
-                    <input type="text" placeholder="Search trends... (Type to search)" id="searchInput" class="search-input">
+                    <div class="enhanced-search-container">
+                        <div class="search-input-wrapper">
+                            <input type="text" placeholder="Search trends... (Type to search)" id="searchInput" class="search-input enhanced-search">
+                            <div class="search-suggestions" id="searchSuggestions"></div>
+                            <div class="search-controls">
+                                <button class="search-history-btn" id="searchHistoryBtn" title="Search History">
+                                    📚
+                                </button>
+                                <button class="saved-searches-btn" id="savedSearchesBtn" title="Saved Searches">
+                                    ⭐
+                                </button>
+                                <button class="search-clear-btn" id="searchClearBtn" title="Clear Search">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Search Tags -->
+                        <div class="quick-search-tags">
+                            <span class="tag-label">Trending Now:</span>
+                            <button class="quick-tag" data-search="AI" title="Search AI trends">🤖 AI</button>
+                            <button class="quick-tag" data-search="crypto" title="Search crypto trends">💰 Crypto</button>
+                            <button class="quick-tag" data-search="gaming" title="Search gaming trends">🎮 Gaming</button>
+                            <button class="quick-tag" data-search="music" title="Search music trends">🎵 Music</button>
+                            <button class="quick-tag" data-search="tech" title="Search tech trends">💻 Tech</button>
+                            <button class="quick-tag" data-search="viral" title="Search viral content">🔥 Viral</button>
+                        </div>
+                    </div>
                     
                     <!-- Data Source Toggles for Cross-Platform Search -->
                     <div class="data-source-toggles">
@@ -150,8 +177,13 @@
                 
                 <!-- Trend Line Controls -->
                 <div class="trend-controls">
-                    <h4>📈 Category-Based Trend Lines</h4>
-                    <div class="trend-toggles">
+                    <h4>🚀 Live Trending Categories</h4>
+                    <div class="trend-cards-grid" id="trendCardsGrid">
+                        <!-- Trend cards will be populated dynamically -->
+                    </div>
+                    
+                    <!-- Legacy Trend Line Controls (kept for compatibility) -->
+                    <div class="trend-toggles" style="display: none;">
                         <label class="trend-toggle">
                             <input type="checkbox" id="aiTrend" checked onchange="toggleTrendLine('ai')">
                             <span class="checkmark" style="background: #5ee3ff;"></span>

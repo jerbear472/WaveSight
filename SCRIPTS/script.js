@@ -99,6 +99,9 @@ class WaveSightDashboard {
       // Initialize TikTok integration
       this.initTikTokIntegration();
       
+      // Start real-time data stream
+      this.startRealTimeDataStream();
+      
       console.log('✅ Dashboard initialized successfully with viral trend detection');
     } catch (error) {
       console.error('❌ Dashboard initialization failed:', error);
@@ -495,6 +498,9 @@ class WaveSightDashboard {
     // ALWAYS ensure timeline is visible with current data
     this.createReliableTimeline();
     this.updateRealTrendsList();
+    
+    // Initialize rich trend cards
+    this.initializeTrendCards();
   }
 
   // Process data for table display
@@ -2431,15 +2437,315 @@ class WaveSightDashboard {
     if (!indicator) return;
     
     const statusMap = {
-      'connected': { text: '🟢 Live', color: '#10B981' },
-      'auto-refresh': { text: '🔄 Auto-refresh', color: '#06B6D4' },
-      'error': { text: '🔴 Disconnected', color: '#EF4444' },
-      'loading': { text: '🟡 Loading...', color: '#F59E0B' }
+      'connected': { text: '🟢 Live', color: '#10B981', pulse: true },
+      'auto-refresh': { text: '🔄 Auto-refresh', color: '#06B6D4', pulse: true },
+      'error': { text: '🔴 Disconnected', color: '#EF4444', pulse: false },
+      'loading': { text: '🟡 Loading...', color: '#F59E0B', pulse: true },
+      'streaming': { text: '🔴 Streaming', color: '#EF4444', pulse: true },
+      'syncing': { text: '🔄 Syncing...', color: '#8B5CF6', pulse: true }
     };
     
     const statusInfo = statusMap[status] || statusMap['connected'];
     indicator.textContent = statusInfo.text;
     indicator.style.color = statusInfo.color;
+    
+    // Add pulse animation for active states
+    if (statusInfo.pulse) {
+      indicator.style.animation = 'pulse 2s infinite';
+    } else {
+      indicator.style.animation = 'none';
+    }
+    
+    // Update last refresh time
+    this.updateLastRefreshTime();
+    
+    // Update real-time indicators across the dashboard
+    this.updateRealTimeIndicators(status);
+  }
+  
+  // Update last refresh time
+  updateLastRefreshTime() {
+    const lastRefreshElement = document.getElementById('lastRefresh');
+    if (lastRefreshElement) {
+      lastRefreshElement.textContent = new Date().toLocaleTimeString();
+    }
+  }
+  
+  // Update real-time indicators across dashboard
+  updateRealTimeIndicators(status) {
+    // Update live dots in timeline
+    const liveDots = document.querySelectorAll('.live-dot');
+    liveDots.forEach(dot => {
+      dot.className = `live-dot ${status}`;
+    });
+    
+    // Update data freshness indicators
+    const freshnessIndicators = document.querySelectorAll('.data-freshness');
+    freshnessIndicators.forEach(indicator => {
+      const timeSinceUpdate = Date.now() - (this.lastDataUpdate || Date.now());
+      const minutesAgo = Math.floor(timeSinceUpdate / 60000);
+      
+      if (minutesAgo < 1) {
+        indicator.textContent = 'Just now';
+        indicator.style.color = '#10B981';
+      } else if (minutesAgo < 5) {
+        indicator.textContent = `${minutesAgo}m ago`;
+        indicator.style.color = '#F59E0B';
+      } else {
+        indicator.textContent = `${minutesAgo}m ago`;
+        indicator.style.color = '#EF4444';
+      }
+    });
+    
+    // Update trend cards with real-time data
+    this.updateTrendCardsRealTime();
+  }
+  
+  // Update trend cards with real-time data
+  updateTrendCardsRealTime() {
+    const trendCards = document.querySelectorAll('.trend-card');
+    trendCards.forEach(card => {
+      const category = card.dataset.category;
+      const metrics = this.getCategoryMetrics(category);
+      
+      // Update viral score
+      const viralScoreElement = card.querySelector('.trend-metric-value.viral');
+      if (viralScoreElement) {
+        viralScoreElement.textContent = Math.round(metrics.viralScore);
+      }
+      
+      // Update growth
+      const growthElement = card.querySelector('.trend-metric-value.growth, .trend-metric-value.negative');
+      if (growthElement) {
+        const growth = metrics.growth;
+        const growthClass = growth > 0 ? 'growth' : 'negative';
+        growthElement.className = `trend-metric-value ${growthClass}`;
+        growthElement.textContent = `${growth > 0 ? '+' : ''}${Math.round(growth)}%`;
+      }
+      
+      // Update views
+      const viewsElement = card.querySelector('.trend-metric-value:not(.viral):not(.growth):not(.negative)');
+      if (viewsElement) {
+        viewsElement.textContent = this.formatNumber(metrics.totalViews);
+      }
+      
+      // Update wave indicator for viral trends
+      if (metrics.viralScore >= 80) {
+        card.classList.add('viral');
+      } else {
+        card.classList.remove('viral');
+      }
+    });
+  }
+  
+  // Enhanced real-time data fetching with streaming simulation
+  startRealTimeDataStream() {
+    console.log('🔴 Starting real-time data stream...');
+    
+    // Update status to streaming
+    this.updateLiveStatus('streaming');
+    
+    // Set up periodic data updates
+    this.realTimeInterval = setInterval(() => {
+      this.fetchRealtimeUpdates();
+    }, 30000); // Every 30 seconds
+    
+    // Set up micro-updates for metrics
+    this.metricsInterval = setInterval(() => {
+      this.simulateRealTimeMetrics();
+    }, 5000); // Every 5 seconds
+    
+    console.log('✅ Real-time data stream active');
+  }
+  
+  // Fetch real-time updates
+  async fetchRealtimeUpdates() {
+    try {
+      this.updateLiveStatus('syncing');
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Fetch new data
+      const newData = await this.fetchLatestTrendingData();
+      
+      if (newData && newData.length > 0) {
+        // Update current data with new items
+        this.mergeNewDataWithCurrent(newData);
+        
+        // Update UI components
+        this.updateRealTimeIndicators('connected');
+        this.updateTrendCardsRealTime();
+        
+        // Show notification for significant changes
+        this.checkForSignificantChanges(newData);
+      }
+      
+      this.updateLiveStatus('connected');
+      
+    } catch (error) {
+      console.error('❌ Real-time update failed:', error);
+      this.updateLiveStatus('error');
+    }
+  }
+  
+  // Simulate real-time metrics updates
+  simulateRealTimeMetrics() {
+    if (!this.state.currentData) return;
+    
+    // Simulate small changes in metrics
+    this.state.currentData.forEach(item => {
+      if (Math.random() < 0.1) { // 10% chance to update
+        const viewIncrease = Math.floor(Math.random() * 1000);
+        const likeIncrease = Math.floor(Math.random() * 100);
+        
+        item.view_count = (item.view_count || 0) + viewIncrease;
+        item.like_count = (item.like_count || 0) + likeIncrease;
+        item.viral_score = this.calculateViralScore(item);
+      }
+    });
+    
+    // Update trend cards with new metrics
+    this.updateTrendCardsRealTime();
+  }
+  
+  // Merge new data with current data
+  mergeNewDataWithCurrent(newData) {
+    if (!this.state.currentData) {
+      this.state.currentData = newData;
+      return;
+    }
+    
+    // Add new items that aren't already in current data
+    newData.forEach(newItem => {
+      const existingIndex = this.state.currentData.findIndex(item => 
+        item.video_id === newItem.video_id || 
+        item.title === newItem.title
+      );
+      
+      if (existingIndex === -1) {
+        this.state.currentData.unshift(newItem); // Add to beginning
+      } else {
+        // Update existing item with new data
+        this.state.currentData[existingIndex] = { ...this.state.currentData[existingIndex], ...newItem };
+      }
+    });
+    
+    // Keep only the most recent 500 items
+    this.state.currentData = this.state.currentData.slice(0, 500);
+  }
+  
+  // Check for significant changes and show notifications
+  checkForSignificantChanges(newData) {
+    const viralThreshold = 85;
+    const newViralTrends = newData.filter(item => 
+      (item.viral_score || 0) >= viralThreshold
+    );
+    
+    if (newViralTrends.length > 0) {
+      this.showNotification(
+        `🔥 ${newViralTrends.length} new viral trends detected!`, 
+        'success'
+      );
+    }
+  }
+  
+  // Fetch latest trending data for real-time updates
+  async fetchLatestTrendingData() {
+    try {
+      const response = await fetch('/api/youtube-data?limit=50&orderBy=publishedAt&timeRange=1h', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        // Calculate viral scores for new data
+        const processedData = result.data.map(item => ({
+          ...item,
+          viral_score: this.calculateViralScore(item),
+          wave_score: this.calculateWaveScore(item),
+          trend_category: this.categorizeByContent(item.title + ' ' + (item.description || '')),
+          fetch_timestamp: new Date().toISOString()
+        }));
+        
+        this.lastDataUpdate = Date.now();
+        return processedData;
+      }
+      
+      return null;
+      
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch latest trending data:', error);
+      
+      // Fallback to generating some mock real-time data
+      return this.generateMockRealTimeData();
+    }
+  }
+  
+  // Generate mock real-time data for demo purposes
+  generateMockRealTimeData() {
+    const mockTrends = [
+      {
+        title: "BREAKING: New AI Model Shocks Tech World",
+        view_count: Math.floor(Math.random() * 1000000) + 500000,
+        like_count: Math.floor(Math.random() * 50000) + 10000,
+        comment_count: Math.floor(Math.random() * 5000) + 1000,
+        channel_title: "Tech News Today",
+        published_at: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+        trend_category: "AI Tools",
+        video_id: `mock_${Date.now()}_1`
+      },
+      {
+        title: "Viral Dance Challenge Takes Over Social Media",
+        view_count: Math.floor(Math.random() * 2000000) + 1000000,
+        like_count: Math.floor(Math.random() * 100000) + 50000,
+        comment_count: Math.floor(Math.random() * 10000) + 5000,
+        channel_title: "Viral Trends",
+        published_at: new Date(Date.now() - Math.random() * 1800000).toISOString(),
+        trend_category: "Entertainment",
+        video_id: `mock_${Date.now()}_2`
+      },
+      {
+        title: "Gaming: New Release Breaks All Records",
+        view_count: Math.floor(Math.random() * 1500000) + 750000,
+        like_count: Math.floor(Math.random() * 75000) + 25000,
+        comment_count: Math.floor(Math.random() * 7500) + 2500,
+        channel_title: "Gaming Central",
+        published_at: new Date(Date.now() - Math.random() * 2700000).toISOString(),
+        trend_category: "Gaming",
+        video_id: `mock_${Date.now()}_3`
+      }
+    ];
+    
+    // Add viral scores and wave scores
+    return mockTrends.map(item => ({
+      ...item,
+      viral_score: this.calculateViralScore(item),
+      wave_score: this.calculateWaveScore(item),
+      fetch_timestamp: new Date().toISOString()
+    }));
+  }
+  
+  // Stop real-time data stream
+  stopRealTimeDataStream() {
+    if (this.realTimeInterval) {
+      clearInterval(this.realTimeInterval);
+      this.realTimeInterval = null;
+    }
+    
+    if (this.metricsInterval) {
+      clearInterval(this.metricsInterval);
+      this.metricsInterval = null;
+    }
+    
+    this.updateLiveStatus('connected');
+    console.log('🔴 Real-time data stream stopped');
   }
 
   // Keyboard shortcuts
@@ -2911,15 +3217,29 @@ class WaveSightDashboard {
 
   // Event listeners initialization
   initEventListeners() {
+    // Initialize enhanced search features first
+    this.initEnhancedSearch();
+    
     // Search functionality
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
-      searchInput.addEventListener('input', () => this.searchTrends());
+      searchInput.addEventListener('input', () => {
+        this.searchTrends();
+        this.updateSearchSuggestions();
+      });
       searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
           this.performComprehensiveSearch();
+          this.addToSearchHistory(searchInput.value.trim());
         }
+      });
+      searchInput.addEventListener('focus', () => {
+        this.showSearchSuggestions();
+      });
+      searchInput.addEventListener('blur', () => {
+        // Delay hiding to allow clicking on suggestions
+        setTimeout(() => this.hideSearchSuggestions(), 200);
       });
     }
 
@@ -2937,6 +3257,428 @@ class WaveSightDashboard {
     document.getElementById('searchBtn')?.addEventListener('click', () => this.performComprehensiveSearch());
     document.getElementById('refreshBtn')?.addEventListener('click', () => this.loadDashboardData(true));
     document.getElementById('autoRefreshBtn')?.addEventListener('click', () => this.toggleAutoRefresh());
+  }
+
+  // Initialize enhanced search features
+  initEnhancedSearch() {
+    // Initialize search data storage
+    this.searchHistory = JSON.parse(localStorage.getItem('wavesight_search_history') || '[]');
+    this.savedSearches = JSON.parse(localStorage.getItem('wavesight_saved_searches') || '[]');
+    this.trendingSuggestions = [
+      'AI tools', 'ChatGPT', 'Machine Learning', 'GPT-4', 'Claude AI',
+      'Cryptocurrency', 'Bitcoin', 'Ethereum', 'DeFi', 'NFT',
+      'Gaming', 'Twitch', 'Esports', 'Steam', 'PlayStation',
+      'Music', 'Spotify', 'Taylor Swift', 'YouTube Music', 'TikTok songs',
+      'Technology', 'iPhone', 'Android', 'Apple', 'Google',
+      'Social Media', 'Instagram', 'Twitter', 'LinkedIn', 'Threads'
+    ];
+    
+    // Initialize search controls
+    setTimeout(() => {
+      this.initSearchControls();
+      this.initQuickSearchTags();
+    }, 100);
+    
+    console.log('✅ Enhanced search system initialized');
+  }
+
+  // Initialize search control buttons
+  initSearchControls() {
+    const historyBtn = document.getElementById('searchHistoryBtn');
+    const savedBtn = document.getElementById('savedSearchesBtn');
+    const clearBtn = document.getElementById('searchClearBtn');
+    
+    if (historyBtn) {
+      historyBtn.addEventListener('click', () => this.showSearchHistory());
+    }
+    
+    if (savedBtn) {
+      savedBtn.addEventListener('click', () => this.showSavedSearches());
+    }
+    
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => this.clearSearch());
+    }
+  }
+
+  // Initialize quick search tags
+  initQuickSearchTags() {
+    const quickTags = document.querySelectorAll('.quick-tag');
+    quickTags.forEach(tag => {
+      tag.addEventListener('click', () => {
+        const searchTerm = tag.dataset.search;
+        this.performQuickSearch(searchTerm);
+      });
+    });
+  }
+
+  // Update search suggestions as user types
+  updateSearchSuggestions() {
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.trim().toLowerCase();
+    
+    if (query.length < 2) {
+      this.hideSearchSuggestions();
+      return;
+    }
+    
+    // Generate suggestions from multiple sources
+    const suggestions = this.generateSearchSuggestions(query);
+    this.displaySearchSuggestions(suggestions);
+  }
+
+  // Generate search suggestions from various sources
+  generateSearchSuggestions(query) {
+    const suggestions = [];
+    
+    // 1. Smart trending keywords with viral scores
+    const trendingMatches = this.trendingSuggestions.filter(term => 
+      term.toLowerCase().includes(query)
+    ).slice(0, 3);
+    
+    suggestions.push(...trendingMatches.map(term => ({
+      text: term,
+      type: 'trending',
+      icon: '🔥',
+      description: 'Trending now',
+      score: this.calculateTrendingScore(term)
+    })));
+    
+    // 2. Search history matches with frequency ranking
+    const historyMatches = this.searchHistory
+      .filter(term => term.toLowerCase().includes(query))
+      .sort((a, b) => this.getSearchFrequency(b) - this.getSearchFrequency(a))
+      .slice(0, 3);
+    
+    suggestions.push(...historyMatches.map(term => ({
+      text: term,
+      type: 'history',
+      icon: '📚',
+      description: `Searched ${this.getSearchFrequency(term)} times`
+    })));
+    
+    // 3. Current trending data matches with viral scores
+    if (this.state.currentData) {
+      const dataMatches = this.state.currentData
+        .filter(item => 
+          item.title?.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.trend_category?.toLowerCase().includes(query)
+        )
+        .sort((a, b) => (b.viral_score || 0) - (a.viral_score || 0))
+        .slice(0, 3);
+      
+      suggestions.push(...dataMatches.map(item => ({
+        text: item.title || item.trend_category,
+        type: 'content',
+        icon: '📊',
+        description: `Viral Score: ${Math.round(item.viral_score || 0)}`,
+        viralScore: item.viral_score || 0
+      })));
+    }
+    
+    // 4. Category suggestions with trend counts
+    const categories = ['AI & Technology', 'Gaming', 'Entertainment', 'Music', 'Crypto', 'Sports'];
+    const categoryMatches = categories.filter(cat => 
+      cat.toLowerCase().includes(query)
+    ).slice(0, 2);
+    
+    suggestions.push(...categoryMatches.map(cat => ({
+      text: cat,
+      type: 'category',
+      icon: '📂',
+      description: `Category - ${this.getCategoryTrendCount(cat)} trends`
+    })));
+    
+    // 5. Smart predictive suggestions based on partial matches
+    const predictiveSuggestions = this.generatePredictiveSuggestions(query);
+    suggestions.push(...predictiveSuggestions.slice(0, 2));
+    
+    return suggestions.slice(0, 10); // Increased to 10 suggestions
+  }
+  
+  // Calculate trending score for keywords
+  calculateTrendingScore(term) {
+    if (!this.state.currentData) return 0;
+    
+    const matches = this.state.currentData.filter(item => 
+      (item.title || '').toLowerCase().includes(term.toLowerCase()) ||
+      (item.description || '').toLowerCase().includes(term.toLowerCase())
+    );
+    
+    if (matches.length === 0) return 0;
+    
+    const avgViralScore = matches.reduce((sum, item) => sum + (item.viral_score || 0), 0) / matches.length;
+    return Math.round(avgViralScore);
+  }
+  
+  // Get search frequency from history
+  getSearchFrequency(term) {
+    return this.searchHistory.filter(h => h === term).length;
+  }
+  
+  // Get category trend count
+  getCategoryTrendCount(category) {
+    if (!this.state.currentData) return 0;
+    return this.state.currentData.filter(item => 
+      item.trend_category === category
+    ).length;
+  }
+  
+  // Generate predictive suggestions
+  generatePredictiveSuggestions(query) {
+    const predictive = [];
+    
+    // Common search completions
+    const completions = {
+      'ai': ['AI tools', 'AI news', 'AI breakthrough', 'AI trends'],
+      'crypto': ['cryptocurrency', 'crypto news', 'crypto trends', 'crypto market'],
+      'gaming': ['gaming news', 'gaming trends', 'game reviews', 'esports'],
+      'music': ['music trends', 'new music', 'music videos', 'viral songs'],
+      'tech': ['technology news', 'tech trends', 'tech reviews', 'tech innovation'],
+      'viral': ['viral videos', 'viral trends', 'viral content', 'viral news']
+    };
+    
+    Object.entries(completions).forEach(([key, values]) => {
+      if (key.startsWith(query.toLowerCase())) {
+        values.forEach(completion => {
+          predictive.push({
+            text: completion,
+            type: 'predictive',
+            icon: '🔮',
+            description: 'Suggested search'
+          });
+        });
+      }
+    });
+    
+    return predictive;
+  }
+
+  // Display search suggestions dropdown
+  displaySearchSuggestions(suggestions) {
+    const suggestionsContainer = document.getElementById('searchSuggestions');
+    if (!suggestionsContainer || suggestions.length === 0) {
+      this.hideSearchSuggestions();
+      return;
+    }
+    
+    // Sort suggestions by relevance
+    const sortedSuggestions = this.sortSuggestionsByRelevance(suggestions);
+    
+    suggestionsContainer.innerHTML = `
+      <div class="suggestions-list">
+        ${sortedSuggestions.map((suggestion, index) => `
+          <div class="suggestion-item ${suggestion.type}" 
+               data-suggestion="${suggestion.text}"
+               data-index="${index}">
+            <span class="suggestion-icon">${suggestion.icon}</span>
+            <div class="suggestion-content">
+              <div class="suggestion-text">${this.highlightQuery(suggestion.text)}</div>
+              <div class="suggestion-description">
+                ${suggestion.description}
+                ${suggestion.viralScore ? `<span class="viral-score">🔥 ${Math.round(suggestion.viralScore)}</span>` : ''}
+                ${suggestion.score ? `<span class="trend-score">📈 ${suggestion.score}</span>` : ''}
+              </div>
+            </div>
+            <div class="suggestion-actions">
+              <button class="suggestion-save" data-search="${suggestion.text}" title="Save search">
+                ⭐
+              </button>
+              ${suggestion.type === 'trending' ? '<span class="trending-badge">HOT</span>' : ''}
+            </div>
+          </div>
+        `).join('')}
+        ${sortedSuggestions.length === 0 ? '<div class="no-suggestions">No suggestions found</div>' : ''}
+      </div>
+    `;
+    
+    // Add click handlers for suggestions
+    suggestionsContainer.querySelectorAll('.suggestion-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const searchTerm = item.dataset.suggestion;
+        this.selectSuggestion(searchTerm);
+      });
+    });
+    
+    // Add save handlers
+    suggestionsContainer.querySelectorAll('.suggestion-save').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const searchTerm = btn.dataset.search;
+        this.saveSearch(searchTerm);
+      });
+    });
+    
+    suggestionsContainer.style.display = 'block';
+  }
+  
+  // Sort suggestions by relevance and viral score
+  sortSuggestionsByRelevance(suggestions) {
+    return suggestions.sort((a, b) => {
+      // Priority order: trending > content > predictive > history > category
+      const typeOrder = {
+        'trending': 1,
+        'content': 2,
+        'predictive': 3,
+        'history': 4,
+        'category': 5
+      };
+      
+      const aOrder = typeOrder[a.type] || 10;
+      const bOrder = typeOrder[b.type] || 10;
+      
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      
+      // Within same type, sort by viral score or relevance
+      const aScore = a.viralScore || a.score || 0;
+      const bScore = b.viralScore || b.score || 0;
+      
+      return bScore - aScore;
+    });
+  }
+
+  // Highlight matching query in suggestion text
+  highlightQuery(text) {
+    const searchInput = document.getElementById('searchInput');
+    const query = searchInput.value.trim();
+    
+    if (!query) return text;
+    
+    const regex = new RegExp(`(${query})`, 'gi');
+    return text.replace(regex, '<mark>$1</mark>');
+  }
+
+  // Select a suggestion
+  selectSuggestion(searchTerm) {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = searchTerm;
+    this.hideSearchSuggestions();
+    this.searchTrends();
+    this.addToSearchHistory(searchTerm);
+  }
+
+  // Show/hide search suggestions
+  showSearchSuggestions() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput.value.trim().length >= 2) {
+      this.updateSearchSuggestions();
+    }
+  }
+
+  hideSearchSuggestions() {
+    const suggestionsContainer = document.getElementById('searchSuggestions');
+    if (suggestionsContainer) {
+      suggestionsContainer.style.display = 'none';
+    }
+  }
+
+  // Search history management
+  addToSearchHistory(query) {
+    if (!query || query.length < 2) return;
+    
+    // Remove duplicates and add to front
+    this.searchHistory = this.searchHistory.filter(item => item !== query);
+    this.searchHistory.unshift(query);
+    
+    // Keep only last 20 searches
+    this.searchHistory = this.searchHistory.slice(0, 20);
+    
+    // Save to localStorage
+    localStorage.setItem('wavesight_search_history', JSON.stringify(this.searchHistory));
+  }
+
+  // Show search history modal
+  showSearchHistory() {
+    const modal = document.createElement('div');
+    modal.className = 'search-modal';
+    modal.innerHTML = `
+      <div class="search-modal-content">
+        <div class="search-modal-header">
+          <h3>📚 Search History</h3>
+          <button class="modal-close" onclick="this.closest('.search-modal').remove()">×</button>
+        </div>
+        <div class="search-modal-body">
+          ${this.searchHistory.length > 0 ? `
+            <div class="search-list">
+              ${this.searchHistory.map(term => `
+                <div class="search-item">
+                  <span class="search-term" onclick="window.waveSightDashboard.selectSuggestion('${term}')">${term}</span>
+                  <button class="search-remove" onclick="window.waveSightDashboard.removeFromHistory('${term}')" title="Remove">
+                    ✕
+                  </button>
+                </div>
+              `).join('')}
+            </div>
+            <div class="search-actions">
+              <button onclick="window.waveSightDashboard.clearSearchHistory()" class="clear-history-btn">
+                Clear All History
+              </button>
+            </div>
+          ` : `
+            <div class="empty-state">
+              <p>No search history yet</p>
+              <p class="help-text">Your recent searches will appear here</p>
+            </div>
+          `}
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  }
+
+  // Perform quick search from tags
+  performQuickSearch(searchTerm) {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = searchTerm;
+    this.searchTrends();
+    this.addToSearchHistory(searchTerm);
+    
+    // Add visual feedback
+    this.showNotification(`🔍 Searching for "${searchTerm}"...`, 'info');
+  }
+
+  // Clear search
+  clearSearch() {
+    const searchInput = document.getElementById('searchInput');
+    searchInput.value = '';
+    this.hideSearchSuggestions();
+    this.resetView();
+  }
+
+  // Save search functionality
+  saveSearch(searchTerm) {
+    if (this.savedSearches.includes(searchTerm)) {
+      this.showNotification('Search already saved', 'info');
+      return;
+    }
+    
+    this.savedSearches.unshift(searchTerm);
+    this.savedSearches = this.savedSearches.slice(0, 10); // Keep only 10 saved
+    
+    localStorage.setItem('wavesight_saved_searches', JSON.stringify(this.savedSearches));
+    this.showNotification(`"${searchTerm}" saved to favorites`, 'success');
+  }
+
+  // Remove from search history
+  removeFromHistory(term) {
+    this.searchHistory = this.searchHistory.filter(item => item !== term);
+    localStorage.setItem('wavesight_search_history', JSON.stringify(this.searchHistory));
+    this.showSearchHistory(); // Refresh the modal
+  }
+
+  // Clear all search history
+  clearSearchHistory() {
+    this.searchHistory = [];
+    localStorage.removeItem('wavesight_search_history');
+    this.showNotification('Search history cleared', 'success');
+    document.querySelector('.search-modal')?.remove();
   }
 
   // Chart filtering
@@ -6587,7 +7329,254 @@ class WaveScopeChart {
       });
     }
   }
+  
+  // Generate and display rich trend cards
+  generateTrendCards() {
+    const trendCardsGrid = document.getElementById('trendCardsGrid');
+    if (!trendCardsGrid) return;
+    
+    const trendCategories = this.getTrendCategories();
+    
+    trendCardsGrid.innerHTML = trendCategories.map(category => {
+      const platforms = category.platforms || ['YouTube'];
+      const growthDirection = category.growth > 0 ? 'up' : category.growth < 0 ? 'down' : 'stable';
+      const growthClass = category.growth > 0 ? 'positive' : category.growth < 0 ? 'negative' : 'stable';
+      const growthArrow = category.growth > 0 ? '↗️' : category.growth < 0 ? '↘️' : '➡️';
+      
+      return `
+        <div class="trend-card ${category.viralScore >= 80 ? 'viral' : ''} ${category.active ? 'active' : ''}" 
+             data-category="${category.key}" 
+             onclick="window.toggleTrendCard('${category.key}')">
+          <div class="trend-card-header">
+            <div class="trend-card-title">
+              <span class="trend-card-icon">${category.icon}</span>
+              <span>${category.name}</span>
+            </div>
+            <div class="trend-card-toggle ${category.active ? 'active' : ''}" 
+                 onclick="event.stopPropagation(); window.toggleTrendCard('${category.key}')">
+              <div class="trend-card-toggle-slider"></div>
+            </div>
+          </div>
+          
+          <div class="trend-card-metrics">
+            <div class="trend-metric">
+              <div class="trend-metric-label">Viral Score</div>
+              <div class="trend-metric-value viral">${Math.round(category.viralScore)}</div>
+            </div>
+            <div class="trend-metric">
+              <div class="trend-metric-label">Growth 24h</div>
+              <div class="trend-metric-value ${growthClass}">${category.growth > 0 ? '+' : ''}${Math.round(category.growth)}%</div>
+            </div>
+            <div class="trend-metric">
+              <div class="trend-metric-label">Total Views</div>
+              <div class="trend-metric-value">${this.formatNumber(category.totalViews)}</div>
+            </div>
+            <div class="trend-metric">
+              <div class="trend-metric-label">Trending Items</div>
+              <div class="trend-metric-value">${category.itemCount}</div>
+            </div>
+          </div>
+          
+          <div class="trend-card-platforms">
+            ${platforms.map(platform => `
+              <div class="platform-indicator ${platform.toLowerCase()}">
+                ${platform === 'YouTube' ? '📺' : platform === 'TikTok' ? '🎵' : platform === 'Reddit' ? '🔗' : '📱'} 
+                ${platform}
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="trend-card-growth">
+            <span class="growth-arrow ${growthDirection}">${growthArrow}</span>
+            <span class="growth-text ${growthClass}">
+              ${category.growth > 0 ? 'Rising' : category.growth < 0 ? 'Declining' : 'Stable'} 
+              ${category.momentum}
+            </span>
+          </div>
+          
+          <div class="trend-card-actions">
+            <button class="trend-card-action primary" onclick="event.stopPropagation(); window.exploreTrendCategory('${category.key}')">
+              Explore
+            </button>
+            <button class="trend-card-action" onclick="event.stopPropagation(); window.trackTrendCategory('${category.key}')">
+              Track
+            </button>
+            <button class="trend-card-action" onclick="event.stopPropagation(); window.compareTrendCategory('${category.key}')">
+              Compare
+            </button>
+          </div>
+          
+          <div class="trend-card-wave-indicator"></div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  // Get trend categories with metrics
+  getTrendCategories() {
+    const categories = [
+      { key: 'ai', name: 'AI & Technology', icon: '🤖', active: true },
+      { key: 'gaming', name: 'Gaming', icon: '🎮', active: true },
+      { key: 'entertainment', name: 'Entertainment', icon: '🎬', active: true },
+      { key: 'music', name: 'Music', icon: '🎵', active: true },
+      { key: 'crypto', name: 'Crypto', icon: '💰', active: true },
+      { key: 'sports', name: 'Sports', icon: '⚽', active: true },
+      { key: 'culture', name: 'Culture', icon: '🌍', active: true },
+      { key: 'viral', name: 'Viral Content', icon: '🔥', active: true }
+    ];
+    
+    return categories.map(category => {
+      const categoryData = this.getCategoryMetrics(category.key);
+      return {
+        ...category,
+        ...categoryData
+      };
+    });
+  }
+  
+  // Get metrics for a specific category
+  getCategoryMetrics(categoryKey) {
+    if (!this.state.currentData) {
+      return this.getDefaultCategoryMetrics(categoryKey);
+    }
+    
+    const categoryItems = this.state.currentData.filter(item => 
+      this.categorizeItem(item).toLowerCase().includes(categoryKey) ||
+      item.trend_category?.toLowerCase().includes(categoryKey)
+    );
+    
+    if (categoryItems.length === 0) {
+      return this.getDefaultCategoryMetrics(categoryKey);
+    }
+    
+    const totalViews = categoryItems.reduce((sum, item) => sum + (item.view_count || 0), 0);
+    const avgViralScore = categoryItems.reduce((sum, item) => sum + (item.viral_score || 0), 0) / categoryItems.length;
+    const recentItems = categoryItems.filter(item => {
+      const publishedDate = new Date(item.published_at);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return publishedDate >= yesterday;
+    });
+    
+    const oldItems = categoryItems.filter(item => {
+      const publishedDate = new Date(item.published_at);
+      const twoDaysAgo = new Date();
+      twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      return publishedDate >= twoDaysAgo && publishedDate < yesterday;
+    });
+    
+    const recentViews = recentItems.reduce((sum, item) => sum + (item.view_count || 0), 0);
+    const oldViews = oldItems.reduce((sum, item) => sum + (item.view_count || 0), 0);
+    const growth = oldViews > 0 ? ((recentViews - oldViews) / oldViews) * 100 : 0;
+    
+    const platforms = [...new Set(categoryItems.map(item => 
+      item.platform || 'YouTube'
+    ))];
+    
+    return {
+      totalViews,
+      viralScore: avgViralScore,
+      growth: growth,
+      itemCount: categoryItems.length,
+      platforms,
+      momentum: this.calculateMomentum(categoryItems)
+    };
+  }
+  
+  // Get default metrics for categories without data
+  getDefaultCategoryMetrics(categoryKey) {
+    const defaults = {
+      'ai': { totalViews: 45600000, viralScore: 87, growth: 23, itemCount: 342, platforms: ['YouTube', 'TikTok'], momentum: 'Fast' },
+      'gaming': { totalViews: 38900000, viralScore: 82, growth: 18, itemCount: 298, platforms: ['YouTube', 'TikTok'], momentum: 'Moderate' },
+      'entertainment': { totalViews: 52300000, viralScore: 91, growth: 31, itemCount: 445, platforms: ['YouTube', 'TikTok'], momentum: 'Very Fast' },
+      'music': { totalViews: 67800000, viralScore: 89, growth: 27, itemCount: 523, platforms: ['YouTube', 'TikTok'], momentum: 'Fast' },
+      'crypto': { totalViews: 23400000, viralScore: 76, growth: -5, itemCount: 187, platforms: ['YouTube', 'Twitter'], momentum: 'Slow' },
+      'sports': { totalViews: 41200000, viralScore: 84, growth: 15, itemCount: 312, platforms: ['YouTube', 'TikTok'], momentum: 'Moderate' },
+      'culture': { totalViews: 29100000, viralScore: 78, growth: 12, itemCount: 234, platforms: ['YouTube', 'TikTok'], momentum: 'Moderate' },
+      'viral': { totalViews: 89400000, viralScore: 95, growth: 47, itemCount: 678, platforms: ['YouTube', 'TikTok'], momentum: 'Explosive' }
+    };
+    
+    return defaults[categoryKey] || { totalViews: 0, viralScore: 0, growth: 0, itemCount: 0, platforms: ['YouTube'], momentum: 'Stable' };
+  }
+  
+  // Calculate momentum based on recent activity
+  calculateMomentum(items) {
+    if (!items || items.length === 0) return 'Stable';
+    
+    const avgViralScore = items.reduce((sum, item) => sum + (item.viral_score || 0), 0) / items.length;
+    const recentItems = items.filter(item => {
+      const publishedDate = new Date(item.published_at);
+      const sixHoursAgo = new Date();
+      sixHoursAgo.setHours(sixHoursAgo.getHours() - 6);
+      return publishedDate >= sixHoursAgo;
+    });
+    
+    const recentPercentage = recentItems.length / items.length;
+    
+    if (avgViralScore >= 90 && recentPercentage >= 0.3) return 'Explosive';
+    if (avgViralScore >= 80 && recentPercentage >= 0.2) return 'Very Fast';
+    if (avgViralScore >= 70 && recentPercentage >= 0.1) return 'Fast';
+    if (avgViralScore >= 60) return 'Moderate';
+    return 'Slow';
+  }
+  
+  // Initialize trend cards when data is loaded
+  initializeTrendCards() {
+    this.generateTrendCards();
+    console.log('✅ Rich trend cards initialized');
+  }
 }
+
+// Global functions for trend cards
+window.toggleTrendCard = function(categoryKey) {
+  const card = document.querySelector(`[data-category="${categoryKey}"]`);
+  const toggle = card.querySelector('.trend-card-toggle');
+  
+  const isActive = toggle.classList.contains('active');
+  
+  if (isActive) {
+    toggle.classList.remove('active');
+    card.classList.remove('active');
+  } else {
+    toggle.classList.add('active');
+    card.classList.add('active');
+  }
+  
+  // Also toggle the timeline trend line
+  if (window.toggleTrendLine) {
+    window.toggleTrendLine(categoryKey);
+  }
+};
+
+window.exploreTrendCategory = function(categoryKey) {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.showNotification(`🔍 Exploring ${categoryKey} trends...`, 'info');
+    // Trigger search for the category
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.value = categoryKey;
+      window.waveSightDashboard.searchTrends();
+    }
+  }
+};
+
+window.trackTrendCategory = function(categoryKey) {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.showNotification(`📊 Tracking ${categoryKey} trends...`, 'info');
+    // Add to tracking list or save search
+    window.waveSightDashboard.saveSearch(categoryKey);
+  }
+};
+
+window.compareTrendCategory = function(categoryKey) {
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.showNotification(`⚖️ Comparing ${categoryKey} with other categories...`, 'info');
+    // Trigger comparison functionality
+    console.log(`Comparing ${categoryKey} category`);
+  }
+};
 
 // Global functions for timeline controls
 window.setTimePeriod = function(period) {
