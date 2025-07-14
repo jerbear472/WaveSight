@@ -3800,31 +3800,16 @@ h1, h2, h3, .logo, .header-title {
   background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
 }
 
-/* WaveScope Timeline Container with Double Border */
+/* WaveScope Timeline Container */
 .wavescope-timeline {
   background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-  border: 2px solid rgba(94, 227, 255, 0.3);
+  border: 1px solid rgba(94, 227, 255, 0.3);
   border-radius: 16px;
   padding: 20px;
   margin: 20px 0;
-  position: relative;
-  box-shadow: 
-    0 4px 15px rgba(0, 0, 0, 0.3),
-    inset 0 0 0 1px rgba(94, 227, 255, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-.wavescope-timeline::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  background: linear-gradient(135deg, #5ee3ff 0%, #8b5cf6 50%, #ec4899 100%);
-  border-radius: 20px;
-  z-index: -1;
-  opacity: 0.6;
-}
 
 /* Loading Spinner Animation */
 @keyframes spin {
