@@ -622,8 +622,15 @@ class WaveSightDashboard {
       if (canvas) {
         setTimeout(() => {
           try {
-            this.wavescopeChart = new WaveScopeChart(canvas, this.state.currentData, this);
+            this.wavescopeChart = new WaveScopeChart(canvas, this.state.currentData);
             this.wavescopeChart.init();
+            
+            // Force render after short delay to ensure canvas is ready
+            setTimeout(() => {
+              if (this.wavescopeChart) {
+                this.wavescopeChart.render();
+              }
+            }, 200);
             console.log('✅ Canvas WaveScope Timeline initialized with real data');
           } catch (error) {
             console.warn('⚠️ Canvas failed, creating fallback timeline:', error);
@@ -1134,13 +1141,23 @@ class WaveSightDashboard {
   setTimePeriod(period) {
     console.log(`📅 Setting time period to: ${period}`);
     
-    // Update button states
-    document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
+    // Update button states - use proper event handling
+    document.querySelectorAll('.period-btn').forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.textContent === period) {
+        btn.classList.add('active');
+      }
+    });
     
     // Update timeline data based on period
     this.currentTimePeriod = period;
     this.updateTimelineForPeriod(period);
+    
+    // Update WaveScope chart if it exists
+    if (this.wavescopeChart) {
+      this.wavescopeChart.currentPeriod = period;
+      this.wavescopeChart.render();
+    }
   }
 
   async updateTimelineForPeriod(period) {
@@ -3181,13 +3198,49 @@ class WaveSightDashboard {
     const overlay = document.createElement('div');
     overlay.id = 'loadingOverlay';
     overlay.className = 'loading-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      backdrop-filter: blur(2px);
+    `;
     overlay.innerHTML = `
-      <div class="loading-content">
-        <div class="loading-spinner"></div>
+      <div class="loading-content" style="
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        padding: 2rem;
+        border-radius: 16px;
+        border: 2px solid rgba(94, 227, 255, 0.3);
+        text-align: center;
+        color: #f1f1f1;
+      ">
+        <div class="loading-spinner" style="
+          width: 40px;
+          height: 40px;
+          border: 3px solid rgba(94, 227, 255, 0.3);
+          border-top: 3px solid #5ee3ff;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 1rem auto;
+        "></div>
         <div class="loading-text">Loading data...</div>
       </div>
     `;
     document.body.appendChild(overlay);
+    
+    // Auto-hide loading after 5 seconds to prevent permanent blocking
+    setTimeout(() => {
+      if (this.state.isLoading) {
+        this.hideLoading();
+        console.warn('⚠️ Loading timeout - auto-hiding overlay');
+      }
+    }, 5000);
   }
 
   hideLoading() {
