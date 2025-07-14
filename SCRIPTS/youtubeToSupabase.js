@@ -3,12 +3,12 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import compression from 'compression';
+import morgan from 'morgan';
 
 dotenv.config();
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const compression = require('compression');
-const morgan = require('morgan');
 
 // Initialize Express app
 const app = express();
