@@ -5777,23 +5777,26 @@ class WaveSightDashboard {
     
     try {
       // Check TikTok server health
-      const healthResponse = await fetch('http://localhost:5002/health');
+      const healthResponse = await this.fetchWithTimeout('http://localhost:5002/health');
       const healthData = await healthResponse.json();
       
-      if (healthData.status === 'healthy') {
-        console.log('✅ TikTok server is healthy and ready');
+      if (healthData.status === 'healthy' || healthData.status === 'warning') {
+        console.log('✅ TikTok server is ready');
         this.tiktokEnabled = true;
         
-        // Start TikTok data fetching
-        setTimeout(() => {
-          this.fetchTikTokViralContent();
-        }, 5000);
+        // Immediately fetch TikTok viral content for timeline
+        console.log('🚀 Fetching initial TikTok viral content...');
+        await this.fetchTikTokViralContent();
         
-        // Schedule regular TikTok updates
+        // Schedule regular TikTok updates every 5 minutes
         this.startTikTokDataFetching();
+        
+        // Update UI to show TikTok is enabled
+        this.updatePlatformStatus('tiktok', true);
       } else {
         console.warn('⚠️ TikTok server not healthy:', healthData);
         this.tiktokEnabled = false;
+        this.updatePlatformStatus('tiktok', false);
       }
     } catch (error) {
       console.warn('⚠️ TikTok server not available:', error.message);
@@ -5801,6 +5804,7 @@ class WaveSightDashboard {
       console.log('   1. Set TIKTOK_CLIENT_KEY and TIKTOK_CLIENT_SECRET');
       console.log('   2. Run: node SERVER/tiktok-server.js');
       this.tiktokEnabled = false;
+      this.updatePlatformStatus('tiktok', false);
     }
   }
 
@@ -5813,32 +5817,38 @@ class WaveSightDashboard {
     try {
       console.log('🔥 Fetching viral TikTok content...');
       
-      const response = await fetch('http://localhost:5002/api/tiktok-viral?categories=viral,trending,music,dance,comedy&limit=30');
+      // Use the new viral-content endpoint
+      const response = await this.fetchWithTimeout('http://localhost:5002/api/viral-content?categories=viral,trending,music,dance,comedy&limit=50&timeWindow=24');
       const result = await response.json();
       
       if (!result.success) {
+        console.warn('⚠️ TikTok API returned error, using demo data:', result.error);
+        // Use demo data from response if API failed
+        if (result.data && result.data.trends) {
+          this.integrateTikTokDataIntoTimeline(result.data.trends);
+          return result.data;
+        }
         throw new Error(result.error || 'Failed to fetch TikTok viral content');
       }
       
-      const { videos, analysis, top_viral, summary } = result.data;
+      const { trends, summary, alerts } = result.data;
       
-      console.log(`✅ TikTok viral content: ${videos.length} videos, ${top_viral.length} highly viral`);
-      console.log(`📊 TikTok summary: ${summary.viral_count} viral, ${summary.emerging_count} emerging`);
+      console.log(`✅ TikTok viral analysis: ${summary.totalAnalyzed} analyzed, ${summary.viralCandidates} viral candidates`);
       
-      // Update category trends with TikTok data
-      this.updateCategoryTrendsWithTikTok(top_viral);
+      // Integrate TikTok data into the timeline
+      this.integrateTikTokDataIntoTimeline(trends);
       
-      // Show notification about TikTok trends
-      if (top_viral.length > 0) {
-        this.showNotification(`🎵 TikTok: Found ${top_viral.length} viral trends (scores: ${top_viral[0].viral_score}-${top_viral[top_viral.length-1].viral_score})`, 'success');
+      // Process and display alerts
+      if (alerts && alerts.length > 0) {
+        this.processViralAlerts(alerts);
       }
       
-      return {
-        videos,
-        analysis,
-        top_viral,
-        summary
-      };
+      // Show notification about TikTok trends
+      if (summary.viralCandidates > 0) {
+        this.showNotification(`🎵 TikTok: ${summary.viralCandidates} viral candidates detected!`, 'success');
+      }
+      
+      return result.data;
       
     } catch (error) {
       console.error('❌ Failed to fetch TikTok viral content:', error);
@@ -5847,14 +5857,240 @@ class WaveSightDashboard {
     }
   }
 
+  // Integrate TikTok data into the WaveScope Timeline
+  integrateTikTokDataIntoTimeline(tiktokTrends) {
+    if (!tiktokTrends || tiktokTrends.length === 0) {
+      console.log('📊 No TikTok trends to integrate');
+      return;
+    }
+
+    console.log(`🔗 Integrating ${tiktokTrends.length} TikTok trends into timeline...`);
+
+    try {
+      // Convert TikTok trends to timeline format
+      const timelineData = tiktokTrends.map(trend => ({
+        title: trend.title || `TikTok by @${trend.username}`,
+        platform: 'tiktok',
+        viralScore: trend.viralScore || 50,
+        view_count: trend.view_count || 0,
+        engagement_rate: trend.growthMetrics?.engagementRate || 0,
+        prediction: trend.prediction?.direction || 'stable',
+        confidence: trend.prediction?.confidence || 50,
+        hashtags: trend.hashtags || [],
+        username: trend.username,
+        category: trend.category || 'general',
+        create_time: trend.create_time,
+        trending_score: this.calculateTikTokTrendingScore(trend),
+        waveScore: this.convertViralScoreToWaveScore(trend.viralScore || 50),
+        published_at: new Date(trend.create_time * 1000).toISOString(),
+        // TikTok specific metrics
+        growthMetrics: trend.growthMetrics,
+        trendPrediction: trend.prediction
+      }));
+
+      // Update or create chart with TikTok data
+      if (this.wavescopeChart) {
+        // Add TikTok data to existing chart
+        this.wavescopeChart.addTikTokData(timelineData);
+      } else {
+        // Store for when chart is initialized
+        this.pendingTikTokData = timelineData;
+      }
+
+      // Update current data state to include TikTok trends
+      if (!this.state.currentData) {
+        this.state.currentData = [];
+      }
+
+      // Merge TikTok trends with existing data, avoiding duplicates
+      const existingIds = new Set(this.state.currentData.map(item => item.id || item.title));
+      const newTikTokData = timelineData.filter(item => !existingIds.has(item.title));
+      
+      this.state.currentData = [...this.state.currentData, ...newTikTokData];
+
+      // Update trend categories display
+      this.updateTrendCategoriesWithTikTok(timelineData);
+
+      console.log(`✅ Integrated ${newTikTokData.length} new TikTok trends into timeline`);
+
+    } catch (error) {
+      console.error('❌ Failed to integrate TikTok data into timeline:', error);
+    }
+  }
+
+  // Calculate TikTok trending score for timeline
+  calculateTikTokTrendingScore(trend) {
+    const viralScore = trend.viralScore || 0;
+    const viewCount = trend.view_count || 0;
+    const engagementRate = trend.growthMetrics?.engagementRate || 0;
+    
+    // Combine viral score with view count and engagement
+    const viewScore = Math.min(30, Math.log10(viewCount + 1) * 3);
+    const engagementScore = Math.min(20, engagementRate * 200);
+    
+    return Math.round(viralScore * 0.6 + viewScore * 0.3 + engagementScore * 0.1);
+  }
+
+  // Convert TikTok viral score to WaveScope wave score
+  convertViralScoreToWaveScore(viralScore) {
+    // Scale viral score (0-100) to wave score (10-95) for timeline display
+    return Math.round(10 + (viralScore / 100) * 85);
+  }
+
+  // Process viral alerts from TikTok
+  processViralAlerts(alerts) {
+    if (!alerts || alerts.length === 0) return;
+
+    console.log(`🚨 Processing ${alerts.length} TikTok viral alerts`);
+
+    alerts.forEach(alert => {
+      // Show critical alerts as notifications
+      if (alert.severity === 'critical' || alert.severity === 'high') {
+        this.showNotification(`🚨 ${alert.title}`, 'warning');
+        console.log(`🔥 HIGH VIRAL ALERT: ${alert.message}`);
+      }
+
+      // Add alert to UI alerts section if it exists
+      this.displayViralAlert(alert);
+    });
+  }
+
+  // Display viral alert in UI
+  displayViralAlert(alert) {
+    const alertsContainer = document.querySelector('.viral-alerts') || 
+                           document.querySelector('.alerts-section') ||
+                           document.querySelector('.notifications');
+    
+    if (!alertsContainer) {
+      // Create alerts container if it doesn't exist
+      const container = document.createElement('div');
+      container.className = 'viral-alerts';
+      container.style.cssText = `
+        position: fixed; 
+        top: 80px; 
+        right: 20px; 
+        z-index: 1000; 
+        max-width: 350px;
+      `;
+      document.body.appendChild(container);
+      this.alertsContainer = container;
+    }
+
+    const alertElement = document.createElement('div');
+    alertElement.className = `viral-alert viral-alert-${alert.severity}`;
+    alertElement.style.cssText = `
+      background: ${this.getAlertBackgroundColor(alert.severity)};
+      border: 1px solid ${this.getAlertBorderColor(alert.severity)};
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+      color: white;
+      font-size: 12px;
+      animation: slideInRight 0.3s ease-out;
+    `;
+    
+    alertElement.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 4px;">${alert.title}</div>
+      <div style="opacity: 0.9;">${alert.message}</div>
+      <div style="margin-top: 6px; font-size: 10px; opacity: 0.7;">
+        Score: ${alert.metadata.viralScore}% | Platform: TikTok
+      </div>
+    `;
+
+    // Auto-remove after 10 seconds for non-critical alerts
+    if (alert.severity !== 'critical') {
+      setTimeout(() => {
+        if (alertElement.parentNode) {
+          alertElement.style.animation = 'slideOutRight 0.3s ease-in';
+          setTimeout(() => alertElement.remove(), 300);
+        }
+      }, 10000);
+    }
+
+    (this.alertsContainer || alertsContainer).appendChild(alertElement);
+  }
+
+  // Get alert background color based on severity
+  getAlertBackgroundColor(severity) {
+    const colors = {
+      low: 'rgba(59, 130, 246, 0.9)',      // blue
+      medium: 'rgba(245, 158, 11, 0.9)',   // yellow
+      high: 'rgba(239, 68, 68, 0.9)',      // red
+      critical: 'rgba(147, 51, 234, 0.9)'  // purple
+    };
+    return colors[severity] || colors.medium;
+  }
+
+  // Get alert border color based on severity
+  getAlertBorderColor(severity) {
+    const colors = {
+      low: 'rgba(59, 130, 246, 1)',
+      medium: 'rgba(245, 158, 11, 1)',
+      high: 'rgba(239, 68, 68, 1)',
+      critical: 'rgba(147, 51, 234, 1)'
+    };
+    return colors[severity] || colors.medium;
+  }
+
+  // Update trend categories with TikTok data
+  updateTrendCategoriesWithTikTok(tiktokData) {
+    const categories = ['music', 'dance', 'comedy', 'beauty', 'viral'];
+    
+    categories.forEach(category => {
+      const categoryTrends = tiktokData.filter(trend => 
+        trend.category === category || 
+        (trend.hashtags && trend.hashtags.some(tag => tag.toLowerCase().includes(category)))
+      );
+
+      if (categoryTrends.length > 0) {
+        const avgViralScore = categoryTrends.reduce((sum, trend) => sum + trend.viralScore, 0) / categoryTrends.length;
+        
+        // Update category display if UI elements exist
+        const categoryElement = document.querySelector(`[data-category="${category}"]`);
+        if (categoryElement) {
+          const scoreElement = categoryElement.querySelector('.category-score');
+          if (scoreElement) {
+            scoreElement.textContent = `${Math.round(avgViralScore)}%`;
+            scoreElement.style.color = avgViralScore > 70 ? '#ff6b6b' : '#4ecdc4';
+          }
+        }
+      }
+    });
+  }
+
+  // Update platform status indicator
+  updatePlatformStatus(platform, isActive) {
+    const statusElement = document.querySelector(`[data-platform="${platform}"]`) || 
+                         document.querySelector(`.platform-${platform}`) ||
+                         document.querySelector(`.${platform}-status`);
+    
+    if (statusElement) {
+      statusElement.classList.toggle('active', isActive);
+      statusElement.classList.toggle('inactive', !isActive);
+      
+      if (isActive) {
+        statusElement.style.color = '#4ecdc4';
+        statusElement.title = `${platform.toUpperCase()} integration active`;
+      } else {
+        statusElement.style.color = '#666';
+        statusElement.title = `${platform.toUpperCase()} integration inactive`;
+      }
+    }
+
+    // Update timeline chart platform status
+    if (this.wavescopeChart && this.wavescopeChart.updatePlatformStatus) {
+      this.wavescopeChart.updatePlatformStatus(platform, isActive);
+    }
+  }
+
   async fetchTikTokTrendingByCategory(category = 'viral', limit = 20) {
     if (!this.tiktokEnabled) return null;
 
     try {
-      const response = await fetch(`http://localhost:5002/api/tiktok-trending?category=${category}&limit=${limit}&include_analysis=true`);
+      const response = await this.fetchWithTimeout(`http://localhost:5002/api/viral-content?categories=${category}&limit=${limit}&timeWindow=6`);
       const result = await response.json();
       
-      if (result.success && result.data.length > 0) {
+      if (result.success && result.data.trends.length > 0) {
         console.log(`🎵 TikTok ${category}: ${result.data.length} videos fetched`);
         return result.data;
       }
@@ -6443,6 +6679,13 @@ class WaveScopeChart {
     this.setupCanvas();
     this.render();
     this.setupEventListeners();
+    
+    // Check for pending TikTok data from dashboard
+    if (window.waveSightDashboard && window.waveSightDashboard.pendingTikTokData) {
+      console.log('🔄 Processing pending TikTok data for timeline...');
+      this.addTikTokData(window.waveSightDashboard.pendingTikTokData);
+      window.waveSightDashboard.pendingTikTokData = null;
+    }
   }
 
   setupCanvas() {
@@ -8585,6 +8828,142 @@ class WaveScopeChart {
     if (avgViralScore >= 70 && recentPercentage >= 0.1) return 'Fast';
     if (avgViralScore >= 60) return 'Moderate';
     return 'Slow';
+  }
+
+  // Add TikTok data to the timeline chart
+  addTikTokData(tiktokData) {
+    if (!tiktokData || tiktokData.length === 0) {
+      console.log('📊 No TikTok data to add to timeline');
+      return;
+    }
+
+    console.log(`🎵 Adding ${tiktokData.length} TikTok trends to timeline...`);
+
+    try {
+      // Convert TikTok data to chart format and add to existing trends
+      tiktokData.forEach(trend => {
+        const trendCategory = this.determineTrendCategory(trend);
+        
+        if (this.data[trendCategory]) {
+          // Add to existing category data
+          const timePoint = {
+            x: this.data[trendCategory].data.length,
+            y: trend.waveScore,
+            viralScore: trend.viralScore,
+            platform: 'tiktok',
+            title: trend.title,
+            username: trend.username,
+            prediction: trend.prediction,
+            confidence: trend.confidence,
+            hashtags: trend.hashtags,
+            growthMetrics: trend.growthMetrics,
+            timestamp: new Date().toISOString()
+          };
+
+          this.data[trendCategory].data.push(timePoint);
+          
+          // Update category metrics with TikTok data
+          if (trend.viralScore > 70) {
+            this.data[trendCategory].viralPrediction = Math.max(
+              this.data[trendCategory].viralPrediction,
+              trend.viralScore
+            );
+          }
+
+          // Add TikTok to platforms if not already present
+          if (!this.data[trendCategory].platforms.includes('tiktok')) {
+            this.data[trendCategory].platforms.push('tiktok');
+          }
+        }
+      });
+
+      // Add TikTok-specific migration flows
+      this.addTikTokMigrationFlows(tiktokData);
+
+      // Re-render the chart with new data
+      this.render();
+
+      console.log(`✅ Successfully integrated ${tiktokData.length} TikTok trends into timeline`);
+
+    } catch (error) {
+      console.error('❌ Failed to add TikTok data to timeline:', error);
+    }
+  }
+
+  // Determine which trend category a TikTok trend belongs to
+  determineTrendCategory(trend) {
+    const viralScore = trend.viralScore || 0;
+    const prediction = trend.prediction || 'stable';
+    
+    // High viral score trends
+    if (viralScore >= 80) {
+      return 'viral';
+    }
+    
+    // Emerging trends with good potential
+    if (viralScore >= 60 && prediction === 'rising') {
+      return 'emerging';
+    }
+    
+    // Cross-platform migration potential
+    if (trend.hashtags && trend.hashtags.some(tag => 
+      ['fyp', 'viral', 'trending'].includes(tag.toLowerCase())
+    )) {
+      return 'migrating';
+    }
+    
+    // Declining trends
+    if (prediction === 'declining' || viralScore < 40) {
+      return 'declining';
+    }
+    
+    // Default to viral category for TikTok content
+    return 'viral';
+  }
+
+  // Add TikTok migration flows to show cross-platform potential
+  addTikTokMigrationFlows(tiktokData) {
+    const highViralTrends = tiktokData.filter(trend => trend.viralScore >= 75);
+    
+    highViralTrends.forEach(trend => {
+      // Simulate migration potential from TikTok to YouTube and Reddit
+      if (trend.hashtags && trend.hashtags.length > 0) {
+        const migrationFlow = {
+          from: 'tiktok',
+          to: 'youtube',
+          similarity: Math.min(0.95, 0.6 + (trend.viralScore / 100) * 0.3),
+          delay: Math.random() * 12 + 6, // 6-18 hours
+          trendTitle: trend.title,
+          confidence: trend.confidence || 70
+        };
+
+        // Add to viral category migrations
+        if (this.data.viral && this.data.viral.migrations) {
+          this.data.viral.migrations.push(migrationFlow);
+        }
+      }
+    });
+  }
+
+  // Update platform status for timeline display
+  updatePlatformStatus(platform, isActive) {
+    console.log(`📊 Timeline: ${platform} platform ${isActive ? 'activated' : 'deactivated'}`);
+    
+    // Update platform availability in trend data
+    Object.values(this.data).forEach(trendCategory => {
+      if (trendCategory.platforms) {
+        if (isActive && !trendCategory.platforms.includes(platform)) {
+          trendCategory.platforms.push(platform);
+        } else if (!isActive) {
+          trendCategory.platforms = trendCategory.platforms.filter(p => p !== platform);
+        }
+      }
+    });
+
+    // Re-render to show platform changes
+    if (this.ctx) {
+      this.render();
+    }
   }
   
   // Initialize trend cards when data is loaded

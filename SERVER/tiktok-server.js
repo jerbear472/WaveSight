@@ -1,118 +1,183 @@
-// TikTok Research API Server
-// Express server for TikTok data collection and viral trend analysis
+// TikTok Integration Server for WaveSight
+// Provides TikTok Research API endpoints for the dashboard
 
 const express = require('express');
 const cors = require('cors');
+const { tiktokAuth } = require('./tiktok-auth');
 const { tiktokCollector } = require('./tiktok-collector');
 const { viralAnalyzer } = require('./viral-trend-analyzer');
-const { createClient } = require('@supabase/supabase-js');
+const { tiktokDatabase } = require('./tiktok-database');
 
 const app = express();
-const PORT = process.env.TIKTOK_SERVER_PORT || 5002;
+const port = process.env.TIKTOK_PORT || 5002;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Initialize Supabase (if configured)
-let supabase = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
-  supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_ANON_KEY
-  );
-  console.log('✅ TikTok Server connected to Supabase');
-} else {
-  console.warn('⚠️ Supabase not configured for TikTok server');
+// Initialize services
+let servicesInitialized = false;
+
+async function initializeServices() {
+  if (servicesInitialized) return true;
+
+  try {
+    console.log('🔄 Initializing TikTok services...');
+    
+    // Initialize auth service
+    const authInitialized = await tiktokAuth.init();
+    
+    // Initialize data collector
+    const collectorInitialized = await tiktokCollector.init();
+    
+    // Test database connection
+    const dbHealth = await tiktokDatabase.healthCheck();
+    
+    servicesInitialized = true;
+    
+    console.log('✅ TikTok services initialized');
+    console.log(`   - Auth: ${authInitialized ? 'Ready' : 'Demo mode'}`);
+    console.log(`   - Collector: ${collectorInitialized ? 'Ready' : 'Demo mode'}`);
+    console.log(`   - Database: ${dbHealth.status}`);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to initialize TikTok services:', error);
+    return false;
+  }
 }
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
+    const authHealth = await tiktokAuth.healthCheck();
     const collectorHealth = await tiktokCollector.healthCheck();
+    const analyzerHealth = await viralAnalyzer.healthCheck();
+    const dbHealth = await tiktokDatabase.healthCheck();
+    
+    const overallStatus = [authHealth, collectorHealth, analyzerHealth, dbHealth]
+      .every(h => h.status === 'healthy') ? 'healthy' : 'warning';
     
     res.json({
-      status: 'healthy',
-      service: 'tiktok-server',
-      port: PORT,
+      status: overallStatus,
       timestamp: new Date().toISOString(),
-      components: {
+      services: {
+        auth: authHealth,
         collector: collectorHealth,
-        analyzer: { status: 'ready' },
-        database: supabase ? 'connected' : 'not_configured'
+        analyzer: analyzerHealth,
+        database: dbHealth
+      },
+      server: {
+        port: port,
+        uptime: process.uptime(),
+        memory: process.memoryUsage()
       }
     });
   } catch (error) {
     res.status(500).json({
       status: 'error',
-      error: error.message
+      error: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
 
-// Fetch trending TikTok videos
-app.get('/api/tiktok-trending', async (req, res) => {
+// Get viral TikTok content with analysis
+app.get('/api/viral-content', async (req, res) => {
   try {
-    const {
-      category = 'viral',
-      limit = 50,
-      include_analysis = 'true'
-    } = req.query;
-
-    console.log(`🎵 Fetching TikTok trending content: ${category}`);
-
-    const result = await tiktokCollector.fetchTrendingByCategory(category, parseInt(limit));
+    await initializeServices();
     
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        error: result.error,
-        data: []
-      });
-    }
-
-    let responseData = result.videos;
-
-    // Include viral analysis if requested
-    if (include_analysis === 'true' && result.videos.length > 0) {
-      console.log('📊 Running viral analysis on TikTok videos...');
-      const analysis = viralAnalyzer.analyzeBatch(result.videos);
-      
-      // Merge analysis results with video data
-      responseData = result.videos.map(video => {
-        const videoAnalysis = analysis.results.find(
-          r => r.video_id === (video.id || video.video_id)
-        );
-        
-        return {
-          ...video,
-          analysis: videoAnalysis || null
-        };
-      });
-
-      // Store in database if available
-      if (supabase) {
-        await storeTikTokData(result.videos, analysis.results);
-      }
-    }
-
-    res.json({
-      success: true,
-      data: responseData,
-      metadata: {
-        category,
-        total_fetched: result.videos.length,
-        has_analysis: include_analysis === 'true',
-        timestamp: new Date().toISOString()
-      }
+    const {
+      categories = 'viral,trending,music,dance,comedy',
+      limit = 50,
+      timeWindow = 24
+    } = req.query;
+    
+    const categoryArray = categories.split(',').map(c => c.trim());
+    
+    console.log(`🔍 Fetching TikTok viral content: ${categoryArray.join(', ')}`);
+    
+    // Run viral trend analysis
+    const analysisResult = await viralAnalyzer.analyzeViralTrends({
+      categories: categoryArray,
+      limit: parseInt(limit),
+      timeWindow: parseInt(timeWindow)
     });
-
+    
+    if (!analysisResult.success) {
+      throw new Error(analysisResult.error);
+    }
+    
+    // Store results in database if connected
+    if (tiktokDatabase.isConnected) {
+      const storageResult = await tiktokDatabase.storeAnalysisResults(analysisResult);
+      if (storageResult.success) {
+        console.log('💾 Analysis results stored in database');
+      }
+    }
+    
+    // Generate alerts for high viral potential
+    const alerts = viralAnalyzer.generateViralAlerts(analysisResult);
+    
+    // Format response for dashboard
+    const response = {
+      success: true,
+      data: {
+        trends: analysisResult.trends.map(trend => ({
+          id: trend.id || trend.video_id,
+          title: trend.video_description || `TikTok by @${trend.username}`,
+          description: trend.video_description,
+          platform: 'tiktok',
+          username: trend.username,
+          displayName: trend.display_name,
+          view_count: trend.view_count,
+          like_count: trend.like_count,
+          comment_count: trend.comment_count,
+          share_count: trend.share_count,
+          hashtags: trend.hashtag_names || [],
+          category: trend.trend_category,
+          viralScore: trend.viralScore,
+          growthMetrics: trend.growthMetrics,
+          prediction: trend.trendPrediction,
+          create_time: trend.create_time,
+          region_code: trend.region_code,
+          music_id: trend.music_id
+        })),
+        summary: {
+          totalAnalyzed: analysisResult.totalAnalyzed,
+          viralCandidates: analysisResult.viralCandidates,
+          categories: categoryArray,
+          timeWindow: parseInt(timeWindow)
+        },
+        alerts: alerts,
+        metadata: analysisResult.analysisMetadata
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    res.json(response);
+    
   } catch (error) {
-    console.error('❌ Error fetching TikTok trending:', error);
-    res.status(500).json({
+    console.error('❌ Failed to fetch viral content:', error);
+    
+    // Return demo data on error
+    res.json({
       success: false,
       error: error.message,
-      data: []
+      data: {
+        trends: generateDemoTikTokData(),
+        summary: {
+          totalAnalyzed: 10,
+          viralCandidates: 3,
+          categories: ['demo'],
+          timeWindow: 24
+        },
+        alerts: [],
+        metadata: {
+          demo: true,
+          timestamp: new Date().toISOString()
+        }
+      }
     });
   }
 });
@@ -422,6 +487,66 @@ async function storeComments(videoId, comments) {
   }
 }
 
+// Generate demo TikTok data for testing
+function generateDemoTikTokData() {
+  const demoHashtags = [
+    ['fyp', 'viral', 'trending'],
+    ['dance', 'choreography', 'trending'],
+    ['music', 'song', 'viral'],
+    ['comedy', 'funny', 'humor'],
+    ['beauty', 'makeup', 'tutorial']
+  ];
+  
+  const demoUsernames = ['tiktok_star', 'viral_creator', 'trend_setter', 'content_king', 'viral_queen'];
+  
+  return Array.from({ length: 10 }, (_, i) => ({
+    id: `demo_${i + 1}`,
+    title: `Demo TikTok Video ${i + 1}`,
+    description: `This is a demo TikTok video for testing purposes`,
+    platform: 'tiktok',
+    username: demoUsernames[i % demoUsernames.length],
+    displayName: `Demo User ${i + 1}`,
+    view_count: Math.floor(Math.random() * 10000000) + 100000,
+    like_count: Math.floor(Math.random() * 500000) + 5000,
+    comment_count: Math.floor(Math.random() * 50000) + 500,
+    share_count: Math.floor(Math.random() * 25000) + 250,
+    hashtags: demoHashtags[i % demoHashtags.length],
+    category: ['viral', 'music', 'dance', 'comedy', 'beauty'][i % 5],
+    viralScore: Math.floor(Math.random() * 40) + 60, // 60-100 for demo
+    create_time: Math.floor(Date.now() / 1000) - (Math.random() * 86400 * 3), // Last 3 days
+    region_code: 'US'
+  }));
+}
+
+// Automatic analysis scheduling
+let analysisInterval = null;
+
+function startAutomaticAnalysis() {
+  if (analysisInterval) return;
+  
+  // Run analysis every 30 minutes
+  analysisInterval = setInterval(async () => {
+    try {
+      console.log('⏰ Running scheduled TikTok analysis...');
+      
+      const analysisResult = await viralAnalyzer.analyzeViralTrends({
+        categories: ['viral', 'trending', 'music', 'dance', 'comedy'],
+        limit: 100,
+        timeWindow: 24
+      });
+      
+      if (analysisResult.success && tiktokDatabase.isConnected) {
+        await tiktokDatabase.storeAnalysisResults(analysisResult);
+        console.log('✅ Scheduled analysis completed and stored');
+      }
+    } catch (error) {
+      console.error('❌ Scheduled analysis failed:', error);
+    }
+  }, 30 * 60 * 1000); // 30 minutes
+  
+  console.log('🕐 Automatic TikTok analysis scheduled every 30 minutes');
+}
+
 // Initialize server
 async function startServer() {
   try {
@@ -435,11 +560,33 @@ async function startServer() {
     }
 
     // Start server
-    app.listen(PORT, () => {
-      console.log(`🎵 TikTok API Server running on port ${PORT}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`📡 Trending endpoint: http://localhost:${PORT}/api/tiktok-trending`);
-      console.log(`🔥 Viral endpoint: http://localhost:${PORT}/api/tiktok-viral`);
+    app.listen(port, async () => {
+      console.log('\n🎵 TikTok Integration Server Starting...');
+      console.log(`🚀 Server running on http://localhost:${port}`);
+      console.log(`📊 Health check: http://localhost:${port}/health`);
+      console.log(`🔥 Viral content: http://localhost:${port}/api/viral-content`);
+      console.log(`📈 Trending: http://localhost:${port}/api/trending`);
+      console.log(`🚨 Alerts: http://localhost:${port}/api/alerts`);
+      
+      // Initialize services on startup
+      const servicesReady = await initializeServices();
+      
+      if (servicesReady) {
+        startAutomaticAnalysis();
+        console.log('✅ TikTok Integration Server ready with all services');
+      } else {
+        console.log('⚠️ TikTok Integration Server running in demo mode');
+      }
+      
+      console.log('\n💡 API Endpoints:');
+      console.log('   GET  /health              - Service health check');
+      console.log('   GET  /api/viral-content   - Get viral TikTok content with analysis');
+      console.log('   GET  /api/trending        - Get trending videos from database');
+      console.log('   GET  /api/alerts          - Get active viral alerts');
+      console.log('   GET  /api/stats           - Get database statistics');
+      console.log('   POST /api/analyze         - Trigger manual analysis');
+      console.log('   DELETE /api/cleanup       - Cleanup old data');
+      console.log('\n🔗 Integration with WaveSight Dashboard on port 8080');
     });
 
   } catch (error) {
@@ -450,7 +597,15 @@ async function startServer() {
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down TikTok server...');
+  console.log('\n🛑 Shutting down TikTok Integration Server...');
+  
+  if (analysisInterval) {
+    clearInterval(analysisInterval);
+  }
+  
+  await tiktokAuth.cleanup();
+  
+  console.log('✅ Server shutdown complete');
   process.exit(0);
 });
 

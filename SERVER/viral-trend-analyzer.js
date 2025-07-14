@@ -1,324 +1,420 @@
-// Viral Trend Analyzer for TikTok Data
-// Analyzes growth metrics, engagement patterns, and viral potential
+// Viral Trend Analyzer
+// Identifies videos with highest growth metrics and calculates viral scores
+
+const { tiktokCollector } = require('./tiktok-collector');
 
 class ViralTrendAnalyzer {
   constructor() {
-    this.trendCategories = {
-      EMERGING: { min_growth: 0.5, max_views: 100000, description: 'High growth, low views' },
-      VIRAL: { min_growth: 0.3, min_views: 100000, description: 'High growth + high engagement' },
-      PEAK: { max_growth: 0.2, min_views: 500000, description: 'Slowing growth, high views' },
-      DECLINING: { max_growth: -0.1, description: 'Negative growth trend' }
+    this.previousMetrics = new Map(); // Store previous data points for growth calculation
+    this.trendHistory = new Map(); // Store trend history for pattern analysis
+    this.alertThresholds = {
+      viralScore: 70,        // Alert when viral score > 70
+      viewVelocity: 10000,   // Views per hour
+      shareAcceleration: 100, // Shares per hour
+      engagementRate: 0.05   // 5% engagement rate
     };
     
-    this.viralThresholds = {
-      view_velocity_high: 10000,    // views per hour
-      share_velocity_high: 100,     // shares per hour  
-      engagement_rate_high: 0.1,    // 10% engagement rate
-      comment_velocity_high: 50     // comments per hour
-    };
-    
-    console.log('📊 Viral Trend Analyzer initialized');
+    console.log('🔥 Viral Trend Analyzer initialized');
   }
 
-  // Analyze single video for viral potential
-  analyzeVideo(video, previousMetrics = null) {
+  // Analyze viral trends from TikTok data
+  async analyzeViralTrends(options = {}) {
+    const {
+      categories = ['viral', 'trending', 'music', 'dance', 'comedy'],
+      limit = 50,
+      timeWindow = 24 // hours
+    } = options;
+
+    console.log('🔍 Analyzing viral trends across TikTok...');
+
     try {
-      const metrics = this.extractMetrics(video);
-      const growth = previousMetrics ? this.calculateGrowthMetrics(metrics, previousMetrics) : null;
-      const viralScore = this.calculateViralScore(metrics, growth);
-      const category = this.categorizeTrend(metrics, growth);
-      const prediction = this.predictViralPotential(metrics, growth);
+      // Fetch current trending data
+      const currentData = await tiktokCollector.fetchViralContent({
+        categories,
+        limit
+      });
+
+      if (!currentData.success) {
+        throw new Error(`Failed to fetch viral content: ${currentData.error}`);
+      }
+
+      console.log(`📊 Analyzing ${currentData.videos.length} TikTok videos for viral patterns`);
+
+      // Calculate growth metrics for each video
+      const viralAnalysis = currentData.videos.map(video => {
+        const growthMetrics = this.calculateGrowthMetrics(video, timeWindow);
+        const viralScore = this.calculateViralScore(growthMetrics);
+        const trendPrediction = this.predictTrendDirection(video, growthMetrics);
+
+        return {
+          ...video,
+          growthMetrics,
+          viralScore,
+          trendPrediction,
+          analysisTimestamp: new Date().toISOString(),
+          platform: 'tiktok'
+        };
+      });
+
+      // Sort by viral score (highest first)
+      const sortedTrends = viralAnalysis.sort((a, b) => b.viralScore - a.viralScore);
+
+      // Identify high-potential viral content
+      const viralCandidates = sortedTrends.filter(trend => 
+        trend.viralScore >= this.alertThresholds.viralScore
+      );
+
+      // Update trend history
+      this.updateTrendHistory(sortedTrends);
+
+      console.log(`🚀 Found ${viralCandidates.length} viral candidates with score ≥ ${this.alertThresholds.viralScore}`);
 
       return {
-        video_id: video.id || video.video_id,
-        platform: 'tiktok',
-        analyzed_at: new Date().toISOString(),
-        metrics,
-        growth,
-        viral_score: viralScore,
-        category,
-        prediction,
-        metadata: {
-          username: video.username,
-          create_time: video.create_time,
-          hashtags: video.hashtag_names || [],
-          region: video.region_code
+        success: true,
+        totalAnalyzed: sortedTrends.length,
+        viralCandidates: viralCandidates.length,
+        trends: sortedTrends,
+        topViral: viralCandidates.slice(0, 10), // Top 10 viral candidates
+        analysisMetadata: {
+          categories,
+          timeWindow,
+          thresholds: this.alertThresholds,
+          timestamp: new Date().toISOString()
         }
       };
+
     } catch (error) {
-      console.error('❌ Error analyzing video:', error);
-      return null;
+      console.error('❌ Viral trend analysis failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        trends: []
+      };
     }
   }
 
-  // Extract key metrics from video data
-  extractMetrics(video) {
-    const now = new Date();
-    const createTime = new Date(video.create_time * 1000); // TikTok uses Unix timestamp
-    const ageHours = (now - createTime) / (1000 * 60 * 60);
-
-    return {
-      view_count: parseInt(video.view_count) || 0,
-      like_count: parseInt(video.like_count) || 0,
-      comment_count: parseInt(video.comment_count) || 0,
-      share_count: parseInt(video.share_count) || 0,
-      age_hours: ageHours,
-      engagement_rate: this.calculateEngagementRate(video),
-      views_per_hour: ageHours > 0 ? (parseInt(video.view_count) || 0) / ageHours : 0
+  // Calculate growth metrics for a video
+  calculateGrowthMetrics(video, timeWindowHours = 24) {
+    const videoId = video.id || video.video_id;
+    const currentTime = new Date();
+    const videoCreateTime = new Date(video.create_time * 1000); // Convert Unix timestamp
+    
+    // Get previous metrics if available
+    const previousData = this.previousMetrics.get(videoId);
+    
+    // Current metrics
+    const currentMetrics = {
+      views: parseInt(video.view_count || 0),
+      likes: parseInt(video.like_count || 0),
+      shares: parseInt(video.share_count || 0),
+      comments: parseInt(video.comment_count || 0),
+      timestamp: currentTime
     };
-  }
 
-  // Calculate engagement rate
-  calculateEngagementRate(video) {
-    const views = parseInt(video.view_count) || 0;
-    const likes = parseInt(video.like_count) || 0;
-    const comments = parseInt(video.comment_count) || 0;
-    const shares = parseInt(video.share_count) || 0;
-    
-    if (views === 0) return 0;
-    
-    const totalEngagement = likes + comments + shares;
-    return totalEngagement / views;
-  }
+    // Calculate time elapsed since video creation (in hours)
+    const videoAgeHours = (currentTime - videoCreateTime) / (1000 * 60 * 60);
+    const timeElapsed = previousData ? 
+      (currentTime - previousData.timestamp) / (1000 * 60 * 60) : 
+      Math.max(videoAgeHours, 1); // Minimum 1 hour
 
-  // Calculate growth metrics between two time points
-  calculateGrowthMetrics(currentMetrics, previousMetrics) {
-    const timeDiff = (new Date() - new Date(previousMetrics.timestamp)) / (1000 * 60 * 60); // hours
-    
-    if (timeDiff <= 0) return null;
+    // Calculate growth rates
+    let viewVelocity = 0;
+    let shareAcceleration = 0;
+    let commentVelocity = 0;
+    let likeVelocity = 0;
 
-    return {
-      view_growth_1h: (currentMetrics.view_count - previousMetrics.view_count) / timeDiff,
-      like_growth_1h: (currentMetrics.like_count - previousMetrics.like_count) / timeDiff,
-      comment_growth_1h: (currentMetrics.comment_count - previousMetrics.comment_count) / timeDiff,
-      share_growth_1h: (currentMetrics.share_count - previousMetrics.share_count) / timeDiff,
-      engagement_growth: currentMetrics.engagement_rate - previousMetrics.engagement_rate,
-      time_period_hours: timeDiff
-    };
-  }
-
-  // Calculate viral score (0-100)
-  calculateViralScore(metrics, growth = null) {
-    let score = 0;
-    
-    // Base engagement score (0-30 points)
-    const engagementScore = Math.min(30, metrics.engagement_rate * 300);
-    score += engagementScore;
-    
-    // Views velocity score (0-25 points)
-    const velocityScore = Math.min(25, (metrics.views_per_hour / this.viralThresholds.view_velocity_high) * 25);
-    score += velocityScore;
-    
-    // Age factor (0-20 points) - newer content scores higher
-    const ageScore = Math.max(0, 20 - (metrics.age_hours / 24) * 10); // Decay over 2 days
-    score += ageScore;
-    
-    // Growth acceleration (0-25 points) - only if we have growth data
-    if (growth) {
-      const growthScore = Math.min(25, 
-        (growth.view_growth_1h / this.viralThresholds.view_velocity_high) * 15 +
-        (growth.share_growth_1h / this.viralThresholds.share_velocity_high) * 10
-      );
-      score += growthScore;
+    if (previousData && timeElapsed > 0) {
+      // Calculate actual growth since last measurement
+      viewVelocity = (currentMetrics.views - previousData.views) / timeElapsed;
+      shareAcceleration = (currentMetrics.shares - previousData.shares) / timeElapsed;
+      commentVelocity = (currentMetrics.comments - previousData.comments) / timeElapsed;
+      likeVelocity = (currentMetrics.likes - previousData.likes) / timeElapsed;
     } else {
-      // Fallback: use absolute numbers for growth estimation
-      const absoluteGrowthScore = Math.min(25,
-        (metrics.view_count / 1000000) * 15 + // Scale by millions of views
-        (metrics.share_count / 10000) * 10    // Scale by thousands of shares
+      // Estimate velocity based on video age
+      if (videoAgeHours > 0) {
+        viewVelocity = currentMetrics.views / videoAgeHours;
+        shareAcceleration = currentMetrics.shares / videoAgeHours;
+        commentVelocity = currentMetrics.comments / videoAgeHours;
+        likeVelocity = currentMetrics.likes / videoAgeHours;
+      }
+    }
+
+    // Calculate engagement rate
+    const totalEngagement = currentMetrics.likes + currentMetrics.comments + currentMetrics.shares;
+    const engagementRate = currentMetrics.views > 0 ? totalEngagement / currentMetrics.views : 0;
+
+    // Calculate recency multiplier (newer videos get higher scores)
+    const recencyMultiplier = Math.max(0.1, Math.min(1, (48 - videoAgeHours) / 48));
+
+    // Store current metrics for next calculation
+    this.previousMetrics.set(videoId, currentMetrics);
+
+    return {
+      viewVelocity: Math.max(0, viewVelocity),
+      shareAcceleration: Math.max(0, shareAcceleration),
+      commentVelocity: Math.max(0, commentVelocity),
+      likeVelocity: Math.max(0, likeVelocity),
+      engagementRate,
+      recencyMultiplier,
+      videoAgeHours,
+      timeElapsed,
+      currentMetrics,
+      previousMetrics: previousData || null
+    };
+  }
+
+  // Calculate viral score using the specified formula
+  calculateViralScore(growthMetrics) {
+    const {
+      viewVelocity,
+      shareAcceleration,
+      engagementRate,
+      commentVelocity,
+      recencyMultiplier
+    } = growthMetrics;
+
+    // Normalize metrics to 0-100 scale
+    const normalizedViewVelocity = Math.min(100, viewVelocity / 1000); // Scale: 1000 views/hour = 100
+    const normalizedShareAcceleration = Math.min(100, shareAcceleration * 10); // Scale: 10 shares/hour = 100
+    const normalizedEngagementRate = Math.min(100, engagementRate * 1000); // Scale: 10% engagement = 100
+    const normalizedCommentVelocity = Math.min(100, commentVelocity * 5); // Scale: 20 comments/hour = 100
+
+    // Apply the viral score formula from specifications
+    const baseScore = (
+      (normalizedViewVelocity * 0.4) + 
+      (normalizedShareAcceleration * 0.3) + 
+      (normalizedEngagementRate * 0.2) + 
+      (normalizedCommentVelocity * 0.1)
+    );
+
+    // Apply recency multiplier
+    const viralScore = Math.round(baseScore * recencyMultiplier);
+
+    return Math.min(100, Math.max(0, viralScore));
+  }
+
+  // Predict trend direction based on growth patterns
+  predictTrendDirection(video, growthMetrics) {
+    const { viewVelocity, engagementRate, videoAgeHours } = growthMetrics;
+    
+    // Get historical data for pattern analysis
+    const videoId = video.id || video.video_id;
+    const history = this.trendHistory.get(videoId) || [];
+    
+    let direction = 'stable';
+    let confidence = 50;
+    let reasoning = [];
+
+    // Analyze current velocity
+    if (viewVelocity > 5000) {
+      direction = 'rising';
+      confidence += 20;
+      reasoning.push('High view velocity');
+    } else if (viewVelocity < 100) {
+      direction = 'declining';
+      confidence -= 15;
+      reasoning.push('Low view velocity');
+    }
+
+    // Analyze engagement quality
+    if (engagementRate > 0.05) {
+      if (direction === 'rising') confidence += 15;
+      reasoning.push('High engagement rate');
+    } else if (engagementRate < 0.01) {
+      direction = 'declining';
+      confidence -= 10;
+      reasoning.push('Low engagement rate');
+    }
+
+    // Age factor
+    if (videoAgeHours < 6) {
+      if (direction === 'rising') {
+        confidence += 10;
+        reasoning.push('Fresh content with momentum');
+      }
+    } else if (videoAgeHours > 72) {
+      if (direction !== 'rising') {
+        confidence += 5;
+        reasoning.push('Mature content past peak');
+      }
+    }
+
+    // Historical trend analysis
+    if (history.length >= 3) {
+      const recent = history.slice(-3);
+      const isAccelerating = recent.every((point, i) => 
+        i === 0 || point.viralScore >= recent[i-1].viralScore
       );
-      score += absoluteGrowthScore;
-    }
-    
-    return Math.min(100, Math.round(score));
-  }
-
-  // Categorize trend type
-  categorizeTrend(metrics, growth = null) {
-    const views = metrics.view_count;
-    const growthRate = growth ? growth.view_growth_1h / Math.max(1, metrics.view_count) : 0;
-    
-    // Emerging: High growth rate, lower absolute views
-    if (growthRate > this.trendCategories.EMERGING.min_growth && 
-        views < this.trendCategories.EMERGING.max_views) {
-      return 'EMERGING';
-    }
-    
-    // Viral: High growth + high engagement
-    if (growthRate > this.trendCategories.VIRAL.min_growth && 
-        views > this.trendCategories.VIRAL.min_views) {
-      return 'VIRAL';
-    }
-    
-    // Peak: High views but slowing growth
-    if (views > this.trendCategories.PEAK.min_views && 
-        growthRate < this.trendCategories.PEAK.max_growth) {
-      return 'PEAK';
-    }
-    
-    // Declining: Negative growth
-    if (growthRate < this.trendCategories.DECLINING.max_growth) {
-      return 'DECLINING';
-    }
-    
-    return 'STABLE';
-  }
-
-  // Predict viral potential
-  predictViralPotential(metrics, growth = null) {
-    const viralFactors = {
-      high_engagement: metrics.engagement_rate > this.viralThresholds.engagement_rate_high,
-      rapid_views: metrics.views_per_hour > this.viralThresholds.view_velocity_high,
-      young_content: metrics.age_hours < 24,
-      accelerating: growth && growth.view_growth_1h > 0
-    };
-    
-    const factorCount = Object.values(viralFactors).filter(Boolean).length;
-    
-    let prediction = 'LOW';
-    let confidence = 0.2;
-    
-    if (factorCount >= 3) {
-      prediction = 'HIGH';
-      confidence = 0.8 + (factorCount - 3) * 0.05;
-    } else if (factorCount === 2) {
-      prediction = 'MEDIUM';
-      confidence = 0.6;
-    } else if (factorCount === 1) {
-      prediction = 'LOW';
-      confidence = 0.4;
-    }
-    
-    return {
-      potential: prediction,
-      confidence: Math.min(0.95, confidence),
-      factors: viralFactors,
-      estimated_peak_views: this.estimatePeakViews(metrics, growth),
-      time_to_peak_hours: this.estimateTimeToPeak(metrics, growth)
-    };
-  }
-
-  // Estimate peak views based on current trajectory
-  estimatePeakViews(metrics, growth = null) {
-    if (!growth || growth.view_growth_1h <= 0) {
-      // Fallback: estimate based on current engagement
-      return metrics.view_count * (1 + metrics.engagement_rate * 10);
-    }
-    
-    // Project growth with decay
-    const currentViews = metrics.view_count;
-    const growthRate = growth.view_growth_1h;
-    const decayFactor = 0.95; // 5% decay per hour
-    
-    let projectedViews = currentViews;
-    let currentGrowth = growthRate;
-    
-    // Project 48 hours ahead with exponential decay
-    for (let hour = 1; hour <= 48; hour++) {
-      projectedViews += currentGrowth;
-      currentGrowth *= decayFactor;
       
-      if (currentGrowth < growthRate * 0.01) break; // Stop when growth drops to 1% of original
+      if (isAccelerating && direction === 'rising') {
+        confidence += 15;
+        reasoning.push('Consistent growth pattern');
+      } else if (!isAccelerating && direction === 'declining') {
+        confidence += 10;
+        reasoning.push('Declining trend confirmed');
+      }
     }
-    
-    return Math.round(projectedViews);
-  }
 
-  // Estimate time to reach peak engagement
-  estimateTimeToPeak(metrics, growth = null) {
-    if (!growth || growth.view_growth_1h <= 0) {
-      return null; // Can't estimate without growth data
-    }
-    
-    // Most TikTok content peaks within 24-72 hours
-    const ageHours = metrics.age_hours;
-    const growthRate = growth.view_growth_1h / Math.max(1, metrics.view_count);
-    
-    if (growthRate > 0.5) return Math.max(0, 12 - ageHours);  // High growth: peak in ~12h
-    if (growthRate > 0.2) return Math.max(0, 24 - ageHours);  // Medium growth: peak in ~24h
-    if (growthRate > 0.1) return Math.max(0, 48 - ageHours);  // Slow growth: peak in ~48h
-    
-    return Math.max(0, 72 - ageHours); // Default: peak within 72h
-  }
-
-  // Analyze batch of videos
-  analyzeBatch(videos, previousMetricsBatch = {}) {
-    console.log(`📊 Analyzing ${videos.length} TikTok videos for viral potential...`);
-    
-    const results = videos.map(video => {
-      const videoId = video.id || video.video_id;
-      const previousMetrics = previousMetricsBatch[videoId] || null;
-      return this.analyzeVideo(video, previousMetrics);
-    }).filter(result => result !== null);
-    
-    // Sort by viral score
-    results.sort((a, b) => b.viral_score - a.viral_score);
-    
-    // Calculate summary statistics
-    const summary = this.generateBatchSummary(results);
-    
-    console.log(`✅ Analysis complete: ${results.length} videos analyzed`);
-    console.log(`🔥 Viral content found: ${summary.viral_count} videos`);
-    console.log(`📈 Emerging trends: ${summary.emerging_count} videos`);
-    
     return {
-      results,
-      summary,
-      analyzed_at: new Date().toISOString(),
-      total_analyzed: results.length
+      direction,
+      confidence: Math.min(100, Math.max(0, confidence)),
+      reasoning,
+      predictedPeakHours: this.estimatePeakTiming(growthMetrics),
+      riskFactors: this.identifyRiskFactors(video, growthMetrics)
     };
   }
 
-  // Generate summary statistics for batch analysis
-  generateBatchSummary(results) {
-    const summary = {
-      total_videos: results.length,
-      viral_count: 0,
-      emerging_count: 0,
-      peak_count: 0,
-      declining_count: 0,
-      avg_viral_score: 0,
-      top_viral_score: 0,
-      high_potential_count: 0
-    };
+  // Estimate when content might peak
+  estimatePeakTiming(growthMetrics) {
+    const { viewVelocity, videoAgeHours } = growthMetrics;
     
-    results.forEach(result => {
-      summary.avg_viral_score += result.viral_score;
-      summary.top_viral_score = Math.max(summary.top_viral_score, result.viral_score);
+    if (viewVelocity > 10000) {
+      return Math.max(6, 24 - videoAgeHours); // High velocity content peaks within 24 hours
+    } else if (viewVelocity > 1000) {
+      return Math.max(12, 72 - videoAgeHours); // Medium velocity peaks within 72 hours
+    } else {
+      return Math.max(24, 168 - videoAgeHours); // Slow growth peaks within a week
+    }
+  }
+
+  // Identify potential risk factors
+  identifyRiskFactors(video, growthMetrics) {
+    const risks = [];
+    
+    // Content saturation risk
+    if (video.hashtag_names && video.hashtag_names.length > 10) {
+      risks.push('Over-hashtagged content may face algorithm penalties');
+    }
+
+    // Engagement authenticity risk
+    if (growthMetrics.engagementRate > 0.15) {
+      risks.push('Unusually high engagement rate - potential artificial inflation');
+    }
+
+    // Trend saturation risk
+    const trendingHashtags = ['fyp', 'viral', 'trending'];
+    if (video.hashtag_names && video.hashtag_names.some(tag => 
+      trendingHashtags.includes(tag.toLowerCase())
+    )) {
+      risks.push('Generic trending hashtags may indicate saturated market');
+    }
+
+    // Rapid growth risk
+    if (growthMetrics.viewVelocity > 50000) {
+      risks.push('Extremely rapid growth may trigger platform review');
+    }
+
+    return risks;
+  }
+
+  // Update trend history for pattern analysis
+  updateTrendHistory(trends) {
+    const timestamp = new Date();
+    
+    trends.forEach(trend => {
+      const videoId = trend.id || trend.video_id;
       
-      switch (result.category) {
-        case 'VIRAL': summary.viral_count++; break;
-        case 'EMERGING': summary.emerging_count++; break;
-        case 'PEAK': summary.peak_count++; break;
-        case 'DECLINING': summary.declining_count++; break;
+      if (!this.trendHistory.has(videoId)) {
+        this.trendHistory.set(videoId, []);
       }
       
-      if (result.prediction.potential === 'HIGH') {
-        summary.high_potential_count++;
+      const history = this.trendHistory.get(videoId);
+      
+      // Add current data point
+      history.push({
+        timestamp,
+        viralScore: trend.viralScore,
+        viewVelocity: trend.growthMetrics.viewVelocity,
+        engagementRate: trend.growthMetrics.engagementRate
+      });
+      
+      // Keep only last 100 data points
+      if (history.length > 100) {
+        history.splice(0, history.length - 100);
       }
     });
-    
-    summary.avg_viral_score = results.length > 0 ? 
-      Math.round(summary.avg_viral_score / results.length) : 0;
-    
-    return summary;
+
+    // Clean old entries (older than 7 days)
+    const cutoffTime = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    for (const [videoId, history] of this.trendHistory.entries()) {
+      const recentHistory = history.filter(point => point.timestamp > cutoffTime);
+      if (recentHistory.length === 0) {
+        this.trendHistory.delete(videoId);
+      } else {
+        this.trendHistory.set(videoId, recentHistory);
+      }
+    }
   }
 
-  // Get top viral trends
-  getTopViralTrends(analysisResults, limit = 10) {
-    return analysisResults.results
-      .filter(result => result.viral_score >= 70 || result.category === 'VIRAL')
-      .slice(0, limit)
-      .map(result => ({
-        video_id: result.video_id,
-        viral_score: result.viral_score,
-        category: result.category,
-        prediction: result.prediction.potential,
-        confidence: result.prediction.confidence,
-        views: result.metrics.view_count,
-        engagement_rate: result.metrics.engagement_rate,
-        username: result.metadata.username,
-        hashtags: result.metadata.hashtags
-      }));
+  // Generate alerts for high-potential viral content
+  generateViralAlerts(analysis) {
+    if (!analysis.success) return [];
+
+    const alerts = [];
+    const now = new Date();
+
+    analysis.topViral.forEach(trend => {
+      const alert = {
+        id: `viral_${trend.id || trend.video_id}_${now.getTime()}`,
+        type: 'viral_prediction',
+        severity: this.getAlertSeverity(trend.viralScore),
+        timestamp: now.toISOString(),
+        videoId: trend.id || trend.video_id,
+        title: `Viral Prediction Alert: ${trend.viralScore}% confidence`,
+        message: this.generateAlertMessage(trend),
+        metadata: {
+          viralScore: trend.viralScore,
+          viewVelocity: trend.growthMetrics.viewVelocity,
+          engagementRate: trend.growthMetrics.engagementRate,
+          platform: 'tiktok',
+          category: trend.trend_category,
+          prediction: trend.trendPrediction
+        }
+      };
+
+      alerts.push(alert);
+    });
+
+    return alerts;
+  }
+
+  // Determine alert severity based on viral score
+  getAlertSeverity(viralScore) {
+    if (viralScore >= 90) return 'critical';
+    if (viralScore >= 80) return 'high';
+    if (viralScore >= 70) return 'medium';
+    return 'low';
+  }
+
+  // Generate human-readable alert message
+  generateAlertMessage(trend) {
+    const score = trend.viralScore;
+    const velocity = Math.round(trend.growthMetrics.viewVelocity);
+    const direction = trend.trendPrediction.direction;
+    
+    return `TikTok content showing ${score}% viral potential with ${velocity} views/hour. ` +
+           `Trend direction: ${direction}. Category: ${trend.trend_category || 'general'}.`;
+  }
+
+  // Health check for the analyzer
+  async healthCheck() {
+    try {
+      const collectorHealth = await tiktokCollector.healthCheck();
+      
+      return {
+        status: collectorHealth.status === 'healthy' ? 'healthy' : 'warning',
+        analyzer: 'operational',
+        dataCollector: collectorHealth,
+        metricsStored: this.previousMetrics.size,
+        trendsTracked: this.trendHistory.size,
+        thresholds: this.alertThresholds
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
   }
 }
 
