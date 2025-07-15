@@ -1,6 +1,7 @@
 {
   "name": "wavesight",
   "version": "1.0.0",
+  "type": "module",
   "description": "WaveSight Viral Trend Intelligence Platform",
   "main": "index.html",
   "scripts": {
