@@ -612,53 +612,90 @@ class WaveSightDashboard {
 
   // Initialize WaveScope Timeline
   async initWaveScopeTimeline() {
-    console.log('🌊 Initializing WaveScope Timeline with real data...');
+    console.log('🌊 Initializing Advanced WaveScope Timeline with D3.js...');
     
     try {
-      // Load real trending data for timeline
-      await this.loadTimelineData();
+      // Initialize the D3.js timeline component
+      const container = '#wavescopeTimelineD3';
       
-      const canvas = document.getElementById('wavescopeCanvas');
-      if (canvas) {
-        console.log('🎯 Initializing WaveScope Timeline Canvas...');
-        
-        // Ensure canvas has proper dimensions
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width === 0 || rect.height === 0) {
-          canvas.width = 800;
-          canvas.height = 400;
-          canvas.style.width = '100%';
-          canvas.style.height = '400px';
+      if (!document.querySelector(container)) {
+        console.error('❌ Timeline container not found');
+        return;
+      }
+      
+      // Create D3.js timeline with advanced options
+      this.wavescopeTimelineD3 = new WaveScopeTimelineD3(container, {
+        width: 1200,
+        height: 500,
+        showAnomalies: true,
+        showForecasts: true,
+        interactive: true,
+        animationDuration: 1500,
+        onTrendSelect: (trendId, visible) => {
+          console.log(`🎯 Trend ${trendId} ${visible ? 'selected' : 'deselected'}`);
+        },
+        onAnomalyClick: (anomaly) => {
+          console.log('🚨 Anomaly clicked:', anomaly);
+          this.showAnomalyDetails(anomaly);
+        },
+        onTimeRangeChange: (timeRange) => {
+          console.log(`⏰ Time range changed to: ${timeRange}`);
         }
-        
-        setTimeout(() => {
-          try {
-            this.wavescopeChart = new WaveScopeChart(canvas, this.state.currentData);
-            this.wavescopeChart.init();
-            
-            // Always ensure we have data to display
-            console.log('📊 Ensuring timeline has data to display...');
-            
-            // Try to use real data first, then fallback to demo data
-            if (this.state.currentData && this.state.currentData.length > 0) {
-              console.log(`🚀 Using ${this.state.currentData.length} real trending videos for timeline`);
-              this.wavescopeChart.realData = this.state.currentData;
-              this.wavescopeChart.data = this.wavescopeChart.processRealDataForChart(this.state.currentData);
-            } else {
-              console.log('📊 Generating WAVESITE demo data for timeline visualization');
-              this.wavescopeChart.data = this.wavescopeChart.generateWAVESITETrends();
-            }
-            
-            // Force render and log data info
-            this.wavescopeChart.render();
-            const dataKeys = Object.keys(this.wavescopeChart.data || {});
-            console.log(`✅ Timeline rendered with ${dataKeys.length} trend categories:`, dataKeys);
-            
-            // Also try to fetch fresh YouTube data in background
-            this.fetchAndUpdateTimelineData();
-          } catch (error) {
-            console.warn('⚠️ Canvas failed, creating fallback timeline:', error);
-            this.createFallbackTimeline();
+      });
+      
+      // Load initial data (24 hours by default)
+      await this.wavescopeTimelineD3.loadTrendData('24h');
+      
+      console.log('✅ Advanced D3.js WaveScope Timeline initialized successfully');
+      
+    } catch (error) {
+      console.error('❌ Failed to initialize WaveScope Timeline:', error);
+      this.showTimelineError('Failed to initialize timeline');
+    }
+  }
+
+  /**
+   * Show anomaly details modal
+   */
+  showAnomalyDetails(anomaly) {
+    // Create and show anomaly details modal
+    const modal = document.createElement('div');
+    modal.className = 'anomaly-modal';
+    modal.innerHTML = `
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🚨 Anomaly Detection</h3>
+          <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="anomaly-info">
+            <p><strong>Type:</strong> ${anomaly.type}</p>
+            <p><strong>Severity:</strong> <span class="severity-${anomaly.severity}">${anomaly.severity}</span></p>
+            <p><strong>Score:</strong> ${anomaly.score.toFixed(1)}</p>
+            <p><strong>Time:</strong> ${new Date(anomaly.timestamp).toLocaleString()}</p>
+            <p><strong>Description:</strong> ${anomaly.description}</p>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  /**
+   * Show timeline error message
+   */
+  showTimelineError(message) {
+    const container = document.querySelector('#wavescopeTimelineD3');
+    if (container) {
+      container.innerHTML = `
+        <div class="timeline-error">
+          <h3>⚠️ Timeline Error</h3>
+          <p>${message}</p>
+          <button onclick="window.waveSightDashboard.initWaveScopeTimeline()">Retry</button>
+        </div>
+      `;
+    }
+  }
           }
         }, 100);
       }
@@ -9074,6 +9111,35 @@ window.refreshYouTubeData = function() {
   if (window.waveSightDashboard) {
     window.waveSightDashboard.showNotification('🔄 Refreshing YouTube data...', 'info');
     window.waveSightDashboard.fetchFreshYouTubeData();
+  }
+};
+
+// Advanced Timeline Controls
+window.updateTimelineRange = function(timeRange) {
+  console.log(`⏰ Updating timeline range to: ${timeRange}`);
+  
+  // Update active button
+  document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  // Update timeline
+  if (window.waveSightDashboard && window.waveSightDashboard.wavescopeTimelineD3) {
+    window.waveSightDashboard.wavescopeTimelineD3.updateTimeRange(timeRange);
+  }
+};
+
+window.toggleTimelineOption = function(option, enabled) {
+  console.log(`🎛️ Toggle ${option}: ${enabled}`);
+  
+  if (window.waveSightDashboard && window.waveSightDashboard.wavescopeTimelineD3) {
+    if (option === 'anomalies') {
+      window.waveSightDashboard.wavescopeTimelineD3.options.showAnomalies = enabled;
+    } else if (option === 'forecasts') {
+      window.waveSightDashboard.wavescopeTimelineD3.options.showForecasts = enabled;
+    }
+    
+    // Re-render timeline with updated options
+    window.waveSightDashboard.wavescopeTimelineD3.render();
   }
 };
 
