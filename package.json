@@ -5,7 +5,6 @@
   "description": "WaveSight Viral Trend Intelligence Platform",
   "main": "index.html",
   "scripts": {
-    "start": "python app.py",
     "dev": "./start-servers.sh",
     "build": "echo 'No build step required'",
     "test": "echo 'Tests not configured yet'"
