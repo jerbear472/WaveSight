@@ -420,7 +420,7 @@ class WaveSightDashboard {
 
       // Fallback to API if Supabase fails
       console.log('🔄 Trying API fallback...');
-      const response = await this.fetchWithTimeout('http://localhost:5003/api/youtube-trending?maxResults=100');
+      const response = await this.fetchWithTimeout(window.location.origin + '/api/youtube-data?limit=100');
       const result = await response.json();
 
       if (result.success && result.data) {
@@ -680,30 +680,58 @@ class WaveSightDashboard {
   }
 
   async loadTimelineData() {
-    console.log('📊 Loading real timeline data...');
+    console.log('📊 Loading timeline data...');
     
     try {
-      // Try to get fresh YouTube trending data
-      const response = await this.fetchWithTimeout('http://localhost:5003/api/youtube-trending?maxResults=100');
+      // Try to get trending data from the current host
+      const apiUrl = window.location.origin + '/api/youtube-data?limit=100';
+      const response = await this.fetchWithTimeout(apiUrl);
       const result = await response.json();
       
-      if (result.success && result.data) {
+      if (result.success && result.data && result.data.length > 0) {
         console.log(`✅ Loaded ${result.data.length} trending videos for timeline`);
         this.state.currentData = result.data;
         this.timelineData = this.processTimelineData(result.data);
         return this.timelineData;
       } else {
-        throw new Error('Failed to fetch trending data');
+        throw new Error('No data available from API');
       }
     } catch (error) {
-      console.warn('⚠️ Using cached data for timeline:', error);
-      // Use current data if available
-      if (this.state.currentData) {
-        this.timelineData = this.processTimelineData(this.state.currentData);
-        return this.timelineData;
-      }
-      throw error;
+      console.warn('⚠️ API not available, using demo data for timeline:', error);
+      
+      // Generate demo timeline data
+      const demoData = this.generateDemoTimelineData();
+      this.state.currentData = demoData;
+      this.timelineData = this.processTimelineData(demoData);
+      return this.timelineData;
     }
+  }
+
+  generateDemoTimelineData() {
+    console.log('🎭 Generating demo timeline data...');
+    
+    const categories = ['AI Tools', 'Crypto', 'Gaming', 'Technology', 'Entertainment', 'Music'];
+    const demoData = [];
+    
+    // Generate 50 demo trends with realistic data
+    for (let i = 0; i < 50; i++) {
+      const category = categories[Math.floor(Math.random() * categories.length)];
+      const baseScore = Math.random() * 100;
+      const daysAgo = Math.floor(Math.random() * 30);
+      
+      demoData.push({
+        video_id: `demo_${i}`,
+        title: `${category} Trend ${i + 1}: Breaking News`,
+        trend_category: category,
+        trend_score: baseScore,
+        wave_score: Math.random(),
+        view_count: Math.floor(Math.random() * 5000000) + 100000,
+        engagement_rate: Math.random() * 15,
+        published_at: new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000).toISOString()
+      });
+    }
+    
+    return demoData;
   }
 
   processTimelineData(rawData) {
@@ -1169,7 +1197,7 @@ class WaveSightDashboard {
   async fetchAndUpdateTimelineData() {
     try {
       console.log('🔄 Fetching fresh YouTube data in background...');
-      const response = await this.fetchWithTimeout('http://localhost:5003/api/youtube-trending?maxResults=50');
+      const response = await this.fetchWithTimeout(window.location.origin + '/api/youtube-data?limit=50');
       const result = await response.json();
       
       if (result.success && result.data && result.data.length > 0) {
@@ -1355,7 +1383,7 @@ class WaveSightDashboard {
       
       // Fetch fresh data if needed
       const response = await this.fetchWithTimeout(
-        `http://localhost:5003/api/youtube-trending?maxResults=200`
+        window.location.origin + '/api/youtube-data?limit=200'
       );
       const result = await response.json();
       

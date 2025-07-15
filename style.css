@@ -3786,11 +3786,10 @@ h1, h2, h3, .logo, .header-title {
 /* Line Chart Container */
 .line-chart-container {
   position: relative;
-  background: rgba(0, 0, 0, 0.2);
+  background: transparent;
   border-radius: 12px;
   padding: 1rem;
   margin: 1.5rem 0;
-  border: 1px solid rgba(94, 227, 255, 0.2);
 }
 
 #wavescopeCanvas {
@@ -3800,15 +3799,6 @@ h1, h2, h3, .logo, .header-title {
   background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
 }
 
-/* WaveScope Timeline Container */
-.wavescope-timeline {
-  background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-  border: 1px solid rgba(94, 227, 255, 0.3);
-  border-radius: 16px;
-  padding: 20px;
-  margin: 20px 0;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
 
 
 /* Loading Spinner Animation */
@@ -3818,11 +3808,10 @@ h1, h2, h3, .logo, .header-title {
 }
 
 .timeline-chart {
-  background: rgba(0, 0, 0, 0.2);
+  background: transparent;
   border-radius: 12px;
   padding: 16px;
   margin: 16px 0;
-  border: 1px solid rgba(94, 227, 255, 0.2);
 }
 
 .line-chart-container {
