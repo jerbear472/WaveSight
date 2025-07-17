@@ -51,74 +51,12 @@
                 <p class="hero-description">Track viral content, analyze sentiment patterns, and discover emerging trends across digital platforms with advanced AI-powered insights.</p>
             </div>
             <div class="submit-bar">
-                <div class="filter-group-title">
-                    Search & Filters
-                </div>
-
-                <!-- Enhanced Search System -->
-                <div class="filter-group">
-                    <div class="enhanced-search-container">
-                        <div class="search-input-wrapper">
-                            <input type="text" placeholder="Search trends... (Type to search)" id="searchInput" class="search-input enhanced-search">
-                            <div class="search-suggestions" id="searchSuggestions"></div>
-                            <div class="search-controls">
-                                <button class="search-history-btn" id="searchHistoryBtn" title="Search History">
-                                    📚
-                                </button>
-                                <button class="saved-searches-btn" id="savedSearchesBtn" title="Saved Searches">
-                                    ⭐
-                                </button>
-                                <button class="search-clear-btn" id="searchClearBtn" title="Clear Search">
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <!-- Quick Search Tags -->
-                        <div class="quick-search-tags">
-                            <span class="tag-label">Trending Now:</span>
-                            <button class="quick-tag" data-search="AI" title="Search AI trends">🤖 AI</button>
-                            <button class="quick-tag" data-search="crypto" title="Search crypto trends">💰 Crypto</button>
-                            <button class="quick-tag" data-search="gaming" title="Search gaming trends">🎮 Gaming</button>
-                            <button class="quick-tag" data-search="music" title="Search music trends">🎵 Music</button>
-                            <button class="quick-tag" data-search="tech" title="Search tech trends">💻 Tech</button>
-                            <button class="quick-tag" data-search="viral" title="Search viral content">🔥 Viral</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Data Source Toggles for Cross-Platform Search -->
-                    <div class="data-source-toggles">
-                        <span class="toggle-label">Data Sources:</span>
-                        <label class="toggle-switch">
-                            <input type="checkbox" class="data-source-toggle" data-source="youtube" checked>
-                            <span class="toggle-slider youtube"></span>
-                            <span class="toggle-text">📺 YouTube</span>
-                        </label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" class="data-source-toggle" data-source="tiktok" checked>
-                            <span class="toggle-slider tiktok"></span>
-                            <span class="toggle-text">🎵 TikTok</span>
-                        </label>
-                        <label class="toggle-switch cross-platform">
-                            <input type="checkbox" id="crossPlatformMode" checked>
-                            <span class="toggle-slider cross-platform"></span>
-                            <span class="toggle-text">🌐 Cross-Platform Scoring</span>
-                        </label>
-                    </div>
-                    
-                    <select id="trendFilter" onchange="filterChart()">
-                        <option value="all">All Trends</option>
-                    </select>
-                    <input type="date" id="startDate" onchange="filterByDateRange()" placeholder="Start Date">
-                    <input type="date" id="endDate" onchange="filterByDateRange()" placeholder="End Date">
-                </div>
-
-                <!-- Basic Controls -->
-                <div class="button-group basic-controls">
-                    <button class="submit-btn primary" onclick="trackSpecificTrend()">🔍 Track Trend</button>
-                    <button class="submit-btn secondary" onclick="resetToDefaultView()">🔄 Reset</button>
+                <div class="discovery-controls">
+                    <button class="action-btn primary" onclick="refreshData()">🔄 Refresh Data</button>
+                    <button class="action-btn secondary" onclick="exportData()">📥 Export</button>
                     <button class="submit-btn" onclick="showAdvancedMenu()" id="advancedMenuBtn">⚙️ Advanced</button>
                 </div>
+            </div>
 
                 <!-- Advanced Functions Menu (Initially Hidden) -->
                 <div class="advanced-menu" id="advancedMenu" style="display: none;">
@@ -146,6 +84,44 @@
                             ⚙️ Settings
                         </button>
                     </div>
+                    
+                    <!-- Bot Control Section -->
+                    <div class="bot-control-section">
+                        <div class="bot-control-title">
+                            <span>🤖 Bot Control</span>
+                            <div class="bot-status" id="botStatus">
+                                <span class="status-indicator" id="botStatusIndicator">🟡</span>
+                                <span id="botStatusText">Ready</span>
+                            </div>
+                        </div>
+                        <div class="bot-control-buttons">
+                            <button class="bot-btn start" onclick="startBot()" id="startBotBtn" title="Start data collection bot">
+                                ▶️ Start Bot
+                            </button>
+                            <button class="bot-btn stop" onclick="stopBot()" id="stopBotBtn" title="Stop data collection bot" disabled>
+                                ⏹️ Stop Bot
+                            </button>
+                            <button class="bot-btn status" onclick="checkBotStatus()" title="Check bot status">
+                                📊 Status
+                            </button>
+                        </div>
+                        <div class="bot-info" id="botInfo">
+                            <div class="bot-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">Runtime:</span>
+                                    <span class="stat-value" id="botRuntime">00:00:00</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Records:</span>
+                                    <span class="stat-value" id="botRecords">0</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">Last Activity:</span>
+                                    <span class="stat-value" id="botLastActivity">Never</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -156,32 +132,34 @@
             <!-- WaveScope Timeline -->
             <div class="wavescope-timeline">
                 <div class="timeline-header">
-                    <h3>🌊 WaveScope Timeline</h3>
-                    <div class="timeline-controls">
-                        <div class="time-period-buttons">
-                            <button class="period-btn" onclick="updateTimelineRange('6h')">6H</button>
-                            <button class="period-btn active" onclick="updateTimelineRange('24h')">24H</button>
-                            <button class="period-btn" onclick="updateTimelineRange('7d')">7D</button>
-                            <button class="period-btn" onclick="updateTimelineRange('30d')">30D</button>
-                        </div>
-                        <div class="timeline-options">
-                            <label class="toggle-option">
-                                <input type="checkbox" id="showAnomalies" checked onchange="toggleTimelineOption('anomalies', this.checked)">
-                                <span>🚨 Anomalies</span>
-                            </label>
-                            <label class="toggle-option">
-                                <input type="checkbox" id="showForecasts" checked onchange="toggleTimelineOption('forecasts', this.checked)">
-                                <span>🔮 Forecasts</span>
-                            </label>
-                        </div>
+                    <div class="timeline-title">
+                        <h3>🌊 WaveScope Timeline</h3>
                         <span class="live-indicator">🔴 LIVE</span>
+                    </div>
+                    <div class="timeline-controls">
+                        <div class="time-range-selector">
+                            <button class="time-btn" onclick="updateTimelineRange('1h')">1H</button>
+                            <button class="time-btn" onclick="updateTimelineRange('6h')">6H</button>
+                            <button class="time-btn active" onclick="updateTimelineRange('24h')">24H</button>
+                            <button class="time-btn" onclick="updateTimelineRange('7d')">7D</button>
+                        </div>
+                        <div class="view-toggles">
+                            <button class="toggle-btn active" onclick="toggleView('trends')" id="trendsToggle">
+                                <span class="toggle-icon">📈</span> Trends
+                            </button>
+                            <button class="toggle-btn" onclick="toggleView('anomalies')" id="anomaliesToggle">
+                                <span class="toggle-icon">🚨</span> Alerts
+                            </button>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="timeline-chart">
-                    <!-- Advanced D3.js Timeline Container -->
-                    <div class="line-chart-container">
-                        <div id="wavescopeTimelineD3" class="wavescope-d3-container"></div>
+                    <div id="wavescopeTimelineD3" class="wavescope-d3-container">
+                        <div class="timeline-loading">
+                            <div class="loading-spinner"></div>
+                            <p>Loading WaveScope Timeline...</p>
+                        </div>
                     </div>
                 </div>
                 
@@ -192,60 +170,7 @@
                         <!-- Trend cards will be populated dynamically -->
                     </div>
                     
-                    <!-- Legacy Trend Line Controls (kept for compatibility) -->
-                    <div class="trend-toggles" style="display: none;">
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="aiTrend" checked onchange="toggleTrendLine('ai')">
-                            <span class="checkmark" style="background: #5ee3ff;"></span>
-                            🤖 AI: Claude Code for Vibecoding
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="filmTrend" checked onchange="toggleTrendLine('film')">
-                            <span class="checkmark" style="background: #ec4899;"></span>
-                            🎬 Film: Dune 3 Production Updates
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="cultureTrend" checked onchange="toggleTrendLine('culture')">
-                            <span class="checkmark" style="background: #8b5cf6;"></span>
-                            🌍 Culture: Gen Z Work-Life Balance
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="cryptoTrend" checked onchange="toggleTrendLine('crypto')">
-                            <span class="checkmark" style="background: #f97316;"></span>
-                            💰 Crypto: Bitcoin ETF Impact
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="technologyTrend" checked onchange="toggleTrendLine('technology')">
-                            <span class="checkmark" style="background: #10b981;"></span>
-                            🔧 Tech: Apple Vision Pro Reviews
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="musicTrend" checked onchange="toggleTrendLine('music')">
-                            <span class="checkmark" style="background: #f59e0b;"></span>
-                            🎵 Music: Taylor Swift Eras Tour
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="gamingTrend" checked onchange="toggleTrendLine('gaming')">
-                            <span class="checkmark" style="background: #ef4444;"></span>
-                            🎮 Gaming: Baldur's Gate 3 Speedruns
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="socialTrend" checked onchange="toggleTrendLine('social')">
-                            <span class="checkmark" style="background: #06b6d4;"></span>
-                            📱 Social: Threads vs Twitter Migration
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="lifestyleTrend" checked onchange="toggleTrendLine('lifestyle')">
-                            <span class="checkmark" style="background: #84cc16;"></span>
-                            🏠 Lifestyle: Minimalist Tech Setups
-                        </label>
-                        <label class="trend-toggle">
-                            <input type="checkbox" id="viralTrend" checked onchange="toggleTrendLine('viral')">
-                            <span class="checkmark" style="background: #f472b6;"></span>
-                            🔥 Viral: AI-Generated Meme Templates
-                        </label>
                     </div>
-                </div>
                 
                 <!-- YouTube Data Status -->
                 <div class="data-status">
@@ -363,101 +288,7 @@
             </div>
         </div>
 
-        <!-- Reddit Trends Analysis Section -->
-        <div class="chart-section">
-            <h2>🧠 Reddit Sentiment Trends</h2>
-            <div class="reddit-controls">
-                <div class="control-group">
-                    <input type="text" id="redditTopicInput" placeholder="Enter topic for Reddit analysis..." class="control-input">
-                    <button class="control-btn" onclick="analyzeRedditTopic()">🔍 Analyze Reddit</button>
-                    <button class="control-btn" onclick="refreshRedditTrends()">🔄 Refresh</button>
-                </div>
-            </div>
 
-            <div class="reddit-trends-container">
-                <div id="redditTrendsChart" class="reddit-chart"></div>
-                <div id="redditSentimentTable" class="reddit-table-container">
-                    <table class="trend-table">
-                        <thead>
-                            <tr>
-                                <th>Topic</th>
-                                <th>Positive</th>
-                                <th>Negative</th>
-                                <th>Neutral</th>
-                                <th>Confidence</th>
-                                <th>Momentum</th>
-                                <th>Date</th>
-                            </tr>
-                        </thead>
-                        <tbody id="redditSentimentTableBody">
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 2rem; color: #9ca3af;">
-                                    Enter a topic above to analyze Reddit sentiment trends
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="chart-section">
-            <h2>📊 Detailed Trends Analysis</h2>
-            <div class="trends-table-controls">
-                <div class="control-group">
-                    <label class="control-label">Category</label>
-                    <select class="control-input" id="detailedCategoryFilter">
-                        <option value="all">All Categories</option>
-                        <option value="AI Tools">AI Tools</option>
-                        <option value="Crypto">Crypto</option>
-                        <option value="Gaming">Gaming</option>
-                        <option value="Technology">Technology</option>
-                        <option value="Entertainment">Entertainment</option>
-                        <option value="Health & Fitness">Health & Fitness</option>
-                        <option value="General">General</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Sort By</label>
-                    <select class="control-input" id="detailedSortBy">
-                        <option value="view_count">View Count</option>
-                        <option value="trend_score">Trend Score</option>
-                        <option value="published_at">Date</option>
-                        <option value="engagement">Engagement Rate</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label class="control-label">Show</label>
-                    <select class="control-input" id="detailedLimit">
-                        <option value="10">Top 10</option>
-                        <option value="25">Top 25</option>
-                        <option value="50">Top 50</option>
-                    </select>
-                </div>
-                <button class="control-btn" onclick="refreshDetailedTable()">🔄 Refresh</button>
-            </div>
-
-            <div class="detailed-trends-container">
-                <table class="detailed-trends-table" id="detailedTrendsTable">
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Content</th>
-                            <th>Category</th>
-                            <th>Views</th>
-                            <th>View Growth %</th>
-                            <th>Engagement</th>
-                            <th>Score</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="detailedTrendsTableBody">
-                        <!-- Detailed trends will be populated here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
 
         <div class="chart-section">
             <h2>Trending Topics Overview</h2>

@@ -6689,8 +6689,21 @@ window.toggleAutoRefresh = function() {
   }
 };
 
+window.refreshData = function() {
+  console.log('🔄 Refreshing data...');
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.showNotification('🔄 Refreshing data...', 'info');
+    window.waveSightDashboard.init();
+    window.waveSightDashboard.initWaveScopeTimeline();
+  }
+};
+
 window.exportData = function() {
-  alert('📥 Export functionality\n\nThis would export current trend data in CSV/JSON format.');
+  console.log('📥 Exporting data...');
+  if (window.waveSightDashboard) {
+    window.waveSightDashboard.showNotification('📥 Exporting trend data...', 'info');
+    window.waveSightDashboard.exportTrendData();
+  }
 };
 
 window.filterByDateRange = function() {
@@ -9119,7 +9132,7 @@ window.updateTimelineRange = function(timeRange) {
   console.log(`⏰ Updating timeline range to: ${timeRange}`);
   
   // Update active button
-  document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelectorAll('.time-btn').forEach(btn => btn.classList.remove('active'));
   event.target.classList.add('active');
   
   // Update timeline
@@ -9143,8 +9156,339 @@ window.toggleTimelineOption = function(option, enabled) {
   }
 };
 
+window.toggleView = function(viewType) {
+  console.log(`👀 View toggled to: ${viewType}`);
+  
+  // Update active button styling
+  document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  if (window.waveSightDashboard && window.waveSightDashboard.wavescopeTimelineD3) {
+    if (viewType === 'trends') {
+      window.waveSightDashboard.wavescopeTimelineD3.options.showAnomalies = false;
+      window.waveSightDashboard.wavescopeTimelineD3.options.showForecasts = false;
+    } else if (viewType === 'anomalies') {
+      window.waveSightDashboard.wavescopeTimelineD3.options.showAnomalies = true;
+      window.waveSightDashboard.wavescopeTimelineD3.options.showForecasts = true;
+    }
+    window.waveSightDashboard.wavescopeTimelineD3.render();
+  }
+};
+
+// Bot Control Functionality
+class BotController {
+  constructor() {
+    this.isRunning = false;
+    this.startTime = null;
+    this.recordCount = 0;
+    this.lastActivity = null;
+    this.updateInterval = null;
+    
+    // Bot endpoints
+    this.endpoints = {
+      start: '/api/bot/start',
+      stop: '/api/bot/stop',
+      status: '/api/bot/status',
+      pipeline: '/api/pipeline/start'
+    };
+  }
+
+  async startBot() {
+    console.log('🤖 Starting WaveScope data collection bot...');
+    
+    try {
+      // Update UI immediately
+      this.updateBotStatus('starting', 'Starting...');
+      
+      // Try to start the pipeline
+      const response = await fetch('/api/pipeline/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          mode: 'continuous',
+          interval: 300000 // 5 minutes
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        this.isRunning = true;
+        this.startTime = new Date();
+        this.updateBotStatus('running', 'Running');
+        this.startUpdateTimer();
+        
+        console.log('✅ Bot started successfully:', result);
+        this.showNotification('Bot started successfully!', 'success');
+      } else {
+        throw new Error(`Failed to start bot: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to start bot:', error);
+      this.updateBotStatus('error', 'Error');
+      this.showNotification('Failed to start bot. Running in demo mode.', 'warning');
+      
+      // Start demo mode
+      this.startDemoMode();
+    }
+    
+    this.updateButtonStates();
+  }
+
+  async stopBot() {
+    console.log('🛑 Stopping WaveScope data collection bot...');
+    
+    try {
+      // Update UI immediately
+      this.updateBotStatus('stopping', 'Stopping...');
+      
+      // Try to stop the pipeline
+      const response = await fetch('/api/pipeline/stop', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Bot stopped successfully:', result);
+        this.showNotification('Bot stopped successfully!', 'success');
+      } else {
+        console.warn('⚠️ Pipeline stop endpoint not available, stopping local tracking');
+      }
+    } catch (error) {
+      console.error('❌ Failed to stop bot via API:', error);
+      console.log('🔄 Stopping local bot tracking...');
+    }
+    
+    // Always stop local tracking
+    this.isRunning = false;
+    this.stopUpdateTimer();
+    this.updateBotStatus('stopped', 'Stopped');
+    this.updateButtonStates();
+  }
+
+  async checkBotStatus() {
+    console.log('📊 Checking bot status...');
+    
+    try {
+      const response = await fetch('/api/bot/status');
+      if (response.ok) {
+        const status = await response.json();
+        console.log('📈 Bot status:', status);
+        
+        this.recordCount = status.recordCount || this.recordCount;
+        this.lastActivity = status.lastActivity ? new Date(status.lastActivity) : this.lastActivity;
+        
+        if (status.isRunning !== this.isRunning) {
+          this.isRunning = status.isRunning;
+          this.updateBotStatus(this.isRunning ? 'running' : 'stopped', 
+                              this.isRunning ? 'Running' : 'Stopped');
+          this.updateButtonStates();
+        }
+        
+        this.showNotification('Status check complete', 'info');
+      } else {
+        throw new Error('Status endpoint not available');
+      }
+    } catch (error) {
+      console.log('📊 Using local status (API not available)');
+      this.showNotification(`Local Status: ${this.isRunning ? 'Running' : 'Stopped'}`, 'info');
+    }
+    
+    this.updateDisplay();
+  }
+
+  startDemoMode() {
+    console.log('🎭 Starting demo mode...');
+    this.isRunning = true;
+    this.startTime = new Date();
+    this.updateBotStatus('running', 'Running (Demo)');
+    this.startUpdateTimer();
+    
+    // Simulate record collection
+    setInterval(() => {
+      if (this.isRunning) {
+        this.recordCount += Math.floor(Math.random() * 5) + 1;
+        this.lastActivity = new Date();
+      }
+    }, 10000);
+  }
+
+  updateBotStatus(status, text) {
+    const statusIndicator = document.getElementById('botStatusIndicator');
+    const statusText = document.getElementById('botStatusText');
+    const botStatus = document.getElementById('botStatus');
+    
+    if (statusIndicator && statusText && botStatus) {
+      // Remove existing status classes
+      botStatus.className = 'bot-status';
+      
+      switch (status) {
+        case 'running':
+          statusIndicator.textContent = '🟢';
+          botStatus.classList.add('running');
+          break;
+        case 'stopped':
+          statusIndicator.textContent = '🔴';
+          botStatus.classList.add('stopped');
+          break;
+        case 'starting':
+        case 'stopping':
+          statusIndicator.textContent = '🟡';
+          break;
+        case 'error':
+          statusIndicator.textContent = '🟠';
+          botStatus.classList.add('error');
+          break;
+        default:
+          statusIndicator.textContent = '🟡';
+      }
+      
+      statusText.textContent = text;
+    }
+  }
+
+  updateButtonStates() {
+    const startBtn = document.getElementById('startBotBtn');
+    const stopBtn = document.getElementById('stopBotBtn');
+    
+    if (startBtn && stopBtn) {
+      startBtn.disabled = this.isRunning;
+      stopBtn.disabled = !this.isRunning;
+    }
+  }
+
+  startUpdateTimer() {
+    this.stopUpdateTimer(); // Clear any existing timer
+    this.updateInterval = setInterval(() => {
+      this.updateDisplay();
+    }, 1000);
+  }
+
+  stopUpdateTimer() {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+  }
+
+  updateDisplay() {
+    // Update runtime
+    const runtimeElement = document.getElementById('botRuntime');
+    if (runtimeElement && this.startTime && this.isRunning) {
+      const runtime = new Date() - this.startTime;
+      const hours = Math.floor(runtime / 3600000);
+      const minutes = Math.floor((runtime % 3600000) / 60000);
+      const seconds = Math.floor((runtime % 60000) / 1000);
+      runtimeElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    } else if (runtimeElement && !this.isRunning) {
+      runtimeElement.textContent = '00:00:00';
+    }
+
+    // Update record count
+    const recordsElement = document.getElementById('botRecords');
+    if (recordsElement) {
+      recordsElement.textContent = this.recordCount.toLocaleString();
+    }
+
+    // Update last activity
+    const lastActivityElement = document.getElementById('botLastActivity');
+    if (lastActivityElement) {
+      if (this.lastActivity) {
+        const timeDiff = new Date() - this.lastActivity;
+        if (timeDiff < 60000) {
+          lastActivityElement.textContent = 'Just now';
+        } else if (timeDiff < 3600000) {
+          lastActivityElement.textContent = `${Math.floor(timeDiff / 60000)}m ago`;
+        } else {
+          lastActivityElement.textContent = `${Math.floor(timeDiff / 3600000)}h ago`;
+        }
+      } else {
+        lastActivityElement.textContent = this.isRunning ? 'Starting...' : 'Never';
+      }
+    }
+  }
+
+  showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 
+                   type === 'error' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 
+                   type === 'warning' ? 'linear-gradient(135deg, #f59e0b, #d97706)' :
+                   'linear-gradient(135deg, #06b6d4, #0891b2)'};
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      font-size: 0.9rem;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      max-width: 300px;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    `;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => {
+      notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.parentNode.removeChild(notification);
+        }
+      }, 300);
+    }, 3000);
+  }
+}
+
+// Initialize bot controller
+let botController;
+
+// Global functions for bot control
+window.startBot = function() {
+  if (!botController) {
+    botController = new BotController();
+  }
+  botController.startBot();
+};
+
+window.stopBot = function() {
+  if (botController) {
+    botController.stopBot();
+  }
+};
+
+window.checkBotStatus = function() {
+  if (!botController) {
+    botController = new BotController();
+  }
+  botController.checkBotStatus();
+};
+
 // Initialize dashboard when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   window.waveSightDashboard = new WaveSightDashboard();
   window.waveSightDashboard.init();
+  
+  // Initialize bot controller
+  botController = new BotController();
+  botController.updateButtonStates();
+  botController.updateDisplay();
 });
